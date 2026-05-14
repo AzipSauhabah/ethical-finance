@@ -107,7 +107,7 @@ export default function TickerManager({ tickers, setTickers }: Props) {
                   {q ? `${q.change_pct.toFixed(2)}%` : '—'}
                 </td>
                 <td style={td}>{s ? (s.is_ethical ? '✓' : '✗') : '…'}</td>
-                <td style={td}>{s ? s.ethical_score.toFixed(2) : '—'}</td>
+                <td style={td}>{s ? s.ethical.score.toFixed(2) : '—'}</td>
                 <td style={td}>
                   <button
                     onClick={() => removeTicker(t)}
