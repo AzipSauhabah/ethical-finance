@@ -248,15 +248,50 @@ function BacktestResults({ result }: { result: Tearsheet }) {
   const m = result.metrics;
   const pct = (v: number) => (v * 100).toFixed(2) + '%';
 
-  try {
-    return (
-      <div>
-        <h3 style={{ color: '#b8962f' }}>Résultats</h3>
+  return (
+    <div>
+      <h3 style={{ color: '#b8962f' }}>Résultats</h3>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem', marginBottom: '1.5rem' }}>
         <div>Return: {pct(m.total_return)}</div>
         <div>CAGR: {pct(m.cagr)}</div>
+        <div>Sharpe: {m.sharpe_ratio.toFixed(2)}</div>
+        <div>Max DD: {pct(m.max_drawdown)}</div>
+        <div>Sortino: {m.sortino_ratio.toFixed(2)}</div>
+        <div>Calmar: {m.calmar_ratio.toFixed(2)}</div>
+        <div>Vol: {pct(m.annualised_volatility)}</div>
+        <div>Beta: {m.beta?.toFixed(2) ?? 'N/A'}</div>
       </div>
-    );
-  } catch (e) {
-    return <div style={{ color: 'red' }}>Erreur: {String(e)}</div>;
-  }
+
+      {result.nav_chart && result.nav_chart.length > 0 && (
+        <>
+          <h4 style={{ color: '#142340' }}>Évolution du portefeuille</h4>
+          <ResponsiveContainer width="100%" height={250}>
+            <AreaChart data={result.nav_chart}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Area type="monotone" dataKey="nav" stroke="#142340" fill="#e8edf5" name="NAV (€)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </>
+      )}
+
+      {result.drawdown_chart && result.drawdown_chart.length > 0 && (
+        <>
+          <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Drawdown</h4>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={result.drawdown_chart}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+              <YAxis tickFormatter={(v) => (v * 100).toFixed(1) + '%'} tick={{ fontSize: 10 }} />
+              <Tooltip formatter={(v: number) => (v * 100).toFixed(2) + '%'} />
+              <Area type="monotone" dataKey="drawdown" stroke="#b82424" fill="#f5e8e8" name="Drawdown" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </>
+      )}
+    </div>
+  );
 }
