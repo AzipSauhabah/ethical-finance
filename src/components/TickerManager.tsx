@@ -1,4 +1,4 @@
-// Ticker manager: add tickers, runs ethical screening, shows live quotes.
+// Ticker manager with dual ethical + sharia badges.
 // © 2024 Sauhabah
 
 import { useState } from 'react';
@@ -11,79 +11,65 @@ interface Props {
   setTickers: (t: string[]) => void;
 }
 
+const NAVY = '#142340';
+const GREEN = '#1d8c41';
+const RED = '#b82424';
+
 export default function TickerManager({ tickers, setTickers }: Props) {
   const [input, setInput]   = useState('');
   const [loading, setLoad]  = useState(false);
   const [screened, setScrn] = useState<TickerScreenResult[]>([]);
   const quotes = useLiveQuotes(tickers);
 
-  const addTickers = async () => {
-    const newOnes = input
-      .split(/[\s,]+/)
-      .map((t) => t.trim().toUpperCase())
+  const add = async () => {
+    const newOnes = input.split(/[\s,]+/).map((t) => t.trim().toUpperCase())
       .filter((t) => t && !tickers.includes(t));
     if (!newOnes.length) return;
-
     setLoad(true);
     try {
       const all = [...tickers, ...newOnes];
       setTickers(all);
-      const result = await api.screenTickers(all);
-      setScrn(result.tickers);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoad(false);
-      setInput('');
-    }
+      const r = await api.screenTickers(all);
+      setScrn(r.tickers);
+    } catch (e) { console.error(e); }
+    finally { setLoad(false); setInput(''); }
   };
 
-  const removeTicker = (t: string) => {
+  const remove = (t: string) => {
     setTickers(tickers.filter((x) => x !== t));
     setScrn(screened.filter((x) => x.ticker !== t));
   };
 
   return (
     <div style={{ padding: '1rem' }}>
-      <h2 style={{ color: '#142340', marginBottom: '0.5rem' }}>Portefeuille — Tickers</h2>
-      <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '1rem' }}>
-        Ajoutez des tickers (ex : AAPL, MSFT, MC.PA, OR.PA). Un screening éthique est exécuté
-        automatiquement. Les prix bid/ask/last sont rafraîchis en temps réel toutes les 60 secondes.
+      <h2 style={{ color: NAVY }}>Portefeuille — Tickers</h2>
+      <p style={{ fontSize: '0.85rem', color: '#666', maxWidth: 800 }}>
+        Ajoutez des tickers (ex : AAPL, MC.PA, NESN.SW). Chaque ticker est évalué
+        sur deux critères indépendants : <strong>Ethical (E)</strong> et <strong>Sharia (S)</strong>.
+        Voir l'onglet <em>Screening</em> pour le détail.
       </p>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && addTickers()}
-          placeholder="AAPL, MSFT, MC.PA …"
-          style={{ flex: 1, padding: '0.5rem', border: '1px solid #ccc', borderRadius: 4 }}
-        />
-        <button
-          onClick={addTickers}
-          disabled={loading}
-          style={{
-            padding: '0.5rem 1rem',
-            background: '#142340', color: '#fff',
-            border: 'none', borderRadius: 4, cursor: 'pointer',
-          }}
-        >
+        <input value={input} onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()}
+          placeholder="AAPL, MSFT, MC.PA…"
+          style={{ flex: 1, padding: '0.5rem', border: '1px solid #ccc', borderRadius: 4 }} />
+        <button onClick={add} disabled={loading} style={{
+          padding: '0.5rem 1rem', background: NAVY, color: '#fff',
+          border: 'none', borderRadius: 4, cursor: 'pointer',
+        }}>
           {loading ? '…' : 'Ajouter'}
         </button>
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
         <thead>
-          <tr style={{ background: '#142340', color: '#fff' }}>
-            <th style={th}>Ticker</th>
-            <th style={th}>Nom</th>
-            <th style={th}>Last</th>
-            <th style={th}>Bid</th>
-            <th style={th}>Ask</th>
-            <th style={th}>Volume</th>
-            <th style={th}>Δ%</th>
-            <th style={th}>Ethical</th>
-            <th style={th}>Score</th>
+          <tr style={{ background: NAVY, color: '#fff' }}>
+            <th style={th}>Ticker</th><th style={th}>Nom</th>
+            <th style={th}>Last</th><th style={th}>Bid</th><th style={th}>Ask</th>
+            <th style={th}>Volume</th><th style={th}>Δ%</th>
+            <th style={th} title="Ethical">E</th>
+            <th style={th} title="Sharia">S</th>
             <th style={th}></th>
           </tr>
         </thead>
@@ -99,22 +85,14 @@ export default function TickerManager({ tickers, setTickers }: Props) {
                 <td style={td}>{q ? q.bid.toFixed(2) : '—'}</td>
                 <td style={td}>{q ? q.ask.toFixed(2) : '—'}</td>
                 <td style={td}>{q ? q.volume.toLocaleString() : '—'}</td>
-                <td style={{
-                  ...td,
-                  color: q && q.change_pct >= 0 ? '#1d8c41' : '#b82424',
-                  fontWeight: 600,
-                }}>
+                <td style={{ ...td, color: q && q.change_pct >= 0 ? GREEN : RED, fontWeight: 600 }}>
                   {q ? `${q.change_pct.toFixed(2)}%` : '—'}
                 </td>
-                <td style={td}>{s ? (s.is_ethical ? '✓' : '✗') : '…'}</td>
-                <td style={td}>{s ? s.ethical.score.toFixed(2) : '—'}</td>
+                <td style={td}><Badge passed={s?.is_ethical} /></td>
+                <td style={td}><Badge passed={s?.is_sharia} /></td>
                 <td style={td}>
-                  <button
-                    onClick={() => removeTicker(t)}
-                    style={{ background: 'none', border: 'none', color: '#b82424', cursor: 'pointer' }}
-                  >
-                    ✕
-                  </button>
+                  <button onClick={() => remove(t)}
+                    style={{ background: 'none', border: 'none', color: RED, cursor: 'pointer' }}>✕</button>
                 </td>
               </tr>
             );
@@ -122,20 +100,23 @@ export default function TickerManager({ tickers, setTickers }: Props) {
         </tbody>
       </table>
 
-      {screened.some((s) => !s.is_ethical) && (
-        <div style={{
-          marginTop: '1rem', padding: '0.75rem',
-          background: '#fdf2e7', border: '1px solid #d97842', borderRadius: 4,
-        }}>
-          ⚠️ Certains tickers ne passent pas le filtre éthique. Vérifiez les raisons :
-          {screened.filter((s) => !s.is_ethical).map((s) => (
-            <div key={s.ticker} style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>
-              <strong>{s.ticker}</strong> — {s.ethical_flags.join(', ')}
-            </div>
-          ))}
-        </div>
+      {!tickers.length && (
+        <p style={{ color: '#888', fontStyle: 'italic', marginTop: '2rem', textAlign: 'center' }}>
+          Aucun ticker. Tapez par exemple <code>AAPL, MSFT, MC.PA</code> et appuyez sur Entrée.
+        </p>
       )}
     </div>
+  );
+}
+
+function Badge({ passed }: { passed: boolean | undefined }) {
+  if (passed === undefined) return <span style={{ color: '#888' }}>…</span>;
+  return (
+    <span style={{
+      display: 'inline-block', width: 18, height: 18, borderRadius: 9,
+      background: passed ? GREEN : RED, color: '#fff',
+      fontSize: '0.7rem', textAlign: 'center', lineHeight: '18px', fontWeight: 700,
+    }}>{passed ? '✓' : '✗'}</span>
   );
 }
 
