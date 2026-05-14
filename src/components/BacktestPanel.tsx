@@ -95,7 +95,9 @@ export default function BacktestPanel({ tickers }: Props) {
             style={input}
           >
             {strategies.map((s) => (
-              <option key={s.name} value={s.name}>{s.name}</option>
+              <option key={s.name} value={s.name}>
+                {s.name}
+              </option>
             ))}
           </select>
         </Field>
