@@ -251,7 +251,15 @@ function BacktestResults({ result }: { result: Tearsheet }) {
   return (
     <div>
       <h3 style={{ color: '#b8962f' }}>Résultats</h3>
-
+      <div style={{ width: '100%', height: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={[{date:'2024-01', nav:1000}, {date:'2024-02', nav:1100}, {date:'2024-03', nav:1050}]}>
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Area type="monotone" dataKey="nav" stroke="#142340" fill="#e8edf5" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem', marginBottom: '1.5rem' }}>
         <div>Return: {pct(m.total_return)}</div>
         <div>CAGR: {pct(m.cagr)}</div>
