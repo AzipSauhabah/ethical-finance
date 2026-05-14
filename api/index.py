@@ -17,7 +17,7 @@ import json
 import logging
 from datetime import date
 
-from app import app
+from api.app import app
 from pydantic import BaseModel, Field
 
 from api.backtest.engine import BacktestEngine
