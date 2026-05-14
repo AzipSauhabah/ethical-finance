@@ -224,8 +224,9 @@ async def get_live_quote(ticker: str) -> dict:
         loop = asyncio.get_event_loop()
         df = await loop.run_in_executor(
             None,
-            partial(yf.download, ticker, period="5d", interval="1d",
-                    auto_adjust=True, progress=False)
+            partial(
+                yf.download, ticker, period="5d", interval="1d", auto_adjust=True, progress=False
+            ),
         )
         if df.empty:
             raise ValueError("empty")
@@ -234,12 +235,12 @@ async def get_live_quote(ticker: str) -> dict:
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = [col[0] for col in df.columns]
 
-        last  = float(df["Close"].iloc[-1])
-        prev  = float(df["Close"].iloc[-2]) if len(df) >= 2 else last
-        vol   = int(df["Volume"].iloc[-1])
-        chg   = (last - prev) / prev * 100 if prev else 0.0
-        high  = float(df["High"].iloc[-1])
-        low   = float(df["Low"].iloc[-1])
+        last = float(df["Close"].iloc[-1])
+        prev = float(df["Close"].iloc[-2]) if len(df) >= 2 else last
+        vol = int(df["Volume"].iloc[-1])
+        chg = (last - prev) / prev * 100 if prev else 0.0
+        high = float(df["High"].iloc[-1])
+        low = float(df["Low"].iloc[-1])
 
         # Bid/Ask estimés depuis High/Low du jour
         bid = round(low, 2)
