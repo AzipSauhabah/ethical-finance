@@ -4,6 +4,10 @@
 
 :copyright: 2024 Sauhabah — Ethical Finance Platform
 """
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".python_packages"))
 
 from __future__ import annotations
 
