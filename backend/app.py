@@ -26,10 +26,12 @@ app.add_middleware(
 
 scheduler = AsyncIOScheduler()
 
+
 @app.on_event("startup")
 async def _startup() -> None:
     import asyncio
-    from backend.core.loader import daily_update, load_all_tickers
+
+    from backend.core.loader import daily_update
 
     # Cron job quotidien à 21h UTC
     scheduler.add_job(daily_update, "cron", hour=21, minute=0, timezone="UTC")
@@ -42,7 +44,8 @@ async def _startup() -> None:
 
 async def _init_and_load() -> None:
     import asyncio
-    from backend.core.db import init_db, get_tickers_in_db
+
+    from backend.core.db import get_tickers_in_db, init_db
     from backend.core.loader import load_all_tickers
 
     await asyncio.sleep(5)  # laisse uvicorn démarrer complètement
