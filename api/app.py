@@ -1,6 +1,5 @@
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 
 from api.config import API_VERSION  # si tu l’as déjà ailleurs
 
