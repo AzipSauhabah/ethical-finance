@@ -14,39 +14,195 @@ log = logging.getLogger(__name__)
 # ── Univers de tickers ────────────────────────────────────────────────────────
 
 SP500_TICKERS = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "BRK-B", "JPM", "UNH",
-    "V", "XOM", "JNJ", "WMT", "MA", "PG", "LLY", "CVX", "HD", "MRK",
-    "ABBV", "PEP", "KO", "COST", "AVGO", "MCD", "TMO", "ACN", "BAC", "CRM",
-    "ABT", "NKE", "DIS", "TXN", "NEE", "PM", "ORCL", "DHR", "LIN", "AMGN",
-    "IBM", "QCOM", "RTX", "HON", "UPS", "SBUX", "GS", "CAT", "INTU", "SPGI",
-    "AMD", "ELV", "AXP", "ISRG", "BLK", "DE", "SYK", "T", "GILD", "ADI",
-    "MDLZ", "REGN", "PLD", "CI", "VRTX", "ADP", "MO", "ZTS", "MMC", "TJX",
-    "C", "ETN", "BSX", "NOC", "SO", "DUK", "AON", "CME", "ITW", "PNC",
-    "USB", "EMR", "WM", "MCO", "F", "GM", "FDX", "NSC", "ECL", "APD",
-    "HCA", "ICE", "SHW", "GD", "EW", "MSI", "CL", "OXY", "PSA", "D",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "BRK-B",
+    "JPM",
+    "UNH",
+    "V",
+    "XOM",
+    "JNJ",
+    "WMT",
+    "MA",
+    "PG",
+    "LLY",
+    "CVX",
+    "HD",
+    "MRK",
+    "ABBV",
+    "PEP",
+    "KO",
+    "COST",
+    "AVGO",
+    "MCD",
+    "TMO",
+    "ACN",
+    "BAC",
+    "CRM",
+    "ABT",
+    "NKE",
+    "DIS",
+    "TXN",
+    "NEE",
+    "PM",
+    "ORCL",
+    "DHR",
+    "LIN",
+    "AMGN",
+    "IBM",
+    "QCOM",
+    "RTX",
+    "HON",
+    "UPS",
+    "SBUX",
+    "GS",
+    "CAT",
+    "INTU",
+    "SPGI",
+    "AMD",
+    "ELV",
+    "AXP",
+    "ISRG",
+    "BLK",
+    "DE",
+    "SYK",
+    "T",
+    "GILD",
+    "ADI",
+    "MDLZ",
+    "REGN",
+    "PLD",
+    "CI",
+    "VRTX",
+    "ADP",
+    "MO",
+    "ZTS",
+    "MMC",
+    "TJX",
+    "C",
+    "ETN",
+    "BSX",
+    "NOC",
+    "SO",
+    "DUK",
+    "AON",
+    "CME",
+    "ITW",
+    "PNC",
+    "USB",
+    "EMR",
+    "WM",
+    "MCO",
+    "F",
+    "GM",
+    "FDX",
+    "NSC",
+    "ECL",
+    "APD",
+    "HCA",
+    "ICE",
+    "SHW",
+    "GD",
+    "EW",
+    "MSI",
+    "CL",
+    "OXY",
+    "PSA",
+    "D",
 ]
 
 CAC40_TICKERS = [
-    "MC.PA", "TTE.PA", "SAN.PA", "OR.PA", "AIR.PA", "BNP.PA", "AXA.PA", "SU.PA",
-    "DG.PA", "RI.PA", "KER.PA", "CAP.PA", "BN.PA", "VIE.PA", "SGO.PA", "ORA.PA",
-    "GLE.PA", "DSY.PA", "HO.PA", "STM.PA", "EL.PA", "RMS.PA", "URW.PA", "ML.PA",
-    "ACA.PA", "LR.PA", "PUB.PA", "TEP.PA", "WLN.PA", "EN.PA", "ATO.PA", "CS.PA",
-    "SAF.PA", "FP.PA", "VK.PA", "BOL.PA", "AI.PA", "SW.PA", "RNO.PA", "MT.AS",
+    "MC.PA",
+    "TTE.PA",
+    "SAN.PA",
+    "OR.PA",
+    "AIR.PA",
+    "BNP.PA",
+    "AXA.PA",
+    "SU.PA",
+    "DG.PA",
+    "RI.PA",
+    "KER.PA",
+    "CAP.PA",
+    "BN.PA",
+    "VIE.PA",
+    "SGO.PA",
+    "ORA.PA",
+    "GLE.PA",
+    "DSY.PA",
+    "HO.PA",
+    "STM.PA",
+    "EL.PA",
+    "RMS.PA",
+    "URW.PA",
+    "ML.PA",
+    "ACA.PA",
+    "LR.PA",
+    "PUB.PA",
+    "TEP.PA",
+    "WLN.PA",
+    "EN.PA",
+    "ATO.PA",
+    "CS.PA",
+    "SAF.PA",
+    "FP.PA",
+    "VK.PA",
+    "BOL.PA",
+    "AI.PA",
+    "SW.PA",
+    "RNO.PA",
+    "MT.AS",
 ]
 
 MSCI_WORLD_EXTRA = [
-    "NESN.SW", "ROG.SW", "NOVN.SW", "ASML.AS", "SAP.DE", "LVMH.PA",
-    "SIE.DE", "ALV.DE", "MUV2.DE", "BAYN.DE", "ADS.DE", "BMW.DE",
-    "VOW3.DE", "DBK.DE", "BAS.DE", "RWE.DE", "DTE.DE", "ENR.DE",
-    "7203.T", "6758.T", "9984.T", "6861.T", "8306.T",
-    "HSBA.L", "BP.L", "GSK.L", "AZN.L", "ULVR.L", "RIO.L", "BHP.L",
-    "^GSPC", "^FCHI", "^STOXX50E", "^VIX", "^GDAXI", "^N225",
+    "NESN.SW",
+    "ROG.SW",
+    "NOVN.SW",
+    "ASML.AS",
+    "SAP.DE",
+    "LVMH.PA",
+    "SIE.DE",
+    "ALV.DE",
+    "MUV2.DE",
+    "BAYN.DE",
+    "ADS.DE",
+    "BMW.DE",
+    "VOW3.DE",
+    "DBK.DE",
+    "BAS.DE",
+    "RWE.DE",
+    "DTE.DE",
+    "ENR.DE",
+    "7203.T",
+    "6758.T",
+    "9984.T",
+    "6861.T",
+    "8306.T",
+    "HSBA.L",
+    "BP.L",
+    "GSK.L",
+    "AZN.L",
+    "ULVR.L",
+    "RIO.L",
+    "BHP.L",
+    "^GSPC",
+    "^FCHI",
+    "^STOXX50E",
+    "^VIX",
+    "^GDAXI",
+    "^N225",
 ]
 
 ALL_TICKERS = list(set(SP500_TICKERS + CAC40_TICKERS + MSCI_WORLD_EXTRA))
 
 
 # ── Chargement ────────────────────────────────────────────────────────────────
+
 
 def _download_sync(ticker: str, start: date, end: date) -> pd.DataFrame:
     try:
@@ -67,12 +223,13 @@ def _download_sync(ticker: str, start: date, end: date) -> pd.DataFrame:
 
 async def load_ticker(ticker: str, years: int = 20) -> int:
     """Charge l'historique d'un ticker depuis yfinance et l'insère en DB.
-    
+
     :param ticker: symbole
     :param years: nombre d'années d'historique
     :returns: nombre de lignes insérées
     """
     import asyncio
+
     loop = asyncio.get_event_loop()
 
     last = await get_last_date(ticker)
@@ -100,6 +257,7 @@ async def load_ticker(ticker: str, years: int = 20) -> int:
 async def load_all_tickers(years: int = 20) -> None:
     """Charge tous les tickers de l'univers SP500 + CAC40 + MSCI World."""
     import asyncio
+
     log.info("Starting full universe load (%d tickers)", len(ALL_TICKERS))
     for ticker in ALL_TICKERS:
         try:
@@ -113,6 +271,7 @@ async def load_all_tickers(years: int = 20) -> None:
 async def daily_update() -> None:
     """Met à jour tous les tickers présents en DB avec les données du jour."""
     import asyncio
+
     tickers = await get_tickers_in_db()
     log.info("Daily update for %d tickers", len(tickers))
     for ticker in tickers:
