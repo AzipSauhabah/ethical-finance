@@ -30,8 +30,9 @@ scheduler = AsyncIOScheduler()
 @app.on_event("startup")
 async def _startup() -> None:
     import asyncio
+
     from backend.core.db import init_db
-    from backend.core.loader import daily_update, load_all_tickers
+    from backend.core.loader import daily_update
 
     # Initialise les tables
     await init_db()
