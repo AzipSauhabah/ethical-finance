@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 
 import pytest
+
 from backend.backtest.costs import (
     broker_commission,
     capital_gains_tax,
