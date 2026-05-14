@@ -16,7 +16,7 @@ from backend.strategies.base import Strategy
 
 log = logging.getLogger(__name__)
 
-_BUILTIN_PACKAGE = "api.strategies.builtin"
+_BUILTIN_PACKAGE = "backend.strategies.builtin"
 
 
 class StrategyRegistry:
