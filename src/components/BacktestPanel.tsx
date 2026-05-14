@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, CartesianGrid,
 } from 'recharts';
 import { api } from '../utils/api';
@@ -31,7 +31,6 @@ export default function BacktestPanel({ tickers }: Props) {
     max_position_pct: 0.25,
     stop_loss_pct: 0.10,
     benchmark: '^FCHI',
-
     require_ethical: false,
     require_sharia: false,
   });
@@ -51,10 +50,8 @@ export default function BacktestPanel({ tickers }: Props) {
       setError('Ajoutez au moins un ticker.');
       return;
     }
-
     setLoading(true);
     setError(null);
-
     try {
       const res = await api.backtest(params);
       setResult(res);
@@ -68,12 +65,10 @@ export default function BacktestPanel({ tickers }: Props) {
   const downloadPdf = async () => {
     const blob = await api.backtestPdf(params);
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
     a.download = `rapport_${params.strategy}_${new Date().toISOString().slice(0, 10)}.pdf`;
     a.click();
-
     URL.revokeObjectURL(url);
   };
 
@@ -87,7 +82,6 @@ export default function BacktestPanel({ tickers }: Props) {
         gap: '0.75rem',
         margin: '1rem 0'
       }}>
-
         <Field label="Stratégie">
           <select
             value={params.strategy}
@@ -95,9 +89,7 @@ export default function BacktestPanel({ tickers }: Props) {
             style={input}
           >
             {strategies.map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.name}
-              </option>
+              <option key={s.name} value={s.name}>{s.name}</option>
             ))}
           </select>
         </Field>
@@ -121,9 +113,7 @@ export default function BacktestPanel({ tickers }: Props) {
           <input
             type="number"
             value={params.initial_capital}
-            onChange={(e) =>
-              setParams({ ...params, initial_capital: +e.target.value })
-            }
+            onChange={(e) => setParams({ ...params, initial_capital: +e.target.value })}
             style={input}
           />
         </Field>
@@ -132,9 +122,7 @@ export default function BacktestPanel({ tickers }: Props) {
           <input
             type="number"
             value={params.monthly_contribution}
-            onChange={(e) =>
-              setParams({ ...params, monthly_contribution: +e.target.value })
-            }
+            onChange={(e) => setParams({ ...params, monthly_contribution: +e.target.value })}
             style={input}
           />
         </Field>
@@ -156,12 +144,7 @@ export default function BacktestPanel({ tickers }: Props) {
         <Field label="Compte">
           <select
             value={params.account_type}
-            onChange={(e) =>
-              setParams({
-                ...params,
-                account_type: e.target.value as 'CTO' | 'PEA'
-              })
-            }
+            onChange={(e) => setParams({ ...params, account_type: e.target.value as 'CTO' | 'PEA' })}
             style={input}
           >
             <option value="CTO">CTO</option>
@@ -172,12 +155,7 @@ export default function BacktestPanel({ tickers }: Props) {
         <Field label="Rebalance">
           <select
             value={params.rebalance_frequency}
-            onChange={(e) =>
-              setParams({
-                ...params,
-                rebalance_frequency: e.target.value as BacktestParams['rebalance_frequency']
-              })
-            }
+            onChange={(e) => setParams({ ...params, rebalance_frequency: e.target.value as BacktestParams['rebalance_frequency'] })}
             style={input}
           >
             <option value="daily">Quotidien</option>
@@ -192,12 +170,7 @@ export default function BacktestPanel({ tickers }: Props) {
             type="number"
             step="0.01"
             value={params.stop_loss_pct ?? ''}
-            onChange={(e) =>
-              setParams({
-                ...params,
-                stop_loss_pct: e.target.value === '' ? 0 : +e.target.value
-              })
-            }
+            onChange={(e) => setParams({ ...params, stop_loss_pct: e.target.value === '' ? 0 : +e.target.value })}
             style={input}
           />
         </Field>
@@ -205,9 +178,7 @@ export default function BacktestPanel({ tickers }: Props) {
         <Field label="Benchmark">
           <select
             value={params.benchmark}
-            onChange={(e) =>
-              setParams({ ...params, benchmark: e.target.value })
-            }
+            onChange={(e) => setParams({ ...params, benchmark: e.target.value })}
             style={input}
           >
             <option value="^GSPC">S&P 500</option>
@@ -215,14 +186,12 @@ export default function BacktestPanel({ tickers }: Props) {
             <option value="^STOXX50E">EuroStoxx 50</option>
           </select>
         </Field>
-
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <button onClick={run} disabled={loading} style={btnPrimary}>
           {loading ? 'Calcul en cours…' : 'Lancer le backtest'}
         </button>
-
         {result && (
           <button onClick={downloadPdf} style={btnGold}>
             📄 Télécharger le rapport PDF
@@ -231,9 +200,7 @@ export default function BacktestPanel({ tickers }: Props) {
       </div>
 
       {error && (
-        <div style={{ color: '#b82424', marginBottom: '1rem' }}>
-          {error}
-        </div>
+        <div style={{ color: '#b82424', marginBottom: '1rem' }}>{error}</div>
       )}
 
       {result && <BacktestResults result={result} />}
@@ -305,10 +272,7 @@ function BacktestResults({ result }: { result: Tearsheet }) {
               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
               <Tooltip />
-              <Area type="monotone" dataKey="value" stroke="#142340" fill="#e8edf5" name="NAV (€)" />
-              {result.benchmark_chart && (
-                <Line type="monotone" dataKey="benchmark" stroke="#b8962f" dot={false} name="Benchmark" />
-              )}
+              <Area type="monotone" dataKey="nav" stroke="#142340" fill="#e8edf5" name="NAV (€)" />
             </AreaChart>
           </ResponsiveContainer>
         </>
@@ -323,7 +287,7 @@ function BacktestResults({ result }: { result: Tearsheet }) {
               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
               <YAxis tickFormatter={(v) => (v * 100).toFixed(1) + '%'} tick={{ fontSize: 10 }} />
               <Tooltip formatter={(v: number) => (v * 100).toFixed(2) + '%'} />
-              <Area type="monotone" dataKey="value" stroke="#b82424" fill="#f5e8e8" name="Drawdown" />
+              <Area type="monotone" dataKey="drawdown" stroke="#b82424" fill="#f5e8e8" name="Drawdown" />
             </AreaChart>
           </ResponsiveContainer>
         </>
