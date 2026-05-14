@@ -4,6 +4,7 @@
 
 :copyright: 2024 Sauhabah — Ethical Finance Platform
 """
+
 from __future__ import annotations
 
 import asyncio
