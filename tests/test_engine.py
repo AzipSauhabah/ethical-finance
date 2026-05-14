@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
 
 import pandas as pd
 import pytest
@@ -17,13 +16,13 @@ import pytest
 from api.backtest.engine import BacktestEngine
 from api.strategies.base import Strategy, StrategyParams
 
-
 pytestmark = pytest.mark.unit
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Mock strategy that records what past_prices it received
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class SpyStrategy(Strategy):
     """Records the last bar of past_prices it sees at each call."""
@@ -34,9 +33,12 @@ class SpyStrategy(Strategy):
         self.bars_seen: list[tuple[date, pd.Timestamp]] = []
 
     @property
-    def name(self) -> str:        return "spy"
+    def name(self) -> str:
+        return "spy"
+
     @property
-    def description(self) -> str: return "Spy strategy that records what it sees."
+    def description(self) -> str:
+        return "Spy strategy that records what it sees."
 
     def on_bar(self, dt, past_prices, params, state):
         # Record (dt requested, last index of past_prices)
@@ -49,6 +51,7 @@ class SpyStrategy(Strategy):
 # THE CRITICAL TEST — no look-ahead
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestNoLookAhead:
     """If these tests fail, every backtest result in the system is wrong."""
 
@@ -59,7 +62,7 @@ class TestNoLookAhead:
         past_prices MUST equal dt.  If it's later than dt, we have a
         look-ahead bug.
         """
-        strat  = SpyStrategy()
+        strat = SpyStrategy()
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="daily")
         engine = BacktestEngine(strat, deterministic_prices, currencies, fx_rates, params)
         engine.run()
@@ -73,16 +76,25 @@ class TestNoLookAhead:
                 f"past_prices ending at {last_idx_seen.date()} (future!)"
             )
 
-    def test_past_prices_length_grows_monotonically(self, deterministic_prices, currencies, fx_rates):
+    def test_past_prices_length_grows_monotonically(
+        self, deterministic_prices, currencies, fx_rates
+    ):
         """As we walk forward, past_prices should grow by at most 1 each call."""
+
         class LengthSpy(Strategy):
             requires_warmup_days = 1
+
             def __init__(self):
                 self.lengths = []
+
             @property
-            def name(self): return "lenspy"
+            def name(self):
+                return "lenspy"
+
             @property
-            def description(self): return ""
+            def description(self):
+                return ""
+
             def on_bar(self, dt, past_prices, params, state):
                 self.lengths.append(len(past_prices))
                 return {}
@@ -101,11 +113,15 @@ class TestNoLookAhead:
 # Smoke tests
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestEngineSmoke:
     def test_buy_hold_runs_end_to_end(self, deterministic_prices, currencies, fx_rates):
         from api.strategies.builtin.all_strategies import BuyHoldStrategy
+
         params = StrategyParams(initial_capital=10_000)
-        engine = BacktestEngine(BuyHoldStrategy(), deterministic_prices, currencies, fx_rates, params)
+        engine = BacktestEngine(
+            BuyHoldStrategy(), deterministic_prices, currencies, fx_rates, params
+        )
         result = engine.run()
 
         assert result.nav_series.iloc[0] > 0
@@ -114,24 +130,36 @@ class TestEngineSmoke:
 
     def test_nav_never_negative(self, deterministic_prices, currencies, fx_rates):
         from api.strategies.builtin.all_strategies import BuyHoldStrategy
+
         params = StrategyParams(initial_capital=10_000)
-        result = BacktestEngine(BuyHoldStrategy(), deterministic_prices, currencies, fx_rates, params).run()
+        result = BacktestEngine(
+            BuyHoldStrategy(), deterministic_prices, currencies, fx_rates, params
+        ).run()
         assert (result.nav_series >= 0).all()
 
     def test_cash_never_negative(self, deterministic_prices, currencies, fx_rates):
         """Portfolio's cash balance should never go negative."""
         from api.strategies.builtin.all_strategies import EqualWeightStrategy
+
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="monthly")
-        engine = BacktestEngine(EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params)
+        engine = BacktestEngine(
+            EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params
+        )
         engine.run()
         # Access the portfolio after the run
-        assert engine._portfolio is None or engine._portfolio.cash >= 0 \
-            if hasattr(engine, "_portfolio") else True
+        assert (
+            engine._portfolio is None or engine._portfolio.cash >= 0
+            if hasattr(engine, "_portfolio")
+            else True
+        )
 
     def test_integer_shares_only(self, deterministic_prices, currencies, fx_rates):
         from api.strategies.builtin.all_strategies import EqualWeightStrategy
+
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="monthly")
-        result = BacktestEngine(EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params).run()
+        result = BacktestEngine(
+            EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params
+        ).run()
         trades = result.trades_df
         if not trades.empty:
             # All share counts must be integers
@@ -142,12 +170,18 @@ class TestEngineSmoke:
 # Cost tracking
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestCostTracking:
-    def test_costs_series_is_monotonically_increasing(self, deterministic_prices, currencies, fx_rates):
+    def test_costs_series_is_monotonically_increasing(
+        self, deterministic_prices, currencies, fx_rates
+    ):
         """Cumulative costs can only go up over time."""
         from api.strategies.builtin.all_strategies import EqualWeightStrategy
+
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="weekly")
-        result = BacktestEngine(EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params).run()
+        result = BacktestEngine(
+            EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params
+        ).run()
 
         if not result.costs_series.empty:
             costs = result.costs_series["costs_eur"].values
@@ -157,8 +191,11 @@ class TestCostTracking:
     def test_total_cost_summary_matches_trades(self, deterministic_prices, currencies, fx_rates):
         """Total costs should equal sum of trade costs."""
         from api.strategies.builtin.all_strategies import EqualWeightStrategy
+
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="monthly")
-        result = BacktestEngine(EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params).run()
+        result = BacktestEngine(
+            EqualWeightStrategy(), deterministic_prices, currencies, fx_rates, params
+        ).run()
 
         if not result.trades_df.empty:
             sum_trades = result.trades_df["total_cost"].sum()

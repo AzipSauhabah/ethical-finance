@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 # Rule compilers (pure functions)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _compile_rule(rule: dict[str, Any]):
     """Return a function(prices: pd.Series) → pd.Series of signals."""
     kind = rule.get("type", "").lower()
@@ -38,62 +39,83 @@ def _compile_rule(rule: dict[str, Any]):
     if kind == "sma_crossover":
         fast = int(rule.get("fast", 50))
         slow = int(rule.get("slow", 200))
+
         def _fn(p: pd.Series) -> pd.Series:
             import numpy as np
-            return pd.Series(
-                np.sign(p.rolling(fast).mean() - p.rolling(slow).mean()),
-                index=p.index,
-            ).fillna(0).astype(int)
+
+            return (
+                pd.Series(
+                    np.sign(p.rolling(fast).mean() - p.rolling(slow).mean()),
+                    index=p.index,
+                )
+                .fillna(0)
+                .astype(int)
+            )
+
         return _fn
 
     elif kind == "rsi":
-        period    = int(rule.get("period", 14))
-        oversold  = float(rule.get("oversold", 30))
+        period = int(rule.get("period", 14))
+        oversold = float(rule.get("oversold", 30))
         overbought = float(rule.get("overbought", 70))
+
         def _fn(p: pd.Series) -> pd.Series:
             delta = p.diff()
-            gain  = delta.clip(lower=0).rolling(period).mean()
-            loss  = (-delta.clip(upper=0)).rolling(period).mean()
-            rs    = gain / loss.replace(0, float("nan"))
-            rsi   = 100 - (100 / (1 + rs))
-            sig   = pd.Series(0, index=p.index)
-            sig[rsi < oversold]    =  1
-            sig[rsi > overbought]  = -1
+            gain = delta.clip(lower=0).rolling(period).mean()
+            loss = (-delta.clip(upper=0)).rolling(period).mean()
+            rs = gain / loss.replace(0, float("nan"))
+            rsi = 100 - (100 / (1 + rs))
+            sig = pd.Series(0, index=p.index)
+            sig[rsi < oversold] = 1
+            sig[rsi > overbought] = -1
             return sig
+
         return _fn
 
     elif kind == "momentum":
         lb = int(rule.get("lookback", 20))
+
         def _fn(p: pd.Series) -> pd.Series:
             import numpy as np
-            return pd.Series(
-                np.sign(p.pct_change(lb)),
-                index=p.index,
-            ).fillna(0).astype(int)
+
+            return (
+                pd.Series(
+                    np.sign(p.pct_change(lb)),
+                    index=p.index,
+                )
+                .fillna(0)
+                .astype(int)
+            )
+
         return _fn
 
     elif kind == "mean_reversion":
-        w   = int(rule.get("window", 20))
+        w = int(rule.get("window", 20))
         thr = float(rule.get("z_threshold", 1.5))
+
         def _fn(p: pd.Series) -> pd.Series:
-            mu  = p.rolling(w).mean()
+            mu = p.rolling(w).mean()
             sig = p.rolling(w).std(ddof=1)
-            z   = (p - mu) / sig.replace(0, float("nan"))
-            s   = pd.Series(0, index=p.index)
-            s[z < -thr] =  1
-            s[z >  thr] = -1
+            z = (p - mu) / sig.replace(0, float("nan"))
+            s = pd.Series(0, index=p.index)
+            s[z < -thr] = 1
+            s[z > thr] = -1
             return s
+
         return _fn
 
-    else:   # always_long / fallback
+    else:  # always_long / fallback
+
         def _fn(p: pd.Series) -> pd.Series:
             return pd.Series(1, index=p.index)
+
         return _fn
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Builder
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def build_custom_strategy(definition: dict[str, Any]) -> Strategy:
     """Compile a JSON strategy definition into a Strategy instance.
@@ -110,25 +132,26 @@ def build_custom_strategy(definition: dict[str, Any]) -> Strategy:
     """
     strat_name = str(definition.get("name", "custom")).lower().replace(" ", "_")
     strat_desc = str(definition.get("description", "User-defined strategy"))
-    rules_def  = list(definition.get("rules", [{"type": "always_long"}]))
+    rules_def = list(definition.get("rules", [{"type": "always_long"}]))
     combination = str(definition.get("combination", "majority"))
-    bench       = str(definition.get("benchmark", "^GSPC"))
+    bench = str(definition.get("benchmark", "^GSPC"))
 
     compiled_rules = [_compile_rule(r) for r in rules_def]
 
     def _generate_signals(prices: pd.DataFrame, params: StrategyParams) -> pd.DataFrame:
         import numpy as np
+
         signals = pd.DataFrame(0, index=prices.index, columns=prices.columns)
         for col in prices.columns:
             rule_sigs = [fn(prices[col]) for fn in compiled_rules]
-            stacked   = pd.concat(rule_sigs, axis=1)
-            vote      = stacked.sum(axis=1)
-            n         = len(compiled_rules)
+            stacked = pd.concat(rule_sigs, axis=1)
+            vote = stacked.sum(axis=1)
+            n = len(compiled_rules)
             if combination == "all":
                 signals[col] = (vote == n).astype(int) + (vote == -n).astype(int) * -1
             elif combination == "any":
                 signals[col] = np.sign(vote)
-            else:   # majority
+            else:  # majority
                 threshold = n / 2
                 signals[col] = vote.apply(
                     lambda v: 1 if v > threshold else (-1 if v < -threshold else 0)
@@ -140,9 +163,9 @@ def build_custom_strategy(definition: dict[str, Any]) -> Strategy:
         f"Custom_{strat_name}",
         (Strategy,),
         {
-            "name":             property(lambda self, n=strat_name: n),
-            "description":      property(lambda self, d=strat_desc: d),
-            "benchmark":        property(lambda self, b=bench: b),
+            "name": property(lambda self, n=strat_name: n),
+            "description": property(lambda self, d=strat_desc: d),
+            "benchmark": property(lambda self, b=bench: b),
             "generate_signals": _generate_signals,
         },
     )

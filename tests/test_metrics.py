@@ -11,14 +11,23 @@ import numpy as np
 import pytest
 
 from api.quant.metrics import (
-    annualised_volatility, cagr, calmar_ratio,
-    cvar_historical, drawdown_series, hit_rate,
-    max_drawdown, profit_factor, sharpe_ratio,
-    sortino_ratio, total_return, var_historical,
-    all_metrics, omega_ratio, tail_ratio,
-    skewness, excess_kurtosis,
+    all_metrics,
+    annualised_volatility,
+    cagr,
+    calmar_ratio,
+    cvar_historical,
+    drawdown_series,
+    excess_kurtosis,
+    hit_rate,
+    max_drawdown,
+    omega_ratio,
+    profit_factor,
+    sharpe_ratio,
+    skewness,
+    sortino_ratio,
+    total_return,
+    var_historical,
 )
-
 
 pytestmark = pytest.mark.unit
 
@@ -27,11 +36,12 @@ pytestmark = pytest.mark.unit
 # Sanity / edge-case tests
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestBasicMetrics:
     def test_total_return_constant_returns(self):
         """1% daily for 10 days → (1.01)^10 - 1."""
         r = np.full(10, 0.01)
-        expected = (1.01 ** 10) - 1
+        expected = (1.01**10) - 1
         assert math.isclose(total_return(r), expected, rel_tol=1e-9)
 
     def test_total_return_with_loss(self):
@@ -52,7 +62,7 @@ class TestBasicMetrics:
 
     def test_annualised_vol_scales_with_sqrt_252(self):
         rng = np.random.default_rng(1)
-        r   = rng.normal(0, 0.01, 1000)
+        r = rng.normal(0, 0.01, 1000)
         vol = annualised_volatility(r)
         assert math.isclose(vol, 0.01 * math.sqrt(252), rel_tol=0.1)
 
@@ -66,12 +76,13 @@ class TestSharpeRatio:
         """Constant returns → division by ~0 produces a huge but finite number.
         This is mathematically expected (Sharpe → ∞). We just verify no crash."""
         import math
+
         r = np.full(100, 0.001)
         result = sharpe_ratio(r)
         assert math.isfinite(result)  # not NaN, not inf — just very large
 
     def test_sharpe_consistent_with_manual_calc(self, deterministic_returns):
-        rf_d   = 0.035 / 252
+        rf_d = 0.035 / 252
         excess = deterministic_returns - rf_d
         expected = (np.mean(excess) / np.std(excess, ddof=1)) * math.sqrt(252)
         assert math.isclose(sharpe_ratio(deterministic_returns), expected, rel_tol=1e-9)
@@ -81,11 +92,11 @@ class TestSortinoRatio:
     def test_sortino_infinite_when_no_downside(self):
         r = np.full(100, 0.001)
         s = sortino_ratio(r)
-        assert s == float("inf") or s > 100   # depending on impl
+        assert s == float("inf") or s > 100  # depending on impl
 
     def test_sortino_geq_sharpe_for_skewed_positive(self, stable_returns):
         """Strategies with mostly positive returns: Sortino ≥ Sharpe."""
-        s_sharpe  = sharpe_ratio(stable_returns)
+        s_sharpe = sharpe_ratio(stable_returns)
         s_sortino = sortino_ratio(stable_returns)
         if math.isfinite(s_sortino):
             assert s_sortino >= s_sharpe - 1e-9
@@ -104,7 +115,7 @@ class TestDrawdown:
         assert dd[0] == 0.0
 
     def test_drawdown_series_minimum_equals_max_drawdown(self, deterministic_returns):
-        dd  = drawdown_series(deterministic_returns)
+        dd = drawdown_series(deterministic_returns)
         mdd = max_drawdown(deterministic_returns)
         assert math.isclose(dd.min(), mdd, rel_tol=1e-9)
 
@@ -156,8 +167,16 @@ class TestDistribution:
 class TestAllMetricsAggregator:
     def test_returns_dict_with_expected_keys(self, deterministic_returns):
         m = all_metrics(deterministic_returns)
-        for k in ("total_return", "cagr", "sharpe_ratio", "max_drawdown",
-                  "var_95", "cvar_95", "hit_rate", "profit_factor"):
+        for k in (
+            "total_return",
+            "cagr",
+            "sharpe_ratio",
+            "max_drawdown",
+            "var_95",
+            "cvar_95",
+            "hit_rate",
+            "profit_factor",
+        ):
             assert k in m, f"Missing key: {k}"
 
     def test_with_benchmark_adds_beta_alpha(self, deterministic_returns, benchmark_returns):

@@ -25,17 +25,19 @@ def run_stress_tests(
     results = []
     for key, scenario in STRESS_SCENARIOS.items():
         start = scenario["start"]
-        end   = scenario["end"]
+        end = scenario["end"]
         label = scenario["label"]
 
         window = returns[start:end]
         if len(window) < 5:
-            results.append({
-                "scenario": key,
-                "label":    label,
-                "n_days":   0,
-                "message":  "No data for this scenario",
-            })
+            results.append(
+                {
+                    "scenario": key,
+                    "label": label,
+                    "n_days": 0,
+                    "message": "No data for this scenario",
+                }
+            )
             continue
 
         metrics = all_metrics(window.values)
@@ -45,21 +47,27 @@ def run_stress_tests(
             if len(bw) >= 5:
                 bench_metrics = all_metrics(bw.values)
 
-        results.append({
-            "scenario":      key,
-            "label":         label,
-            "start":         start,
-            "end":           end,
-            "n_days":        len(window),
-            "total_return":  metrics["total_return"],
-            "max_drawdown":  metrics["max_drawdown"],
-            "volatility":    metrics["annualised_volatility"],
-            "var_95":        metrics["var_95"],
-            "sharpe":        metrics["sharpe_ratio"],
-            "benchmark":     {
-                "total_return": bench_metrics["total_return"] if bench_metrics else None,
-                "max_drawdown": bench_metrics["max_drawdown"] if bench_metrics else None,
-            } if bench_metrics else None,
-        })
+        results.append(
+            {
+                "scenario": key,
+                "label": label,
+                "start": start,
+                "end": end,
+                "n_days": len(window),
+                "total_return": metrics["total_return"],
+                "max_drawdown": metrics["max_drawdown"],
+                "volatility": metrics["annualised_volatility"],
+                "var_95": metrics["var_95"],
+                "sharpe": metrics["sharpe_ratio"],
+                "benchmark": (
+                    {
+                        "total_return": bench_metrics["total_return"] if bench_metrics else None,
+                        "max_drawdown": bench_metrics["max_drawdown"] if bench_metrics else None,
+                    }
+                    if bench_metrics
+                    else None
+                ),
+            }
+        )
 
     return results

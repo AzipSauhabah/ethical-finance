@@ -26,14 +26,14 @@ import pandas as pd
 
 @dataclass
 class StrategyParams:
-    initial_capital:      float       = 30_000.0
-    monthly_contribution: float       = 0.0
-    max_position_pct:     float       = 0.25
-    stop_loss_pct:        float | None = 0.10
-    broker:               str         = "default"
-    account_type:         str         = "CTO"
-    rebalance_frequency:  str         = "monthly"
-    custom:               dict[str, Any] = field(default_factory=dict)
+    initial_capital: float = 30_000.0
+    monthly_contribution: float = 0.0
+    max_position_pct: float = 0.25
+    stop_loss_pct: float | None = 0.10
+    broker: str = "default"
+    account_type: str = "CTO"
+    rebalance_frequency: str = "monthly"
+    custom: dict[str, Any] = field(default_factory=dict)
 
 
 class Strategy(abc.ABC):
@@ -95,7 +95,9 @@ class Strategy(abc.ABC):
     # ── Legacy vectorised path (kept for old custom strategies) ──────────
 
     def generate_signals(
-        self, prices: pd.DataFrame, params: StrategyParams,
+        self,
+        prices: pd.DataFrame,
+        params: StrategyParams,
     ) -> pd.DataFrame:
         """DEPRECATED. Use :meth:`on_bar` instead.
 
@@ -105,7 +107,7 @@ class Strategy(abc.ABC):
         """
         state: dict[str, Any] = {}
         rows = []
-        idx  = []
+        idx = []
         for ts in prices.index:
             dt = ts.date() if hasattr(ts, "date") else ts
             past = prices.loc[:ts]

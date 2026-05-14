@@ -9,13 +9,13 @@ import pytest
 
 from api.core.registry import run_ethical_screen, run_sharia_screen
 
-
 pytestmark = pytest.mark.unit
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Ethical screen
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestEthicalScreen:
     def test_clean_company_passes(self):
@@ -64,6 +64,7 @@ class TestEthicalScreen:
 # Sharia screen
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestShariaScreen:
     def test_clean_tech_company_passes(self):
         """Tech company with low debt should pass all 4 criteria."""
@@ -72,10 +73,10 @@ class TestShariaScreen:
             "sector": "Technology",
             "industry": "Consumer Electronics",
             "market_cap": 3e12,
-            "total_debt": 100e9,         # ratio = 3 %
-            "total_cash": 50e9,          # ratio = 1.7 %
+            "total_debt": 100e9,  # ratio = 3 %
+            "total_cash": 50e9,  # ratio = 1.7 %
             "total_revenue": 400e9,
-            "interest_expense": 2e9,     # ratio = 0.5 %
+            "interest_expense": 2e9,  # ratio = 0.5 %
         }
         r = run_sharia_screen(info)
         assert r.passed is True
@@ -101,7 +102,7 @@ class TestShariaScreen:
             "sector": "Technology",
             "industry": "Software",
             "market_cap": 1e9,
-            "total_debt": 800e6,    # 80 % debt ratio
+            "total_debt": 800e6,  # 80 % debt ratio
         }
         r = run_sharia_screen(info)
         assert r.passed is False
@@ -125,10 +126,10 @@ class TestShariaScreen:
             "sector": "Technology",
             "industry": "Software",
             "market_cap": 1e9,
-            "total_debt": 800e6,        # fails
-            "total_cash": 0,            # passes
+            "total_debt": 800e6,  # fails
+            "total_cash": 0,  # passes
             "total_revenue": 100e6,
-            "interest_expense": 1e6,    # 1 % — passes
+            "interest_expense": 1e6,  # 1 % — passes
         }
         r = run_sharia_screen(info)
         n_passed = sum(1 for c in r.checks if c.passed)

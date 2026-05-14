@@ -21,11 +21,11 @@ from api.quant.significance import alpha_ttest, bootstrap_ci, jobson_korkie
 
 
 def build_tearsheet(
-    result:            BacktestResult,
+    result: BacktestResult,
     benchmark_returns: pd.Series | None = None,
-    strategy_label:    str | None       = None,
+    strategy_label: str | None = None,
 ) -> dict:
-    r   = result.returns_series.values
+    r = result.returns_series.values
     nav = result.nav_series
 
     bench = benchmark_returns.values if benchmark_returns is not None else None
@@ -34,7 +34,7 @@ def build_tearsheet(
     # Significance tests
     sig: dict = {}
     if bench is not None and len(bench) >= 30:
-        n  = min(len(r), len(bench))
+        n = min(len(r), len(bench))
         jk = jobson_korkie(r[:n], bench[:n])
         at = alpha_ttest(r[:n], bench[:n])
         sb = bootstrap_ci(
@@ -43,7 +43,7 @@ def build_tearsheet(
         )
         sig = {
             "jobson_korkie": {"z": jk.statistic, "p": jk.p_value, "significant": jk.significant},
-            "alpha_ttest":   {"t": at.statistic, "p": at.p_value, "significant": at.significant},
+            "alpha_ttest": {"t": at.statistic, "p": at.p_value, "significant": at.significant},
             "sharpe_bootstrap_95ci": [sb.ci_lower, sb.ci_upper],
         }
 
@@ -52,19 +52,19 @@ def build_tearsheet(
 
     # NAV chart (monthly sampled to keep payload light)
     nav_monthly = nav.resample("ME").last()
-    nav_chart = [{"date": str(idx.date()), "nav": float(v)}
-                 for idx, v in nav_monthly.items()]
+    nav_chart = [{"date": str(idx.date()), "nav": float(v)} for idx, v in nav_monthly.items()]
 
     # Benchmark NAV chart
     benchmark_chart = []
     if result.benchmark_nav is not None and not result.benchmark_nav.empty:
         bn = result.benchmark_nav.resample("ME").last()
-        benchmark_chart = [{"date": str(idx.date()), "nav": float(v)}
-                           for idx, v in bn.items()]
+        benchmark_chart = [{"date": str(idx.date()), "nav": float(v)} for idx, v in bn.items()]
 
     # Drawdown chart
-    dd_chart = [{"date": str(idx.date()), "drawdown": float(v)}
-                for idx, v in result.drawdown_series.resample("ME").min().items()]
+    dd_chart = [
+        {"date": str(idx.date()), "drawdown": float(v)}
+        for idx, v in result.drawdown_series.resample("ME").min().items()
+    ]
 
     # COST CHART — cumulative costs + taxes over time
     cost_chart = []
@@ -72,10 +72,10 @@ def build_tearsheet(
         cs = result.costs_series.resample("ME").last()
         cost_chart = [
             {
-                "date":      str(idx.date()),
-                "costs":     float(row["costs_eur"]),
-                "taxes":     float(row["taxes_eur"]),
-                "total":     float(row["costs_eur"] + row["taxes_eur"]),
+                "date": str(idx.date()),
+                "costs": float(row["costs_eur"]),
+                "taxes": float(row["taxes_eur"]),
+                "total": float(row["costs_eur"] + row["taxes_eur"]),
             }
             for idx, row in cs.iterrows()
         ]
@@ -85,9 +85,11 @@ def build_tearsheet(
     if not result.cash_invested.empty:
         ci = result.cash_invested.resample("ME").last()
         allocation_chart = [
-            {"date": str(idx.date()),
-             "cash":     float(row["cash_eur"]),
-             "invested": float(row["invested_eur"])}
+            {
+                "date": str(idx.date()),
+                "cash": float(row["cash_eur"]),
+                "invested": float(row["invested_eur"]),
+            }
             for idx, row in ci.iterrows()
         ]
 
@@ -97,31 +99,33 @@ def build_tearsheet(
         td = result.trades_df
         cost_breakdown = {
             "commission": float(td["commission"].sum()),
-            "slippage":   float(td["slippage"].sum()),
-            "fx_spread":  float(td["fx_spread"].sum() if "fx_spread" in td.columns else 0.0),
-            "ttf":        float(td["ttf"].sum()),
+            "slippage": float(td["slippage"].sum()),
+            "fx_spread": float(td["fx_spread"].sum() if "fx_spread" in td.columns else 0.0),
+            "ttf": float(td["ttf"].sum()),
         }
 
     return {
         "meta": {
-            "strategy":     strategy_label or result.strategy_name,
+            "strategy": strategy_label or result.strategy_name,
             "generated_at": date.today().isoformat(),
-            "copyright":    COPYRIGHT,
-            "disclaimer":   DISCLAIMER,
+            "copyright": COPYRIGHT,
+            "disclaimer": DISCLAIMER,
         },
-        "metrics":          metrics,
-        "significance":     sig,
-        "stress_tests":     stress,
-        "cost_summary":     result.cost_summary,
-        "cost_breakdown":   cost_breakdown,
+        "metrics": metrics,
+        "significance": sig,
+        "stress_tests": stress,
+        "cost_summary": result.cost_summary,
+        "cost_breakdown": cost_breakdown,
         "trades": {
-            "count":  len(result.trades_df),
-            "sample": result.trades_df.head(20).to_dict("records") if not result.trades_df.empty else [],
+            "count": len(result.trades_df),
+            "sample": (
+                result.trades_df.head(20).to_dict("records") if not result.trades_df.empty else []
+            ),
         },
-        "nav_chart":        nav_chart,
-        "benchmark_chart":  benchmark_chart,
-        "drawdown_chart":   dd_chart,
-        "cost_chart":       cost_chart,
+        "nav_chart": nav_chart,
+        "benchmark_chart": benchmark_chart,
+        "drawdown_chart": dd_chart,
+        "cost_chart": cost_chart,
         "allocation_chart": allocation_chart,
-        "positions":        result.positions_final,
+        "positions": result.positions_final,
     }

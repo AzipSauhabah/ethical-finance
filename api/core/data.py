@@ -12,25 +12,28 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-import random
+from collections.abc import Generator, Iterator
 from datetime import date, timedelta
 from functools import partial
-from typing import Generator, Iterator
 
 import numpy as np
 import pandas as pd
 
 from api.config import (
-    DATA_SOURCES, DEFAULT_PERIOD, MAX_PERIOD_YEARS,
-    PRICE_CACHE_TTL, LIVE_PRICE_CACHE_TTL, RISK_FREE_RATE,
+    DATA_SOURCES,
+    DEFAULT_PERIOD,
+    LIVE_PRICE_CACHE_TTL,
+    MAX_PERIOD_YEARS,
+    PRICE_CACHE_TTL,
 )
-from api.core.cache import cache, cached
+from api.core.cache import cache
 
 log = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _period_to_start(period: str) -> date:
     """Convert '5y', '10y', '1y', '6mo' … to a start date."""
@@ -50,21 +53,23 @@ def _period_to_start(period: str) -> date:
 def _ticker_chunks(tickers: list[str], size: int = 50) -> Generator[list[str], None, None]:
     """Yield successive chunks of *tickers* for batched downloads."""
     for i in range(0, len(tickers), size):
-        yield tickers[i: i + size]
+        yield tickers[i : i + size]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # yfinance backend (sync, run in executor)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _yf_download_sync(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     try:
         import yfinance as yf  # lazy import
+
         raw = yf.download(
             tickers=tickers,
             start=str(start),
             end=str(end),
-            auto_adjust=True,          # adjusts splits + dividends
+            auto_adjust=True,  # adjusts splits + dividends
             actions=True,
             progress=False,
             threads=True,
@@ -83,6 +88,7 @@ def _yf_download_sync(tickers: list[str], start: date, end: date) -> pd.DataFram
 def _yf_info_sync(ticker: str) -> dict:
     try:
         import yfinance as yf
+
         return yf.Ticker(ticker).info or {}
     except Exception:
         return {}
@@ -92,9 +98,11 @@ def _yf_info_sync(ticker: str) -> dict:
 # Stooq backend
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _stooq_download_sync(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     try:
         import pandas_datareader as pdr
+
         frames = {}
         for t in tickers:
             try:
@@ -114,6 +122,7 @@ def _stooq_download_sync(tickers: list[str], start: date, end: date) -> pd.DataF
 # GBM synthetic fallback
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _gbm_prices(
     ticker: str,
     n_days: int,
@@ -128,8 +137,8 @@ def _gbm_prices(
     :param mu:    annual drift
     :param sigma: annual volatility
     """
-    rng   = np.random.default_rng(seed)
-    dt    = 1 / 252
+    rng = np.random.default_rng(seed)
+    dt = 1 / 252
     daily = rng.normal((mu - 0.5 * sigma**2) * dt, sigma * math.sqrt(dt), n_days)
     prices = s0 * np.exp(np.cumsum(daily))
     idx = pd.bdate_range(end=date.today(), periods=n_days)
@@ -138,14 +147,13 @@ def _gbm_prices(
 
 def _gbm_frame(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     n = len(pd.bdate_range(start, end))
-    return pd.DataFrame(
-        {t: _gbm_prices(t, n, seed=hash(t) % 2**31) for t in tickers}
-    )
+    return pd.DataFrame({t: _gbm_prices(t, n, seed=hash(t) % 2**31) for t in tickers})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Waterfall fetch
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 async def _fetch_prices_raw(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     """Try data sources in priority order, return first non-empty result."""
@@ -153,17 +161,13 @@ async def _fetch_prices_raw(tickers: list[str], start: date, end: date) -> pd.Da
 
     for source in DATA_SOURCES:
         if source == "yfinance":
-            df = await loop.run_in_executor(
-                None, partial(_yf_download_sync, tickers, start, end)
-            )
+            df = await loop.run_in_executor(None, partial(_yf_download_sync, tickers, start, end))
         elif source == "stooq":
             df = await loop.run_in_executor(
                 None, partial(_stooq_download_sync, tickers, start, end)
             )
         elif source == "gbm_synthetic":
-            df = await loop.run_in_executor(
-                None, partial(_gbm_frame, tickers, start, end)
-            )
+            df = await loop.run_in_executor(None, partial(_gbm_frame, tickers, start, end))
         else:
             continue
 
@@ -178,6 +182,7 @@ async def _fetch_prices_raw(tickers: list[str], start: date, end: date) -> pd.Da
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def get_prices(
     tickers: list[str],
     period: str = DEFAULT_PERIOD,
@@ -191,7 +196,7 @@ async def get_prices(
     :param end:   defaults to today
     :returns: DataFrame[date, ticker] of adjusted closes
     """
-    end   = end   or date.today()
+    end = end or date.today()
     start = start or _period_to_start(period)
 
     cache_key = f"prices:{':'.join(sorted(tickers))}:{start}:{end}"
@@ -202,7 +207,7 @@ async def get_prices(
     df = pd.DataFrame()
     for chunk in _ticker_chunks(tickers):
         part = await _fetch_prices_raw(chunk, start, end)
-        df   = part if df.empty else df.join(part, how="outer")
+        df = part if df.empty else df.join(part, how="outer")
 
     await cache.set(cache_key, df.to_json(), PRICE_CACHE_TTL)
     return df
@@ -223,14 +228,14 @@ async def get_live_quote(ticker: str) -> dict:
     info = await loop.run_in_executor(None, partial(_yf_info_sync, ticker))
 
     quote = {
-        "ticker":     ticker,
-        "last":       info.get("regularMarketPrice", info.get("currentPrice", 0.0)),
-        "bid":        info.get("bid", 0.0),
-        "ask":        info.get("ask", 0.0),
-        "volume":     info.get("regularMarketVolume", 0),
+        "ticker": ticker,
+        "last": info.get("regularMarketPrice", info.get("currentPrice", 0.0)),
+        "bid": info.get("bid", 0.0),
+        "ask": info.get("ask", 0.0),
+        "volume": info.get("regularMarketVolume", 0),
         "change_pct": info.get("regularMarketChangePercent", 0.0),
-        "timestamp":  pd.Timestamp.utcnow().isoformat(),
-        "currency":   info.get("currency", "USD"),
+        "timestamp": pd.Timestamp.utcnow().isoformat(),
+        "currency": info.get("currency", "USD"),
     }
     await cache.set(cache_key, quote, LIVE_PRICE_CACHE_TTL)
     return quote
@@ -240,16 +245,14 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
     """Fetch latest FX rate *from_ccy* → *to_ccy* via yfinance."""
     if from_ccy == to_ccy:
         return 1.0
-    key  = f"fx:{from_ccy}{to_ccy}"
-    hit  = await cache.get(key)
+    key = f"fx:{from_ccy}{to_ccy}"
+    hit = await cache.get(key)
     if hit:
         return float(hit)
     loop = asyncio.get_event_loop()
-    info = await loop.run_in_executor(
-        None, partial(_yf_info_sync, f"{from_ccy}{to_ccy}=X")
-    )
+    info = await loop.run_in_executor(None, partial(_yf_info_sync, f"{from_ccy}{to_ccy}=X"))
     rate = float(info.get("regularMarketPrice", 1.0) or 1.0)
-    await cache.set(key, rate, 300)   # 5 min TTL for FX
+    await cache.set(key, rate, 300)  # 5 min TTL for FX
     return rate
 
 
@@ -259,31 +262,32 @@ async def get_ticker_fundamentals(ticker: str) -> dict:
     hit = await cache.get(cache_key)
     if hit:
         return hit
-    loop  = asyncio.get_event_loop()
-    info  = await loop.run_in_executor(None, partial(_yf_info_sync, ticker))
-    data  = {
-        "ticker":          ticker,
-        "name":            info.get("longName", ticker),
-        "sector":          info.get("sector", ""),
-        "industry":        info.get("industry", ""),
-        "market_cap":      info.get("marketCap", 0),
-        "total_debt":      info.get("totalDebt", 0),
-        "total_revenue":   info.get("totalRevenue", 0),
+    loop = asyncio.get_event_loop()
+    info = await loop.run_in_executor(None, partial(_yf_info_sync, ticker))
+    data = {
+        "ticker": ticker,
+        "name": info.get("longName", ticker),
+        "sector": info.get("sector", ""),
+        "industry": info.get("industry", ""),
+        "market_cap": info.get("marketCap", 0),
+        "total_debt": info.get("totalDebt", 0),
+        "total_revenue": info.get("totalRevenue", 0),
         "interest_expense": info.get("interestExpense", 0),
-        "esg_scores":      info.get("esgScores", {}),
-        "currency":        info.get("currency", "USD"),
-        "exchange":        info.get("exchange", ""),
-        "country":         info.get("country", ""),
-        "dividend_yield":  info.get("dividendYield", 0.0),
-        "beta":            info.get("beta", 1.0),
+        "esg_scores": info.get("esgScores", {}),
+        "currency": info.get("currency", "USD"),
+        "exchange": info.get("exchange", ""),
+        "country": info.get("country", ""),
+        "dividend_yield": info.get("dividendYield", 0.0),
+        "beta": info.get("beta", 1.0),
     }
-    await cache.set(cache_key, data, 86_400)   # 24 h TTL for fundamentals
+    await cache.set(cache_key, data, 86_400)  # 24 h TTL for fundamentals
     return data
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Generator utility — lazy daily return iterator
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def daily_returns_iter(prices: pd.Series) -> Iterator[tuple[date, float]]:
     """Lazy generator yielding (date, daily_return) pairs.

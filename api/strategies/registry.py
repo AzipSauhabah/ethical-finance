@@ -11,7 +11,6 @@ from __future__ import annotations
 import importlib
 import logging
 import pkgutil
-from typing import Type
 
 from api.strategies.base import Strategy
 
@@ -24,13 +23,13 @@ class StrategyRegistry:
     """Singleton registry mapping strategy name → class."""
 
     def __init__(self) -> None:
-        self._strategies: dict[str, Type[Strategy]] = {}
+        self._strategies: dict[str, type[Strategy]] = {}
 
     # ── Registration ──────────────────────────────────────────────────────
 
-    def register(self, cls: Type[Strategy]) -> Type[Strategy]:
+    def register(self, cls: type[Strategy]) -> type[Strategy]:
         """Register a strategy class.  Can be used as a decorator."""
-        instance = cls()   # instantiate to read .name property
+        instance = cls()  # instantiate to read .name property
         key = instance.name.lower()
         self._strategies[key] = cls
         log.debug("Strategy registered: %s", key)
@@ -56,7 +55,7 @@ class StrategyRegistry:
 
     # ── Lookup ────────────────────────────────────────────────────────────
 
-    def get(self, name: str) -> Type[Strategy] | None:
+    def get(self, name: str) -> type[Strategy] | None:
         return self._strategies.get(name.lower())
 
     def get_instance(self, name: str) -> Strategy | None:
@@ -66,14 +65,16 @@ class StrategyRegistry:
     def list_all(self) -> list[dict]:
         """Return a JSON-serialisable list of strategy metadata."""
         result = []
-        for key, cls in self._strategies.items():
+        for _key, cls in self._strategies.items():
             inst = cls()
-            result.append({
-                "name":        inst.name,
-                "description": inst.description,
-                "benchmark":   inst.benchmark,
-                "param_space": inst.param_space,
-            })
+            result.append(
+                {
+                    "name": inst.name,
+                    "description": inst.description,
+                    "benchmark": inst.benchmark,
+                    "param_space": inst.param_space,
+                }
+            )
         return result
 
     def __contains__(self, name: str) -> bool:

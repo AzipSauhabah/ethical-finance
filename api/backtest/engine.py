@@ -29,13 +29,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterator
 
-import numpy as np
 import pandas as pd
 
 from api.backtest.portfolio import Portfolio
-from api.config import DEFAULT_INITIAL_CAPITAL
 from api.quant.metrics import all_metrics, drawdown_series
 from api.strategies.base import Strategy, StrategyParams
 
@@ -44,27 +41,28 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class BacktestResult:
-    strategy_name:    str
-    nav_series:       pd.Series
-    returns_series:   pd.Series
-    drawdown_series:  pd.Series
-    costs_series:     pd.DataFrame      # cumulative costs/taxes over time
-    cash_invested:    pd.DataFrame      # cash vs invested over time
-    metrics:          dict
-    trades_df:        pd.DataFrame
-    cost_summary:     dict
-    positions_final:  dict
-    benchmark_nav:    pd.Series | None  = None    # for comparison chart
+    strategy_name: str
+    nav_series: pd.Series
+    returns_series: pd.Series
+    drawdown_series: pd.Series
+    costs_series: pd.DataFrame  # cumulative costs/taxes over time
+    cash_invested: pd.DataFrame  # cash vs invested over time
+    metrics: dict
+    trades_df: pd.DataFrame
+    cost_summary: dict
+    positions_final: dict
+    benchmark_nav: pd.Series | None = None  # for comparison chart
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _fx_convert(
     prices_native: dict[str, float],
-    currencies:    dict[str, str],
-    fx_rates:      dict[str, float],
+    currencies: dict[str, str],
+    fx_rates: dict[str, float],
 ) -> dict[str, float]:
     result = {}
     for t, p in prices_native.items():
@@ -100,6 +98,7 @@ def _rebalance_dates(idx: pd.DatetimeIndex, freq: str) -> set:
 # Engine
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class BacktestEngine:
     """Strict event-driven backtester.
 
@@ -113,18 +112,18 @@ class BacktestEngine:
 
     def __init__(
         self,
-        strategy:         Strategy,
-        prices:           pd.DataFrame,
-        currencies:       dict[str, str] | None    = None,
-        fx_rates:         dict[str, float] | None  = None,
-        params:           StrategyParams | None    = None,
-        benchmark_prices: pd.Series | None         = None,
+        strategy: Strategy,
+        prices: pd.DataFrame,
+        currencies: dict[str, str] | None = None,
+        fx_rates: dict[str, float] | None = None,
+        params: StrategyParams | None = None,
+        benchmark_prices: pd.Series | None = None,
     ) -> None:
-        self.strategy         = strategy
-        self.prices           = prices.sort_index()
-        self.currencies       = currencies or {t: "USD" for t in prices.columns}
-        self.fx_rates         = fx_rates or {"USDEUR": 0.92, "EURUSD": 1.087}
-        self.params           = params or StrategyParams()
+        self.strategy = strategy
+        self.prices = prices.sort_index()
+        self.currencies = currencies or {t: "USD" for t in prices.columns}
+        self.fx_rates = fx_rates or {"USDEUR": 0.92, "EURUSD": 1.087}
+        self.params = params or StrategyParams()
         self.benchmark_prices = benchmark_prices
 
     # ── Main loop ────────────────────────────────────────────────────────
@@ -134,9 +133,9 @@ class BacktestEngine:
         prices = self.prices
 
         portfolio = Portfolio(
-            initial_capital = params.initial_capital,
-            broker          = params.broker,
-            account_type    = params.account_type,
+            initial_capital=params.initial_capital,
+            broker=params.broker,
+            account_type=params.account_type,
         )
 
         # Strategy state — opaque dict reused across all on_bar calls
@@ -147,13 +146,16 @@ class BacktestEngine:
         # Track months for monthly contributions
         last_contribution_month: int | None = None
 
-        log.info("Running event-driven backtest for strategy '%s'  (%d bars)",
-                 self.strategy.name, len(prices))
+        log.info(
+            "Running event-driven backtest for strategy '%s'  (%d bars)",
+            self.strategy.name,
+            len(prices),
+        )
 
         for ts in prices.index:
-            dt          = ts.date() if hasattr(ts, "date") else ts
-            row_native  = prices.loc[ts].to_dict()
-            prices_eur  = _fx_convert(row_native, self.currencies, self.fx_rates)
+            dt = ts.date() if hasattr(ts, "date") else ts
+            row_native = prices.loc[ts].to_dict()
+            prices_eur = _fx_convert(row_native, self.currencies, self.fx_rates)
 
             # ── Monthly contribution (first trading day of month) ─────────
             cur_month = ts.month
@@ -167,27 +169,26 @@ class BacktestEngine:
 
             # ── Rebalance: ask strategy for target weights ────────────────
             if ts in rebalance_days and len(prices.loc[:ts]) >= self.strategy.requires_warmup_days:
-                past_view = prices.loc[:ts]   # IMPORTANT: only past + current bar
+                past_view = prices.loc[:ts]  # IMPORTANT: only past + current bar
                 try:
                     target_weights = self.strategy.on_bar(dt, past_view, params, state)
                 except Exception as exc:
                     log.warning("on_bar error at %s: %s", dt, exc)
                     target_weights = {}
                 if target_weights:
-                    self._execute_rebalance(portfolio, dt, prices_eur,
-                                            target_weights, params)
+                    self._execute_rebalance(portfolio, dt, prices_eur, target_weights, params)
 
             # ── Snapshot ─────────────────────────────────────────────────
             portfolio.snapshot(dt, prices_eur)
 
         # ── Assemble result ──────────────────────────────────────────────
-        nav   = portfolio.nav_series()
-        rets  = nav.pct_change().dropna()
-        dd    = pd.Series(drawdown_series(rets.values), index=rets.index)
+        nav = portfolio.nav_series()
+        rets = nav.pct_change().dropna()
+        dd = pd.Series(drawdown_series(rets.values), index=rets.index)
 
         last_prices = {t: prices[t].iloc[-1] for t in prices.columns}
-        last_eur    = _fx_convert(last_prices, self.currencies, self.fx_rates)
-        metrics     = all_metrics(rets.values)
+        last_eur = _fx_convert(last_prices, self.currencies, self.fx_rates)
+        metrics = all_metrics(rets.values)
 
         bench_nav = None
         if self.benchmark_prices is not None and not self.benchmark_prices.empty:
@@ -195,32 +196,32 @@ class BacktestEngine:
             bench_nav = (bp / bp.iloc[0]) * params.initial_capital
 
         return BacktestResult(
-            strategy_name   = self.strategy.name,
-            nav_series      = nav,
-            returns_series  = rets,
-            drawdown_series = dd,
-            costs_series    = portfolio.costs_series(),
-            cash_invested   = portfolio.cash_invested_series(),
-            metrics         = metrics,
-            trades_df       = portfolio.trades_df(),
-            cost_summary    = {
+            strategy_name=self.strategy.name,
+            nav_series=nav,
+            returns_series=rets,
+            drawdown_series=dd,
+            costs_series=portfolio.costs_series(),
+            cash_invested=portfolio.cash_invested_series(),
+            metrics=metrics,
+            trades_df=portfolio.trades_df(),
+            cost_summary={
                 "total_costs_eur": portfolio._total_costs,
                 "total_taxes_eur": portfolio._total_taxes,
-                "cost_pct_nav":    portfolio._total_costs / max(params.initial_capital, 1.0),
+                "cost_pct_nav": portfolio._total_costs / max(params.initial_capital, 1.0),
             },
-            positions_final = portfolio.summary(last_eur),
-            benchmark_nav   = bench_nav,
+            positions_final=portfolio.summary(last_eur),
+            benchmark_nav=bench_nav,
         )
 
     # ── Order execution ──────────────────────────────────────────────────
 
     def _execute_rebalance(
         self,
-        portfolio:      Portfolio,
-        dt:             date,
-        prices_eur:     dict[str, float],
+        portfolio: Portfolio,
+        dt: date,
+        prices_eur: dict[str, float],
         target_weights: dict[str, float],
-        params:         StrategyParams,
+        params: StrategyParams,
     ) -> None:
         nav = portfolio.market_value(prices_eur)
         if nav <= 0:
@@ -242,36 +243,34 @@ class BacktestEngine:
                 excess_v = current_v - target_v
                 shares_to_sell = int(excess_v // price)
                 if shares_to_sell > 0:
-                    portfolio.sell(dt, ticker, shares_to_sell, price,
-                                   self.currencies.get(ticker, "USD"))
+                    portfolio.sell(
+                        dt, ticker, shares_to_sell, price, self.currencies.get(ticker, "USD")
+                    )
 
         # 2) BUY under-weighted tickers
         for ticker, target_w in target_weights.items():
             price = prices_eur.get(ticker, 0.0)
             if price <= 0:
                 continue
-            pos       = portfolio._positions.get(ticker)
+            pos = portfolio._positions.get(ticker)
             cur_shares = pos.shares if pos else 0
-            target_shares = _target_shares(target_w,
-                                           portfolio.market_value(prices_eur),
-                                           price,
-                                           params.max_position_pct)
+            target_shares = _target_shares(
+                target_w, portfolio.market_value(prices_eur), price, params.max_position_pct
+            )
             diff = target_shares - cur_shares
             if diff > 0:
-                portfolio.buy(dt, ticker, diff, price,
-                              self.currencies.get(ticker, "USD"))
+                portfolio.buy(dt, ticker, diff, price, self.currencies.get(ticker, "USD"))
 
     def _apply_stop_loss(
         self,
-        portfolio:  Portfolio,
-        dt:         date,
+        portfolio: Portfolio,
+        dt: date,
         prices_eur: dict[str, float],
-        stop_pct:   float,
+        stop_pct: float,
     ) -> None:
         for ticker, pos in list(portfolio._positions.items()):
             if pos.shares == 0 or pos.avg_cost_eur == 0:
                 continue
             current = prices_eur.get(ticker, pos.avg_cost_eur)
             if current < pos.avg_cost_eur * (1 - stop_pct):
-                portfolio.sell(dt, ticker, pos.shares, current,
-                               self.currencies.get(ticker, "USD"))
+                portfolio.sell(dt, ticker, pos.shares, current, self.currencies.get(ticker, "USD"))

@@ -10,19 +10,20 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Iterator
 
 import numpy as np
 import pandas as pd
 
-from api.config import MC_SIMULATIONS, MC_HORIZON_DAYS, RISK_FREE_RATE
+from api.config import MC_HORIZON_DAYS, MC_SIMULATIONS
 
 log = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Path generators (lazy generators for memory efficiency)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _gbm_paths(
     s0: float,
@@ -33,11 +34,11 @@ def _gbm_paths(
     seed: int = 42,
 ) -> np.ndarray:
     """Vectorised GBM: returns shape (n_paths, n_days+1)."""
-    rng  = np.random.default_rng(seed)
-    dt   = 1 / 252
-    Z    = rng.standard_normal((n_paths, n_days))
+    rng = np.random.default_rng(seed)
+    dt = 1 / 252
+    Z = rng.standard_normal((n_paths, n_days))
     daily = (mu - 0.5 * sigma**2) * dt + sigma * math.sqrt(dt) * Z
-    cum  = np.cumsum(daily, axis=1)
+    cum = np.cumsum(daily, axis=1)
     paths = s0 * np.exp(np.hstack([np.zeros((n_paths, 1)), cum]))
     return paths
 
@@ -51,7 +52,7 @@ def _bootstrap_paths(
     seed: int = 42,
 ) -> np.ndarray:
     """Block bootstrap paths preserving autocorrelation structure."""
-    rng   = np.random.default_rng(seed)
+    rng = np.random.default_rng(seed)
     n_ret = len(historical_returns)
     paths = np.empty((n_paths, n_days + 1))
     paths[:, 0] = s0
@@ -60,7 +61,7 @@ def _bootstrap_paths(
         ret_path = []
         while len(ret_path) < n_days:
             start = rng.integers(0, n_ret - block_size)
-            ret_path.extend(historical_returns[start: start + block_size])
+            ret_path.extend(historical_returns[start : start + block_size])
         ret_path = np.array(ret_path[:n_days])
         paths[p, 1:] = s0 * np.exp(np.cumsum(ret_path))
 
@@ -71,32 +72,35 @@ def _bootstrap_paths(
 # Simulation result
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class MCResult:
     """Container for Monte Carlo output."""
-    final_values:     np.ndarray          # shape (n_paths,)
-    percentile_5:     float
-    percentile_25:    float
-    median:           float
-    percentile_75:    float
-    percentile_95:    float
-    prob_loss:        float               # P(final < s0)
-    var_95:           float               # portfolio-level VaR
-    cvar_95:          float
-    expected_return:  float
-    paths_sample:     np.ndarray = field(default_factory=lambda: np.array([]))  # first 50 paths
+
+    final_values: np.ndarray  # shape (n_paths,)
+    percentile_5: float
+    percentile_25: float
+    median: float
+    percentile_75: float
+    percentile_95: float
+    prob_loss: float  # P(final < s0)
+    var_95: float  # portfolio-level VaR
+    cvar_95: float
+    expected_return: float
+    paths_sample: np.ndarray = field(default_factory=lambda: np.array([]))  # first 50 paths
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Main simulation function
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def run_simulation(
     prices: pd.Series,
     initial_capital: float,
     n_paths: int = MC_SIMULATIONS,
     n_days: int = MC_HORIZON_DAYS,
-    method: str = "gbm",          # "gbm" | "bootstrap"
+    method: str = "gbm",  # "gbm" | "bootstrap"
     seed: int = 42,
 ) -> MCResult:
     """Run Monte Carlo simulation on a price series.
@@ -107,7 +111,7 @@ def run_simulation(
     ret = prices.pct_change().dropna().values
 
     if method == "gbm":
-        mu    = float(np.mean(ret) * 252)
+        mu = float(np.mean(ret) * 252)
         sigma = float(np.std(ret, ddof=1) * math.sqrt(252))
         paths = _gbm_paths(initial_capital, mu, sigma, n_days, n_paths, seed)
     else:
@@ -120,23 +124,24 @@ def run_simulation(
     cutoff_5 = int(0.05 * n_paths)
 
     return MCResult(
-        final_values    = finals,
-        percentile_5    = float(np.percentile(finals, 5)),
-        percentile_25   = float(np.percentile(finals, 25)),
-        median          = float(np.median(finals)),
-        percentile_75   = float(np.percentile(finals, 75)),
-        percentile_95   = float(np.percentile(finals, 95)),
-        prob_loss       = float((finals < initial_capital).mean()),
-        var_95          = float(-sorted_r[cutoff_5]),
-        cvar_95         = float(-sorted_r[:cutoff_5].mean()),
-        expected_return = float(np.mean(returns)),
-        paths_sample    = paths[:50],   # return 50 paths for chart rendering
+        final_values=finals,
+        percentile_5=float(np.percentile(finals, 5)),
+        percentile_25=float(np.percentile(finals, 25)),
+        median=float(np.median(finals)),
+        percentile_75=float(np.percentile(finals, 75)),
+        percentile_95=float(np.percentile(finals, 95)),
+        prob_loss=float((finals < initial_capital).mean()),
+        var_95=float(-sorted_r[cutoff_5]),
+        cvar_95=float(-sorted_r[:cutoff_5].mean()),
+        expected_return=float(np.mean(returns)),
+        paths_sample=paths[:50],  # return 50 paths for chart rendering
     )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Parameter calibration via Bayesian optimisation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def calibrate_strategy(
     strategy_fn: Callable[[pd.DataFrame, dict], pd.Series],
@@ -156,16 +161,16 @@ def calibrate_strategy(
     """
     try:
         from skopt import gp_minimize
-        from skopt.space import Real, Categorical, Integer
+        from skopt.space import Categorical, Integer, Real
     except ImportError:
         log.warning("scikit-optimize not installed — returning default params")
         return {k: (v[0] if isinstance(v, list) else v[0]) for k, v in param_space.items()}
 
-    from api.quant.metrics import sharpe_ratio, calmar_ratio, sortino_ratio
+    from api.quant.metrics import calmar_ratio, sharpe_ratio, sortino_ratio
 
     _obj_map: dict[str, Callable] = {
-        "sharpe":  sharpe_ratio,
-        "calmar":  calmar_ratio,
+        "sharpe": sharpe_ratio,
+        "calmar": calmar_ratio,
         "sortino": sortino_ratio,
     }
     score_fn = _obj_map.get(objective, sharpe_ratio)
@@ -182,16 +187,16 @@ def calibrate_strategy(
                 dims.append(Real(float(v[0]), float(v[1]), name=k))
 
     def _objective(values: list) -> float:
-        params = dict(zip(keys, values))
+        params = dict(zip(keys, values, strict=False))
         try:
             daily_r = strategy_fn(prices, params)
-            score   = score_fn(daily_r.dropna().values)
-            return -score   # minimise negative metric
+            score = score_fn(daily_r.dropna().values)
+            return -score  # minimise negative metric
         except Exception as exc:
             log.debug("Calibration trial failed: %s", exc)
             return 0.0
 
     result = gp_minimize(_objective, dims, n_calls=n_calls, random_state=seed, verbose=False)
-    best   = dict(zip(keys, result.x))
+    best = dict(zip(keys, result.x, strict=False))
     log.info("Calibration complete — best params: %s score=%.4f", best, -result.fun)
     return best

@@ -8,16 +8,15 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from datetime import date, timedelta
 
-import pandas as pd
-
 from api.core.data import get_prices
 from api.quant.signals import (
-    combined_signal, sma_crossover_signal,
-    rsi_signal, macd_signal, momentum_signal,
+    macd_signal,
+    momentum_signal,
+    rsi_signal,
+    sma_crossover_signal,
 )
 
 log = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ async def compute_daily_signals(tickers: list[str], lookback_days: int = 60) -> 
     :param lookback_days: price history needed to compute signals
     :returns: list of dicts with keys: ticker, signal, strength, indicators
     """
-    end   = date.today()
+    end = date.today()
     start = end - timedelta(days=lookback_days + 30)
     prices = await get_prices(tickers, start=start, end=end)
 
@@ -42,26 +41,28 @@ async def compute_daily_signals(tickers: list[str], lookback_days: int = 60) -> 
         if len(p) < 20:
             continue
 
-        sma_sig  = int(sma_crossover_signal(p).iloc[-1])
-        rsi_sig  = int(rsi_signal(p).iloc[-1])
+        sma_sig = int(sma_crossover_signal(p).iloc[-1])
+        rsi_sig = int(rsi_signal(p).iloc[-1])
         macd_sig = int(macd_signal(p).iloc[-1])
-        mom_sig  = int(momentum_signal(p).iloc[-1])
-        vote     = sma_sig + rsi_sig + macd_sig + mom_sig
-        signal   = 1 if vote >= 2 else (-1 if vote <= -2 else 0)
-        label    = "BUY" if signal == 1 else ("SELL" if signal == -1 else "HOLD")
+        mom_sig = int(momentum_signal(p).iloc[-1])
+        vote = sma_sig + rsi_sig + macd_sig + mom_sig
+        signal = 1 if vote >= 2 else (-1 if vote <= -2 else 0)
+        label = "BUY" if signal == 1 else ("SELL" if signal == -1 else "HOLD")
 
-        results.append({
-            "ticker":   ticker,
-            "signal":   signal,
-            "label":    label,
-            "strength": abs(vote) / 4.0,
-            "indicators": {
-                "sma_crossover": sma_sig,
-                "rsi":           rsi_sig,
-                "macd":          macd_sig,
-                "momentum":      mom_sig,
-            },
-            "date": str(end),
-        })
+        results.append(
+            {
+                "ticker": ticker,
+                "signal": signal,
+                "label": label,
+                "strength": abs(vote) / 4.0,
+                "indicators": {
+                    "sma_crossover": sma_sig,
+                    "rsi": rsi_sig,
+                    "macd": macd_sig,
+                    "momentum": mom_sig,
+                },
+                "date": str(end),
+            }
+        )
 
     return results

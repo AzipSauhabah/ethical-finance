@@ -12,17 +12,17 @@ Design:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 import httpx
 
-from api.config import KV_REST_API_URL, KV_REST_API_TOKEN, PRICE_CACHE_TTL
+from api.config import KV_REST_API_TOKEN, KV_REST_API_URL, PRICE_CACHE_TTL
 
 log = logging.getLogger(__name__)
 
@@ -32,11 +32,12 @@ T = TypeVar("T")
 # Level 1 — in-process TTL LRU
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class _Entry:
     __slots__ = ("value", "deadline")
 
     def __init__(self, value: Any, ttl: int) -> None:
-        self.value    = value
+        self.value = value
         self.deadline = time.monotonic() + ttl
 
 
@@ -48,7 +49,7 @@ class MemoryCache:
 
     def __init__(self, max_size: int = 512) -> None:
         self._store: OrderedDict[str, _Entry] = OrderedDict()
-        self._max   = max_size
+        self._max = max_size
 
     # ------------------------------------------------------------------
     def get(self, key: str) -> Any | None:
@@ -58,14 +59,14 @@ class MemoryCache:
         if time.monotonic() > entry.deadline:
             del self._store[key]
             return None
-        self._store.move_to_end(key)   # LRU bump
+        self._store.move_to_end(key)  # LRU bump
         return entry.value
 
     def set(self, key: str, value: Any, ttl: int = PRICE_CACHE_TTL) -> None:
         if key in self._store:
             self._store.move_to_end(key)
         elif len(self._store) >= self._max:
-            self._store.popitem(last=False)   # evict LRU
+            self._store.popitem(last=False)  # evict LRU
         self._store[key] = _Entry(value, ttl)
 
     def delete(self, key: str) -> None:
@@ -82,6 +83,7 @@ class MemoryCache:
 # Level 2 — Vercel KV (Redis REST)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class KVCache:
     """Thin async wrapper around Vercel KV REST API.
 
@@ -89,9 +91,9 @@ class KVCache:
     """
 
     def __init__(self) -> None:
-        self._ok      = bool(KV_REST_API_URL and KV_REST_API_TOKEN)
+        self._ok = bool(KV_REST_API_URL and KV_REST_API_TOKEN)
         self._headers = {"Authorization": f"Bearer {KV_REST_API_TOKEN}"}
-        self._base    = KV_REST_API_URL.rstrip("/")
+        self._base = KV_REST_API_URL.rstrip("/")
 
     # ------------------------------------------------------------------
     async def get(self, key: str) -> Any | None:
@@ -104,7 +106,7 @@ class KVCache:
                     payload = r.json()
                     raw = payload.get("result")
                     return json.loads(raw) if raw is not None else None
-        except Exception as exc:              # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             log.debug("KV.get error: %s", exc)
         return None
 
@@ -119,7 +121,7 @@ class KVCache:
                     headers=self._headers,
                     json={"value": body, "ex": ttl},
                 )
-        except Exception as exc:              # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             log.debug("KV.set error: %s", exc)
 
     async def delete(self, key: str) -> None:
@@ -128,13 +130,14 @@ class KVCache:
         try:
             async with httpx.AsyncClient(timeout=1.0) as c:
                 await c.get(f"{self._base}/del/{key}", headers=self._headers)
-        except Exception as exc:              # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             log.debug("KV.delete error: %s", exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Unified two-level cache
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class Cache:
     """Read/write-through L1 + L2 cache. Import the :data:`cache` singleton."""
@@ -169,12 +172,14 @@ cache: Cache = Cache()
 # Functional decorator
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def cached(key_fn: Callable[..., str], ttl: int = PRICE_CACHE_TTL):
     """Async function decorator that memoises results in :data:`cache`.
 
     :param key_fn: callable(*args, **kwargs) → str cache key
     :param ttl: seconds to live
     """
+
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -186,5 +191,7 @@ def cached(key_fn: Callable[..., str], ttl: int = PRICE_CACHE_TTL):
             if result is not None:
                 await cache.set(key, result, ttl)
             return result
+
         return wrapper
+
     return decorator

@@ -27,6 +27,7 @@ def _broker_schedule(broker: str) -> dict:
 # Commission
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def broker_commission(
     notional_eur: float,
     broker: str = "default",
@@ -53,9 +54,9 @@ def broker_commission(
             )
 
     fixed = float(sch.get(f"{asset_type}_fixed", sch.get("stock_eu_fixed", 1.0)))
-    pct   = float(sch.get(f"{asset_type}_pct",   sch.get("stock_eu_pct",   0.001)))
-    fee   = fixed + notional_eur * pct
-    fee   = max(fee, float(sch.get("min_fee", 0.0)))
+    pct = float(sch.get(f"{asset_type}_pct", sch.get("stock_eu_pct", 0.001)))
+    fee = fixed + notional_eur * pct
+    fee = max(fee, float(sch.get("min_fee", 0.0)))
     max_f = sch.get("max_fee")
     if max_f is not None:
         fee = min(fee, float(max_f))
@@ -65,6 +66,7 @@ def broker_commission(
 # ─────────────────────────────────────────────────────────────────────────────
 # Slippage
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def slippage_cost(
     notional_eur: float,
@@ -82,10 +84,11 @@ def slippage_cost(
 # FX cost (EUR/USD spread)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def fx_spread_cost(
     notional_eur: float,
     currency: str = "USD",
-    spread_bps: float = 3.0,     # retail FX spread ~3 bps
+    spread_bps: float = 3.0,  # retail FX spread ~3 bps
 ) -> float:
     """Estimate FX conversion cost for non-EUR assets."""
     if currency.upper() == "EUR":
@@ -97,9 +100,10 @@ def fx_spread_cost(
 # TTF (Taxe sur les transactions financières)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def ttf_tax(
     notional_eur: float,
-    market_cap_eur: float = 2e9,    # default: large-cap (TTF applies)
+    market_cap_eur: float = 2e9,  # default: large-cap (TTF applies)
 ) -> float:
     """French TTF — 0.1 % on buy-side for companies with market cap > 1 Bn EUR."""
     if market_cap_eur < TAX_RATES["ttf_threshold_market_cap"]:
@@ -110,6 +114,7 @@ def ttf_tax(
 # ─────────────────────────────────────────────────────────────────────────────
 # Capital gains tax
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def capital_gains_tax(
     gain_eur: float,
@@ -137,6 +142,7 @@ def capital_gains_tax(
 # Total round-trip cost
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def total_trade_cost(
     notional_eur: float,
     broker: str = "default",
@@ -150,17 +156,17 @@ def total_trade_cost(
 
     :returns: dict with keys commission, slippage, fx_spread, ttf, total
     """
-    comm    = broker_commission(notional_eur, broker, asset_type)
-    slip    = slippage_cost(notional_eur, cap_size)
-    fx      = fx_spread_cost(notional_eur, currency)
-    tax     = ttf_tax(notional_eur, market_cap_eur) if side == "buy" else 0.0
-    total   = comm + slip + fx + tax
+    comm = broker_commission(notional_eur, broker, asset_type)
+    slip = slippage_cost(notional_eur, cap_size)
+    fx = fx_spread_cost(notional_eur, currency)
+    tax = ttf_tax(notional_eur, market_cap_eur) if side == "buy" else 0.0
+    total = comm + slip + fx + tax
     return {
         "commission": comm,
-        "slippage":   slip,
-        "fx_spread":  fx,
-        "ttf":        tax,
-        "total":      total,
-        "notional":   notional_eur,
-        "cost_pct":   total / notional_eur if notional_eur > 0 else 0.0,
+        "slippage": slip,
+        "fx_spread": fx,
+        "ttf": tax,
+        "total": total,
+        "notional": notional_eur,
+        "cost_pct": total / notional_eur if notional_eur > 0 else 0.0,
     }

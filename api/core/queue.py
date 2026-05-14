@@ -15,12 +15,12 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import queue
 import threading
 import time
 from collections import defaultdict
-from typing import Any
 
 from api.config import LIVE_PRICE_INTERVAL_SEC
 from api.core.data import get_live_quote
@@ -38,12 +38,13 @@ _subs_lock = threading.Lock()
 
 # Active ticker set
 _watched_tickers: set[str] = set()
-_tickers_lock    = threading.Lock()
+_tickers_lock = threading.Lock()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Worker thread
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _worker_loop() -> None:
     """Daemon loop: fetch quotes for all watched tickers every N seconds."""
@@ -81,9 +82,10 @@ def start_worker() -> None:
 # Async bridge (drains _sync_q → asyncio queues)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def _bridge_loop() -> None:
     """Async task that drains the sync queue and fans out to subscribers."""
-    loop = asyncio.get_event_loop()
+    asyncio.get_event_loop()
     while True:
         try:
             # Non-blocking drain; yield control if empty
@@ -92,10 +94,8 @@ async def _bridge_loop() -> None:
             with _subs_lock:
                 qs = list(_subscribers.get(ticker, []))
             for aq in qs:
-                try:
+                with contextlib.suppress(asyncio.QueueFull):
                     aq.put_nowait(quote)
-                except asyncio.QueueFull:
-                    pass
         except queue.Empty:
             await asyncio.sleep(0.5)
         except Exception as exc:  # noqa: BLE001
@@ -106,6 +106,7 @@ async def _bridge_loop() -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def subscribe(ticker: str) -> asyncio.Queue:
     """Subscribe to live updates for *ticker*. Returns a per-caller asyncio.Queue.
@@ -125,10 +126,8 @@ def unsubscribe(ticker: str, aq: asyncio.Queue) -> None:
     """Remove a subscriber queue."""
     with _subs_lock:
         subs = _subscribers.get(ticker, [])
-        try:
+        with contextlib.suppress(ValueError):
             subs.remove(aq)
-        except ValueError:
-            pass
 
 
 def watch(tickers: list[str]) -> None:

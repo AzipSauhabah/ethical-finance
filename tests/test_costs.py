@@ -6,13 +6,17 @@
 from __future__ import annotations
 
 import math
+
 import pytest
 
 from api.backtest.costs import (
-    broker_commission, slippage_cost, fx_spread_cost,
-    ttf_tax, capital_gains_tax, total_trade_cost,
+    broker_commission,
+    capital_gains_tax,
+    fx_spread_cost,
+    slippage_cost,
+    total_trade_cost,
+    ttf_tax,
 )
-
 
 pytestmark = pytest.mark.unit
 

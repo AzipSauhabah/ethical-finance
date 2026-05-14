@@ -33,39 +33,41 @@ import pandas as pd
 from api.strategies.base import Strategy, StrategyParams
 from api.strategies.registry import strategy_registry
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Static fundamental fetcher (cached at module level for the backtest)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _get_fundamentals(ticker: str) -> dict:
     """Lazy yfinance fundamentals — returns {} on failure."""
     try:
         import yfinance as yf
+
         info = yf.Ticker(ticker).info or {}
     except Exception:
         return {}
 
-    ebit       = info.get("ebitda", info.get("operatingCashflow", 0)) or 0
-    ev         = info.get("enterpriseValue", 0) or 0
+    ebit = info.get("ebitda", info.get("operatingCashflow", 0)) or 0
+    ev = info.get("enterpriseValue", 0) or 0
     book_value = info.get("bookValue", 0) or 0
-    price      = info.get("regularMarketPrice", info.get("currentPrice", 0)) or 0
+    price = info.get("regularMarketPrice", info.get("currentPrice", 0)) or 0
     market_cap = info.get("marketCap", 0) or 0
-    debt       = info.get("totalDebt", 0) or 0
-    cash       = info.get("totalCash", 0) or 0
-    net_assets = market_cap + debt - cash   # rough net fixed + working capital proxy
+    debt = info.get("totalDebt", 0) or 0
+    cash = info.get("totalCash", 0) or 0
+    net_assets = market_cap + debt - cash  # rough net fixed + working capital proxy
 
     return {
-        "earning_yield":  (ebit / ev) if ev > 0 else 0.0,
-        "roic":           (ebit / net_assets) if net_assets > 0 else 0.0,
-        "pb_ratio":       (price / book_value) if book_value > 0 else float("inf"),
-        "roic_5y_avg":    (ebit / net_assets) if net_assets > 0 else 0.0,  # proxy
+        "earning_yield": (ebit / ev) if ev > 0 else 0.0,
+        "roic": (ebit / net_assets) if net_assets > 0 else 0.0,
+        "pb_ratio": (price / book_value) if book_value > 0 else float("inf"),
+        "roic_5y_avg": (ebit / net_assets) if net_assets > 0 else 0.0,  # proxy
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # EPR5 Strategy — STRICT EVENT-DRIVEN
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @strategy_registry.register
 class EPR5Strategy(Strategy):
@@ -94,8 +96,8 @@ class EPR5Strategy(Strategy):
     Stop loss = max($1 000 absolute, 2 × ATR-14).
     """
 
-    requires_warmup_days   = 252      # need 1 year for 200MA + indicators
-    is_walkforward_trained = False    # static fundamentals; no ML refit
+    requires_warmup_days = 252  # need 1 year for 200MA + indicators
+    is_walkforward_trained = False  # static fundamentals; no ML refit
 
     # ── Required overrides ───────────────────────────────────────────────
 
@@ -105,8 +107,10 @@ class EPR5Strategy(Strategy):
 
     @property
     def description(self) -> str:
-        return ("EPR5 — Greenblatt Magic Formula + filtres de régime SPX/VIX + "
-                "stop-loss ATR. Inspiré du style QuantConnect Lean.")
+        return (
+            "EPR5 — Greenblatt Magic Formula + filtres de régime SPX/VIX + "
+            "stop-loss ATR. Inspiré du style QuantConnect Lean."
+        )
 
     @property
     def benchmark(self) -> str:
@@ -115,11 +119,11 @@ class EPR5Strategy(Strategy):
     @property
     def param_space(self) -> dict[str, Any]:
         return {
-            "profit_target":    (0.10, 0.25),
-            "atr_stop_mult":    (1.5, 3.0),
+            "profit_target": (0.10, 0.25),
+            "atr_stop_mult": (1.5, 3.0),
             "top_quintile_pct": (0.10, 0.30),
-            "ma_window":        (150, 250),
-            "vix_ma_window":    (5, 15),
+            "ma_window": (150, 250),
+            "vix_ma_window": (5, 15),
         }
 
     # ── Indicator helpers (vectorised on past data only) ─────────────────
@@ -150,10 +154,10 @@ class EPR5Strategy(Strategy):
 
         # 0. Pull strategy params (with defaults)
         profit_target = float(params.custom.get("profit_target", 0.20))
-        atr_mult      = float(params.custom.get("atr_stop_mult", 2.0))
-        top_pct       = float(params.custom.get("top_quintile_pct", 0.20))
-        ma_window     = int(params.custom.get("ma_window", 200))
-        vix_ma        = int(params.custom.get("vix_ma_window", 10))
+        atr_mult = float(params.custom.get("atr_stop_mult", 2.0))
+        top_pct = float(params.custom.get("top_quintile_pct", 0.20))
+        ma_window = int(params.custom.get("ma_window", 200))
+        vix_ma = int(params.custom.get("vix_ma_window", 10))
 
         # 1. Need at least ma_window+1 days of data
         if len(past_prices) < ma_window + 1:
@@ -162,14 +166,13 @@ class EPR5Strategy(Strategy):
         # 2. Cache fundamentals once per ticker per backtest
         if "fundamentals" not in state:
             state["fundamentals"] = {
-                t: _get_fundamentals(t) for t in past_prices.columns
-                if not t.startswith("^")
+                t: _get_fundamentals(t) for t in past_prices.columns if not t.startswith("^")
             }
         funds = state["fundamentals"]
 
         # 3. Market regime filter — SPX above 200MA
         spx_col = "^GSPC"
-        spx_ok  = True
+        spx_ok = True
         if spx_col in past_prices.columns:
             spx_series = past_prices[spx_col].dropna()
             if len(spx_series) >= ma_window:
@@ -183,24 +186,22 @@ class EPR5Strategy(Strategy):
             return {}
 
         # 4. VIX timing filter — VIX just crossed below its 10MA
-        vix_col   = "^VIX"
-        vix_ready = False
+        vix_col = "^VIX"
         if vix_col in past_prices.columns:
             v = past_prices[vix_col].dropna()
             if len(v) >= vix_ma + 1:
-                vix_today = float(v.iloc[-1])
-                vix_yest  = float(v.iloc[-2])
-                ma_today  = float(v.iloc[-vix_ma:].mean())
-                ma_yest   = float(v.iloc[-(vix_ma+1):-1].mean())
+                float(v.iloc[-1])
+                float(v.iloc[-2])
+                float(v.iloc[-vix_ma:].mean())
+                float(v.iloc[-(vix_ma + 1) : -1].mean())
                 # cross down today (was above ma yesterday, below today)
-                vix_ready = (vix_yest >= ma_yest) and (vix_today < ma_today)
         # If no VIX data, still allow entries (regime gate already passed)
 
         # 5. Rank tradeable universe by Magic Formula
         candidates = []
         for ticker, ser in past_prices.items():
             if ticker.startswith("^"):
-                continue                       # skip benchmarks
+                continue  # skip benchmarks
             ser = ser.dropna()
             if len(ser) < ma_window:
                 continue
@@ -208,9 +209,9 @@ class EPR5Strategy(Strategy):
             if float(ser.iloc[-1]) <= self._sma(ser, ma_window):
                 continue
             f = funds.get(ticker, {})
-            ey   = f.get("earning_yield", 0.0)
+            ey = f.get("earning_yield", 0.0)
             roic = f.get("roic", 0.0)
-            pb   = f.get("pb_ratio", float("inf"))
+            pb = f.get("pb_ratio", float("inf"))
             roic_5y = f.get("roic_5y_avg", 0.0)
             if ey <= 0 or roic <= 0 or roic_5y <= 0 or pb >= 10:
                 continue
@@ -222,9 +223,9 @@ class EPR5Strategy(Strategy):
 
         # 6. Combined rank (Magic Formula)
         df = pd.DataFrame(candidates, columns=["ticker", "ey", "roic", "pb"])
-        df["rank_ey"]   = df["ey"].rank(ascending=False)
+        df["rank_ey"] = df["ey"].rank(ascending=False)
         df["rank_roic"] = df["roic"].rank(ascending=False)
-        df["combined"]  = df["rank_ey"] + df["rank_roic"]
+        df["combined"] = df["rank_ey"] + df["rank_roic"]
         df = df.sort_values("combined")
         n_keep = max(1, int(len(df) * top_pct))
         winners = df.head(n_keep)["ticker"].tolist()
@@ -250,11 +251,11 @@ class EPR5Strategy(Strategy):
             ret = cur / entry - 1
             atr = self._atr(ser, 14)
             stop_dollar_pct = -1_000.0 / (params.initial_capital * prev_w) if prev_w > 0 else -1
-            stop_atr_pct    = -atr_mult * atr / entry if entry > 0 else -1
-            stop_pct = max(stop_dollar_pct, stop_atr_pct)   # the LESS negative one
+            stop_atr_pct = -atr_mult * atr / entry if entry > 0 else -1
+            stop_pct = max(stop_dollar_pct, stop_atr_pct)  # the LESS negative one
 
             if ret >= profit_target or ret <= stop_pct:
-                weights.pop(ticker, None)   # exit
+                weights.pop(ticker, None)  # exit
 
         # 9. Track entry prices for new positions
         entry_prices = state.setdefault("entry_prices", {})

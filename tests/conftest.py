@@ -18,7 +18,7 @@ def deterministic_prices() -> pd.DataFrame:
     """
     rng = np.random.default_rng(42)
     n_days = 500
-    dates  = pd.bdate_range("2020-01-01", periods=n_days)
+    dates = pd.bdate_range("2020-01-01", periods=n_days)
 
     # Three tickers with different drift / vol
     aapl = 100 * np.exp(np.cumsum(rng.normal(0.0008, 0.018, n_days)))
