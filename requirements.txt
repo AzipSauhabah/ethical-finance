@@ -9,4 +9,5 @@ scikit-learn==1.5.2
 yfinance==0.2.50
 pandas-datareader==0.10.0
 reportlab==4.2.5
+matplotlib==3.9.2
 python-multipart==0.0.12
