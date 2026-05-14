@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import pytest
-
 from api.strategies.base import StrategyParams
 from api.strategies.registry import strategy_registry
 

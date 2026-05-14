@@ -12,7 +12,6 @@ from datetime import date
 
 import pandas as pd
 import pytest
-
 from api.backtest.engine import BacktestEngine
 from api.strategies.base import Strategy, StrategyParams
 

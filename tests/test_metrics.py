@@ -9,7 +9,6 @@ import math
 
 import numpy as np
 import pytest
-
 from api.quant.metrics import (
     all_metrics,
     annualised_volatility,

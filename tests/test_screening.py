@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import pytest
-
 from api.core.registry import run_ethical_screen, run_sharia_screen
 
 pytestmark = pytest.mark.unit
