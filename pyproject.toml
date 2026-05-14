@@ -1,3 +1,16 @@
+[project]
+name = "backtest-engine"
+version = "0.1.0"
+description = "Backtest engine for portfolio simulations"
+requires-python = ">=3.12"
+
+# si tu as des dépendances Python, ajoute-les ici
+dependencies = [
+  # "numpy",
+  # "pandas",
+  # "yfinance"
+]
+
 [tool.black]
 line-length = 100
 target-version = ["py312"]
