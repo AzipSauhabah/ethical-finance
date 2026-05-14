@@ -26,36 +26,36 @@ app.add_middleware(
 
 scheduler = AsyncIOScheduler()
 
-
 @app.on_event("startup")
 async def _startup() -> None:
     import asyncio
+    from backend.core.loader import daily_update, load_all_tickers
 
-    from backend.core.db import init_db
-    from backend.core.loader import daily_update
-
-    # Initialise les tables
-    await init_db()
-
-    # Cron job quotidien à 22h CET
+    # Cron job quotidien à 21h UTC
     scheduler.add_job(daily_update, "cron", hour=21, minute=0, timezone="UTC")
     scheduler.start()
     log.info("Scheduler started — daily update at 21:00 UTC")
 
-    # Charge l'univers complet en arrière-plan au premier démarrage
-    asyncio.create_task(_initial_load())
+    # DB init et chargement en arrière-plan — ne bloque pas le démarrage
+    asyncio.create_task(_init_and_load())
 
 
-async def _initial_load() -> None:
-    from backend.core.db import get_tickers_in_db
+async def _init_and_load() -> None:
+    import asyncio
+    from backend.core.db import init_db, get_tickers_in_db
     from backend.core.loader import load_all_tickers
 
-    tickers_in_db = await get_tickers_in_db()
-    if len(tickers_in_db) < 10:
-        log.info("First boot — loading full universe (this takes ~10 min)")
-        await load_all_tickers(years=20)
-    else:
-        log.info("DB already populated with %d tickers", len(tickers_in_db))
+    await asyncio.sleep(5)  # laisse uvicorn démarrer complètement
+    try:
+        await init_db()
+        tickers_in_db = await get_tickers_in_db()
+        if len(tickers_in_db) < 10:
+            log.info("First boot — loading full universe (this takes ~10 min)")
+            await load_all_tickers(years=20)
+        else:
+            log.info("DB already populated with %d tickers", len(tickers_in_db))
+    except Exception as e:
+        log.error("DB init failed: %s", e)
 
 
 @app.on_event("shutdown")
