@@ -11,8 +11,8 @@
 from __future__ import annotations
 
 import pytest
-from api.strategies.base import StrategyParams
-from api.strategies.registry import strategy_registry
+from backend.strategies.base import StrategyParams
+from backend.strategies.registry import strategy_registry
 
 pytestmark = pytest.mark.unit
 

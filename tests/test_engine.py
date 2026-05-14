@@ -12,8 +12,8 @@ from datetime import date
 
 import pandas as pd
 import pytest
-from api.backtest.engine import BacktestEngine
-from api.strategies.base import Strategy, StrategyParams
+from backend.backtest.engine import BacktestEngine
+from backend.strategies.base import Strategy, StrategyParams
 
 pytestmark = pytest.mark.unit
 
@@ -115,7 +115,7 @@ class TestNoLookAhead:
 
 class TestEngineSmoke:
     def test_buy_hold_runs_end_to_end(self, deterministic_prices, currencies, fx_rates):
-        from api.strategies.builtin.all_strategies import BuyHoldStrategy
+        from backend.strategies.builtin.all_strategies import BuyHoldStrategy
 
         params = StrategyParams(initial_capital=10_000)
         engine = BacktestEngine(
@@ -128,7 +128,7 @@ class TestEngineSmoke:
         assert "total_return" in result.metrics
 
     def test_nav_never_negative(self, deterministic_prices, currencies, fx_rates):
-        from api.strategies.builtin.all_strategies import BuyHoldStrategy
+        from backend.strategies.builtin.all_strategies import BuyHoldStrategy
 
         params = StrategyParams(initial_capital=10_000)
         result = BacktestEngine(
@@ -138,7 +138,7 @@ class TestEngineSmoke:
 
     def test_cash_never_negative(self, deterministic_prices, currencies, fx_rates):
         """Portfolio's cash balance should never go negative."""
-        from api.strategies.builtin.all_strategies import EqualWeightStrategy
+        from backend.strategies.builtin.all_strategies import EqualWeightStrategy
 
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="monthly")
         engine = BacktestEngine(
@@ -153,7 +153,7 @@ class TestEngineSmoke:
         )
 
     def test_integer_shares_only(self, deterministic_prices, currencies, fx_rates):
-        from api.strategies.builtin.all_strategies import EqualWeightStrategy
+        from backend.strategies.builtin.all_strategies import EqualWeightStrategy
 
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="monthly")
         result = BacktestEngine(
@@ -175,7 +175,7 @@ class TestCostTracking:
         self, deterministic_prices, currencies, fx_rates
     ):
         """Cumulative costs can only go up over time."""
-        from api.strategies.builtin.all_strategies import EqualWeightStrategy
+        from backend.strategies.builtin.all_strategies import EqualWeightStrategy
 
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="weekly")
         result = BacktestEngine(
@@ -189,7 +189,7 @@ class TestCostTracking:
 
     def test_total_cost_summary_matches_trades(self, deterministic_prices, currencies, fx_rates):
         """Total costs should equal sum of trade costs."""
-        from api.strategies.builtin.all_strategies import EqualWeightStrategy
+        from backend.strategies.builtin.all_strategies import EqualWeightStrategy
 
         params = StrategyParams(initial_capital=10_000, rebalance_frequency="monthly")
         result = BacktestEngine(
