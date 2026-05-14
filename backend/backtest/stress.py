@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from api.config import STRESS_SCENARIOS
-from api.quant.metrics import all_metrics
+from backend.config import STRESS_SCENARIOS
+from backend.quant.metrics import all_metrics
 
 
 def run_stress_tests(

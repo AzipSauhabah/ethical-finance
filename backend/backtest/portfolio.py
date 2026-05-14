@@ -20,8 +20,8 @@ from datetime import date
 
 import pandas as pd
 
-from api.backtest.costs import capital_gains_tax, total_trade_cost
-from api.config import DEFAULT_INITIAL_CAPITAL
+from backend.backtest.costs import capital_gains_tax, total_trade_cost
+from backend.config import DEFAULT_INITIAL_CAPITAL
 
 log = logging.getLogger(__name__)
 

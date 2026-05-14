@@ -15,7 +15,7 @@ from collections.abc import Sequence
 import numpy as np
 import pandas as pd
 
-from api.config import RISK_FREE_RATE
+from backend.config import RISK_FREE_RATE
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fundamental building blocks

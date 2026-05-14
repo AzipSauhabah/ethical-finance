@@ -11,8 +11,8 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 
-from api.core.data import get_prices
-from api.quant.signals import (
+from backend.core.data import get_prices
+from backend.quant.signals import (
     macd_signal,
     momentum_signal,
     rsi_signal,

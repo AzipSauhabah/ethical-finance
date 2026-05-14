@@ -22,8 +22,8 @@ from typing import Any
 
 import pandas as pd
 
-from api.strategies.base import Strategy, StrategyParams
-from api.strategies.registry import strategy_registry
+from backend.strategies.base import Strategy, StrategyParams
+from backend.strategies.registry import strategy_registry
 
 log = logging.getLogger(__name__)
 

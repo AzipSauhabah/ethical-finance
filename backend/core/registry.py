@@ -15,13 +15,13 @@ import logging
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass, field
 
-from api.config import (
+from backend.config import (
     ETHICAL_EXCLUSION_SECTORS,
     ETHICAL_EXCLUSION_TICKERS,
     INTEREST_DEBT_RATIO_THRESHOLD,
     INTEREST_INCOME_RATIO_THRESHOLD,
 )
-from api.core.data import get_ticker_fundamentals
+from backend.core.data import get_ticker_fundamentals
 
 log = logging.getLogger(__name__)
 

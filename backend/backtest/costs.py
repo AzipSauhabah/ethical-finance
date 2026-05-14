@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from api.config import (
+from backend.config import (
     BROKER_FEES,
     SLIPPAGE_BPS,
     TAX_RATES,

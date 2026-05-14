@@ -32,9 +32,9 @@ from datetime import date
 
 import pandas as pd
 
-from api.backtest.portfolio import Portfolio
-from api.quant.metrics import all_metrics, drawdown_series
-from api.strategies.base import Strategy, StrategyParams
+from backend.backtest.portfolio import Portfolio
+from backend.quant.metrics import all_metrics, drawdown_series
+from backend.strategies.base import Strategy, StrategyParams
 
 log = logging.getLogger(__name__)
 

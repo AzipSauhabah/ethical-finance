@@ -22,7 +22,7 @@ from typing import Any, TypeVar
 
 import httpx
 
-from api.config import KV_REST_API_TOKEN, KV_REST_API_URL, PRICE_CACHE_TTL
+from backend.config import KV_REST_API_TOKEN, KV_REST_API_URL, PRICE_CACHE_TTL
 
 log = logging.getLogger(__name__)
 
@@ -164,7 +164,7 @@ class Cache:
         await self.l2.delete(key)
 
 
-#: Module-level singleton — use ``from api.core.cache import cache``
+#: Module-level singleton — use ``from backend.core.cache import cache``
 cache: Cache = Cache()
 
 

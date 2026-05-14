@@ -22,8 +22,8 @@ import threading
 import time
 from collections import defaultdict
 
-from api.config import LIVE_PRICE_INTERVAL_SEC
-from api.core.data import get_live_quote
+from backend.config import LIVE_PRICE_INTERVAL_SEC
+from backend.core.data import get_live_quote
 
 log = logging.getLogger(__name__)
 

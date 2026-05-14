@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from dataclasses import asdict, dataclass
 
-from api.backtest.costs import total_trade_cost
+from backend.backtest.costs import total_trade_cost
 
 log = logging.getLogger(__name__)
 

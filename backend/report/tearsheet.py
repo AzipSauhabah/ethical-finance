@@ -13,11 +13,11 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from api.backtest.engine import BacktestResult
-from api.backtest.stress import run_stress_tests
-from api.config import COPYRIGHT, DISCLAIMER, RISK_FREE_RATE
-from api.quant.metrics import all_metrics
-from api.quant.significance import alpha_ttest, bootstrap_ci, jobson_korkie
+from backend.backtest.engine import BacktestResult
+from backend.backtest.stress import run_stress_tests
+from backend.config import COPYRIGHT, DISCLAIMER, RISK_FREE_RATE
+from backend.quant.metrics import all_metrics
+from backend.quant.significance import alpha_ttest, bootstrap_ci, jobson_korkie
 
 
 def build_tearsheet(

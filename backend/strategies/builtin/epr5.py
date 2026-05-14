@@ -30,8 +30,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from api.strategies.base import Strategy, StrategyParams
-from api.strategies.registry import strategy_registry
+from backend.strategies.base import Strategy, StrategyParams
+from backend.strategies.registry import strategy_registry
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Static fundamental fetcher (cached at module level for the backtest)

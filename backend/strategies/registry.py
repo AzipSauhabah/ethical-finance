@@ -12,7 +12,7 @@ import importlib
 import logging
 import pkgutil
 
-from api.strategies.base import Strategy
+from backend.strategies.base import Strategy
 
 log = logging.getLogger(__name__)
 

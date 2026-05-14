@@ -31,8 +31,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from api.strategies.base import Strategy
-from api.strategies.registry import strategy_registry
+from backend.strategies.base import Strategy
+from backend.strategies.registry import strategy_registry
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Buy & Hold

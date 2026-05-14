@@ -19,14 +19,14 @@ from functools import partial
 import numpy as np
 import pandas as pd
 
-from api.config import (
+from backend.config import (
     DATA_SOURCES,
     DEFAULT_PERIOD,
     LIVE_PRICE_CACHE_TTL,
     MAX_PERIOD_YEARS,
     PRICE_CACHE_TTL,
 )
-from api.core.cache import cache
+from backend.core.cache import cache
 
 log = logging.getLogger(__name__)
 

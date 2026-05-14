@@ -19,7 +19,7 @@ from typing import NamedTuple
 import numpy as np
 from scipy import stats
 
-from api.config import RISK_FREE_RATE
+from backend.config import RISK_FREE_RATE
 
 _ANN = 252.0
 

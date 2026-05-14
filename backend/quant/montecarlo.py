@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from api.config import MC_HORIZON_DAYS, MC_SIMULATIONS
+from backend.config import MC_HORIZON_DAYS, MC_SIMULATIONS
 
 log = logging.getLogger(__name__)
 
@@ -166,7 +166,7 @@ def calibrate_strategy(
         log.warning("scikit-optimize not installed — returning default params")
         return {k: (v[0] if isinstance(v, list) else v[0]) for k, v in param_space.items()}
 
-    from api.quant.metrics import calmar_ratio, sharpe_ratio, sortino_ratio
+    from backend.quant.metrics import calmar_ratio, sharpe_ratio, sortino_ratio
 
     _obj_map: dict[str, Callable] = {
         "sharpe": sharpe_ratio,

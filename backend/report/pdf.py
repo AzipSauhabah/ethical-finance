@@ -26,8 +26,8 @@ from __future__ import annotations
 import io
 from typing import Any
 
-from api.config import COPYRIGHT, DISCLAIMER
-from api.report.glossary import GLOSSARY
+from backend.config import COPYRIGHT, DISCLAIMER
+from backend.report.glossary import GLOSSARY
 
 # Goldman-inspired palette
 NAVY = "#142340"

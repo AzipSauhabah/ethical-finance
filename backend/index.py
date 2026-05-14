@@ -16,9 +16,9 @@ from fastapi import HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from api.app import app
-from api.backtest.engine import BacktestEngine
-from api.config import (
+from backend.app import app
+from backend.backtest.engine import BacktestEngine
+from backend.config import (
     API_VERSION,
     BENCHMARKS,
     COPYRIGHT,
@@ -26,17 +26,17 @@ from api.config import (
     DEFAULT_PERIOD,
     DISCLAIMER,
 )
-from api.core.data import get_fx_rate, get_live_quote, get_prices
-from api.core.queue import start_worker, subscribe, unsubscribe, watch
-from api.core.registry import registry, ticker_to_dict
-from api.quant.montecarlo import run_simulation
-from api.report.pdf import generate_pdf
-from api.report.tearsheet import build_tearsheet
-from api.signals.daily import compute_daily_signals
-from api.signals.rebalance import compute_rebalance_orders
-from api.strategies.base import StrategyParams
-from api.strategies.custom import build_custom_strategy
-from api.strategies.registry import strategy_registry
+from backend.core.data import get_fx_rate, get_live_quote, get_prices
+from backend.core.queue import start_worker, subscribe, unsubscribe, watch
+from backend.core.registry import registry, ticker_to_dict
+from backend.quant.montecarlo import run_simulation
+from backend.report.pdf import generate_pdf
+from backend.report.tearsheet import build_tearsheet
+from backend.signals.daily import compute_daily_signals
+from backend.signals.rebalance import compute_rebalance_orders
+from backend.strategies.base import StrategyParams
+from backend.strategies.custom import build_custom_strategy
+from backend.strategies.registry import strategy_registry
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("api")
