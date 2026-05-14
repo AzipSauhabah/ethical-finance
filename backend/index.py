@@ -229,18 +229,20 @@ async def run_backtest(payload: BacktestIn):
 
     # Always also fetch benchmark + VIX (EPR5 needs them; harmless otherwise)
     INDICATOR_TICKERS = {"^VIX", "^GSPC", "^FCHI", "^STOXX50E", "^GDAXI", "^N225"}
-    
+
     all_tickers = list(set(tickers + [payload.benchmark, "^VIX", "^GSPC"]))
     prices_full = await get_prices(all_tickers, period=payload.period)
-    
+
     bench_series = (
         prices_full[payload.benchmark] if payload.benchmark in prices_full.columns else None
     )
     # Exclut benchmark ET indicateurs du trading
-    strat_cols = [c for c in prices_full.columns if c not in INDICATOR_TICKERS and c != payload.benchmark]
+    strat_cols = [
+        c for c in prices_full.columns if c not in INDICATOR_TICKERS and c != payload.benchmark
+    ]
     # Garde une copie complète avec VIX+GSPC pour EPR5
     strat_prices = prices_full[[c for c in prices_full.columns if c not in {payload.benchmark}]]
-    
+
     if prices_full.empty:
         raise HTTPException(400, "No price data")
 
