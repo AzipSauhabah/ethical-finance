@@ -432,6 +432,14 @@ Non. Aucun secret commercial : pas de clés API en dur (uniquement env vars Verc
 
 ---
 
+## 📜 Code Coverage
+
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=AzipSauhabah_ethical-finance&metric=alert_status)](https://sonarcloud.io/dashboard?id=AzipSauhabah_ethical-finance)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=AzipSauhabah_ethical-finance&metric=coverage)](https://sonarcloud.io/dashboard?id=AzipSauhabah_ethical-finance)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=AzipSauhabah_ethical-finance&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=AzipSauhabah_ethical-finance)
+
+---
+
 ## 📄 Licence
 
 GPL-3.0 — © 2024 Sauhabah. Voir [LICENSE](LICENSE).
