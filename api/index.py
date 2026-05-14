@@ -4,12 +4,6 @@
 
 :copyright: 2024 Sauhabah — Ethical Finance Platform
 """
-
-import os
-import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), ".python_packages"))
-
 from __future__ import annotations
 
 import asyncio
