@@ -240,3 +240,39 @@ export default function BacktestPanel({ tickers }: Props) {
     </div>
   );
 }
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#444' }}>
+      <span style={{ marginBottom: '0.25rem' }}>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const input: React.CSSProperties = {
+  padding: '0.4rem',
+  border: '1px solid #ccc',
+  borderRadius: 4,
+  fontSize: '0.85rem',
+};
+
+const btnPrimary: React.CSSProperties = {
+  padding: '0.6rem 1.2rem',
+  background: '#142340',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 4,
+  cursor: 'pointer',
+  fontWeight: 600,
+};
+
+const btnGold: React.CSSProperties = {
+  padding: '0.6rem 1.2rem',
+  background: '#b8962f',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 4,
+  cursor: 'pointer',
+  fontWeight: 600,
+};
