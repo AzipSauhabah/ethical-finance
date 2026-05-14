@@ -14,12 +14,11 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v6
@@ -30,9 +29,9 @@ jobs:
         run: |
           pip install ruff black
 
-      - name: Ruff auto-fix
+      - name: Ruff auto-fix (max fixes)
         run: |
-          ruff check . --fix
+          ruff check . --fix --unsafe-fixes || true
 
       - name: Black format
         run: |
@@ -41,4 +40,4 @@ jobs:
       - name: Commit fixes
         uses: stefanzweifel/git-auto-commit-action@v6
         with:
-          commit_message: "chore: auto-fix lint"
+          commit_message: "chore: auto-fix ruff + black"
