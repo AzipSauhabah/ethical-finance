@@ -14,7 +14,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
-from api.app import app
+from app import app
 from api.backtest.engine import BacktestEngine
 from api.config import (
     API_VERSION,
