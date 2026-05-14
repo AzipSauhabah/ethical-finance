@@ -214,28 +214,52 @@ async def get_prices(
 
 
 async def get_live_quote(ticker: str) -> dict:
-    """Return latest bid/ask/last/volume for a single ticker.
-
-    :returns: dict with keys ``ticker``, ``last``, ``bid``, ``ask``,
-              ``volume``, ``change_pct``, ``timestamp``
-    """
+    """Return latest quote derived from OHLCV data (yf.info unreliable)."""
     cache_key = f"live:{ticker}"
     hit = await cache.get(cache_key)
     if hit:
         return hit
 
-    loop = asyncio.get_event_loop()
-    info = await loop.run_in_executor(None, partial(_yf_info_sync, ticker))
+    try:
+        loop = asyncio.get_event_loop()
+        df = await loop.run_in_executor(
+            None,
+            partial(yf.download, ticker, period="5d", interval="1d",
+                    auto_adjust=True, progress=False)
+        )
+        if df.empty:
+            raise ValueError("empty")
+
+        # Aplatit les colonnes MultiIndex si nécessaire
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [col[0] for col in df.columns]
+
+        last  = float(df["Close"].iloc[-1])
+        prev  = float(df["Close"].iloc[-2]) if len(df) >= 2 else last
+        vol   = int(df["Volume"].iloc[-1])
+        chg   = (last - prev) / prev * 100 if prev else 0.0
+        high  = float(df["High"].iloc[-1])
+        low   = float(df["Low"].iloc[-1])
+
+        # Bid/Ask estimés depuis High/Low du jour
+        bid = round(low, 2)
+        ask = round(high, 2)
+
+        info = await loop.run_in_executor(None, partial(_yf_info_sync, ticker))
+        currency = info.get("currency", "USD")
+
+    except Exception:
+        last, bid, ask, vol, chg, currency = 0.0, 0.0, 0.0, 0, 0.0, "USD"
 
     quote = {
         "ticker": ticker,
-        "last": info.get("regularMarketPrice", info.get("currentPrice", 0.0)),
-        "bid": info.get("bid", 0.0),
-        "ask": info.get("ask", 0.0),
-        "volume": info.get("regularMarketVolume", 0),
-        "change_pct": info.get("regularMarketChangePercent", 0.0),
+        "last": round(last, 2),
+        "bid": bid,
+        "ask": ask,
+        "volume": vol,
+        "change_pct": round(chg, 4),
         "timestamp": pd.Timestamp.utcnow().isoformat(),
-        "currency": info.get("currency", "USD"),
+        "currency": currency,
     }
     await cache.set(cache_key, quote, LIVE_PRICE_CACHE_TTL)
     return quote
