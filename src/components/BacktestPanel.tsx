@@ -293,7 +293,7 @@ function BacktestResults({ result }: { result: Tearsheet }) {
         <div>Sortino: {m.sortino_ratio.toFixed(2)}</div>
         <div>Calmar: {m.calmar_ratio.toFixed(2)}</div>
         <div>Vol: {pct(m.annualised_volatility)}</div>
-        <div>Beta: {m.beta.toFixed(2)}</div>
+        <div>Beta: {m.beta?.toFixed(2) ?? 'N/A'}</div>
       </div>
 
       {result.nav_chart && result.nav_chart.length > 0 && (
