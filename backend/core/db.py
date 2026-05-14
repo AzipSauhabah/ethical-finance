@@ -13,9 +13,10 @@ log = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 # SQLAlchemy a besoin de postgresql+asyncpg://
+
 ASYNC_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://").replace(
     "postgresql://", "postgresql+asyncpg://"
-)
+).replace("?sslmode=disable", "").replace("&sslmode=disable", "")
 
 engine = create_async_engine(ASYNC_URL, pool_size=5, max_overflow=10, echo=False)
 
