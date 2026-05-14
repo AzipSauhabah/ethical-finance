@@ -191,7 +191,7 @@ export default function BacktestPanel({ tickers }: Props) {
           <input
             type="number"
             step="0.01"
-            value={params.stop_loss_pct}
+            value={params.stop_loss_pct ?? ''}
             onChange={(e) =>
               setParams({
                 ...params,
@@ -276,3 +276,21 @@ const btnGold: React.CSSProperties = {
   cursor: 'pointer',
   fontWeight: 600,
 };
+
+function BacktestResults({ result }: { result: Tearsheet }) {
+  const m = result.metrics;
+  const pct = (v: number) => (v * 100).toFixed(2) + '%';
+
+  return (
+    <div>
+      <h3 style={{ color: '#b8962f' }}>Résultats</h3>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem' }}>
+        <div>Return: {pct(m.total_return)}</div>
+        <div>CAGR: {pct(m.cagr)}</div>
+        <div>Sharpe: {m.sharpe_ratio.toFixed(2)}</div>
+        <div>Max DD: {pct(m.max_drawdown)}</div>
+      </div>
+    </div>
+  );
+}
