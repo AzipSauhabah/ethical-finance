@@ -12,9 +12,9 @@ import json
 import logging
 from datetime import date
 
+from app import app
 from pydantic import BaseModel, Field
 
-from app import app
 from api.backtest.engine import BacktestEngine
 from api.config import (
     API_VERSION,
