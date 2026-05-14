@@ -6,28 +6,19 @@ from datetime import date
 
 import pandas as pd
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
 log = logging.getLogger(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
-# SQLAlchemy a besoin de postgresql+asyncpg://
-
-ASYNC_URL = (
-    DATABASE_URL.replace("postgres://", "postgresql+asyncpg://")
-    .replace("postgresql://", "postgresql+asyncpg://")
-    .replace("?sslmode=disable", "")
-    .replace("&sslmode=disable", "")
+SYNC_URL = (
+    DATABASE_URL
+    .replace("postgres://", "postgresql+psycopg2://")
+    .replace("postgresql://", "postgresql+psycopg2://")
 )
 
-engine = create_async_engine(
-    ASYNC_URL,
-    pool_size=5,
-    max_overflow=10,
-    echo=False,
-    connect_args={"ssl": None},
-)
+engine = create_engine(SYNC_URL, pool_size=5, max_overflow=10, echo=False)
 
 
 class Base(DeclarativeBase):
@@ -47,40 +38,45 @@ class OHLCVRow(Base):
     adj_close: Mapped[float] = mapped_column(sa.Float, nullable=True)
     volume: Mapped[int] = mapped_column(sa.BigInteger, nullable=True)
 
-    __table_args__ = (sa.UniqueConstraint("ticker", "date", name="uq_ticker_date"),)
+    __table_args__ = (
+        sa.UniqueConstraint("ticker", "date", name="uq_ticker_date"),
+    )
 
 
 async def init_db() -> None:
     """Crée les tables si elles n'existent pas."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    import asyncio
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _init_db_sync)
     log.info("DB initialized")
 
 
-async def upsert_ohlcv(df: pd.DataFrame, ticker: str) -> int:
-    """Insère ou met à jour les données OHLCV pour un ticker.
+def _init_db_sync() -> None:
+    Base.metadata.create_all(engine)
 
-    :param df: DataFrame avec colonnes Open, High, Low, Close, Adj Close, Volume
-    :param ticker: symbole du ticker
-    :returns: nombre de lignes insérées/mises à jour
-    """
+
+async def upsert_ohlcv(df: pd.DataFrame, ticker: str) -> int:
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: _upsert_sync(df, ticker))
+
+
+def _upsert_sync(df: pd.DataFrame, ticker: str) -> int:
     if df.empty:
         return 0
 
     rows = []
     for idx, row in df.iterrows():
-        rows.append(
-            {
-                "ticker": ticker,
-                "date": idx.date() if hasattr(idx, "date") else idx,
-                "open": float(row.get("Open", 0) or 0),
-                "high": float(row.get("High", 0) or 0),
-                "low": float(row.get("Low", 0) or 0),
-                "close": float(row.get("Close", 0) or 0),
-                "adj_close": float(row.get("Adj Close", row.get("Close", 0)) or 0),
-                "volume": int(row.get("Volume", 0) or 0),
-            }
-        )
+        rows.append({
+            "ticker": ticker,
+            "date": idx.date() if hasattr(idx, "date") else idx,
+            "open": float(row.get("Open", 0) or 0),
+            "high": float(row.get("High", 0) or 0),
+            "low": float(row.get("Low", 0) or 0),
+            "close": float(row.get("Close", 0) or 0),
+            "adj_close": float(row.get("Adj Close", row.get("Close", 0)) or 0),
+            "volume": int(row.get("Volume", 0) or 0),
+        })
 
     stmt = sa.dialects.postgresql.insert(OHLCVRow).values(rows)
     stmt = stmt.on_conflict_do_update(
@@ -95,27 +91,27 @@ async def upsert_ohlcv(df: pd.DataFrame, ticker: str) -> int:
         },
     )
 
-    async with AsyncSession(engine) as session:
-        await session.execute(stmt)
-        await session.commit()
+    with Session(engine) as session:
+        session.execute(stmt)
+        session.commit()
 
     return len(rows)
 
 
 async def get_ohlcv(tickers: list[str], start: date, end: date) -> pd.DataFrame:
-    """Récupère les données OHLCV depuis la DB pour une liste de tickers.
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: _get_ohlcv_sync(tickers, start, end))
 
-    :returns: DataFrame avec index date et colonnes = tickers (Adj Close)
-    """
-    async with AsyncSession(engine) as session:
-        result = await session.execute(
-            sa.select(OHLCVRow)
-            .where(
+
+def _get_ohlcv_sync(tickers: list[str], start: date, end: date) -> pd.DataFrame:
+    with Session(engine) as session:
+        result = session.execute(
+            sa.select(OHLCVRow).where(
                 OHLCVRow.ticker.in_(tickers),
                 OHLCVRow.date >= start,
                 OHLCVRow.date <= end,
-            )
-            .order_by(OHLCVRow.date)
+            ).order_by(OHLCVRow.date)
         )
         rows = result.scalars().all()
 
@@ -131,16 +127,28 @@ async def get_ohlcv(tickers: list[str], start: date, end: date) -> pd.DataFrame:
 
 
 async def get_last_date(ticker: str) -> date | None:
-    """Retourne la dernière date disponible en DB pour un ticker."""
-    async with AsyncSession(engine) as session:
-        result = await session.execute(
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: _get_last_date_sync(ticker))
+
+
+def _get_last_date_sync(ticker: str) -> date | None:
+    with Session(engine) as session:
+        result = session.execute(
             sa.select(sa.func.max(OHLCVRow.date)).where(OHLCVRow.ticker == ticker)
         )
         return result.scalar()
 
 
 async def get_tickers_in_db() -> list[str]:
-    """Retourne la liste des tickers présents en DB."""
-    async with AsyncSession(engine) as session:
-        result = await session.execute(sa.select(OHLCVRow.ticker).distinct())
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _get_tickers_sync)
+
+
+def _get_tickers_sync() -> list[str]:
+    with Session(engine) as session:
+        result = session.execute(
+            sa.select(OHLCVRow.ticker).distinct()
+        )
         return [r[0] for r in result.all()]
