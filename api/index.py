@@ -12,9 +12,7 @@ import json
 import logging
 from datetime import date
 
-from fastapi import FastAPI, HTTPException, Query, Response
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from api.app import app
 from pydantic import BaseModel, Field
 
 from api.backtest.engine import BacktestEngine
@@ -42,13 +40,6 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("api")
 
 strategy_registry.auto_discover()
-
-app = FastAPI(
-    title="Ethical Finance Platform API",
-    version=API_VERSION,
-    description="Sauhabah — Backtest, signals & reporting engine",
-)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 @app.on_event("startup")
