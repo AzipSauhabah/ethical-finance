@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import date, timedelta
+from datetime import date
 
 import pandas as pd
 import sqlalchemy as sa
@@ -37,9 +37,7 @@ class OHLCVRow(Base):
     adj_close: Mapped[float] = mapped_column(sa.Float, nullable=True)
     volume: Mapped[int] = mapped_column(sa.BigInteger, nullable=True)
 
-    __table_args__ = (
-        sa.UniqueConstraint("ticker", "date", name="uq_ticker_date"),
-    )
+    __table_args__ = (sa.UniqueConstraint("ticker", "date", name="uq_ticker_date"),)
 
 
 async def init_db() -> None:
@@ -51,7 +49,7 @@ async def init_db() -> None:
 
 async def upsert_ohlcv(df: pd.DataFrame, ticker: str) -> int:
     """Insère ou met à jour les données OHLCV pour un ticker.
-    
+
     :param df: DataFrame avec colonnes Open, High, Low, Close, Adj Close, Volume
     :param ticker: symbole du ticker
     :returns: nombre de lignes insérées/mises à jour
@@ -61,16 +59,18 @@ async def upsert_ohlcv(df: pd.DataFrame, ticker: str) -> int:
 
     rows = []
     for idx, row in df.iterrows():
-        rows.append({
-            "ticker": ticker,
-            "date": idx.date() if hasattr(idx, "date") else idx,
-            "open": float(row.get("Open", 0) or 0),
-            "high": float(row.get("High", 0) or 0),
-            "low": float(row.get("Low", 0) or 0),
-            "close": float(row.get("Close", 0) or 0),
-            "adj_close": float(row.get("Adj Close", row.get("Close", 0)) or 0),
-            "volume": int(row.get("Volume", 0) or 0),
-        })
+        rows.append(
+            {
+                "ticker": ticker,
+                "date": idx.date() if hasattr(idx, "date") else idx,
+                "open": float(row.get("Open", 0) or 0),
+                "high": float(row.get("High", 0) or 0),
+                "low": float(row.get("Low", 0) or 0),
+                "close": float(row.get("Close", 0) or 0),
+                "adj_close": float(row.get("Adj Close", row.get("Close", 0)) or 0),
+                "volume": int(row.get("Volume", 0) or 0),
+            }
+        )
 
     stmt = sa.dialects.postgresql.insert(OHLCVRow).values(rows)
     stmt = stmt.on_conflict_do_update(
@@ -94,16 +94,18 @@ async def upsert_ohlcv(df: pd.DataFrame, ticker: str) -> int:
 
 async def get_ohlcv(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     """Récupère les données OHLCV depuis la DB pour une liste de tickers.
-    
+
     :returns: DataFrame avec index date et colonnes = tickers (Adj Close)
     """
     async with AsyncSession(engine) as session:
         result = await session.execute(
-            sa.select(OHLCVRow).where(
+            sa.select(OHLCVRow)
+            .where(
                 OHLCVRow.ticker.in_(tickers),
                 OHLCVRow.date >= start,
                 OHLCVRow.date <= end,
-            ).order_by(OHLCVRow.date)
+            )
+            .order_by(OHLCVRow.date)
         )
         rows = result.scalars().all()
 
@@ -130,7 +132,5 @@ async def get_last_date(ticker: str) -> date | None:
 async def get_tickers_in_db() -> list[str]:
     """Retourne la liste des tickers présents en DB."""
     async with AsyncSession(engine) as session:
-        result = await session.execute(
-            sa.select(OHLCVRow.ticker).distinct()
-        )
+        result = await session.execute(sa.select(OHLCVRow.ticker).distinct())
         return [r[0] for r in result.all()]
