@@ -5,7 +5,7 @@
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "installCommand": "pip install -r api/requirements.txt"
+        "installCommand": "pip install -r api/requirements.txt --target=.python_packages"
       }
     }
   ]
