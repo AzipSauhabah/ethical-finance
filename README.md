@@ -1,4 +1,4 @@
-# 🚀 Ethical Finance Platform — Sauhabah
+# 🚀 Ethical Finance Platform — A Sauhabah
 
 > Backtest event-driven, screening **Ethical + Sharia**, reporting institutionnel.
 > Stack full-Python / React / Vercel, niveau quant institutionnel.
