@@ -284,19 +284,26 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
 async def _fetch_fundamentals_db(ticker: str) -> dict | None:
     """Fetch fundamentals from Supabase DB."""
     import os
+
     db_url = os.environ.get("DATABASE_URL", "")
     if not db_url:
         return None
     try:
         import psycopg2
-        sync_url = db_url.replace("postgresql+psycopg2://", "postgresql://").replace("postgres://", "postgresql://")
+
+        sync_url = db_url.replace("postgresql+psycopg2://", "postgresql://").replace(
+            "postgres://", "postgresql://"
+        )
         conn = psycopg2.connect(sync_url)
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT name, sector, industry, country, currency, exchange,
                    market_cap, beta, dividend_yield, total_debt, total_revenue
             FROM ticker_fundamentals WHERE ticker = %s
-        """, (ticker,))
+        """,
+            (ticker,),
+        )
         row = cur.fetchone()
         cur.close()
         conn.close()
