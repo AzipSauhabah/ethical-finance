@@ -76,7 +76,7 @@ def _fx_convert(
 
 
 def _target_shares(weight: float, nav_eur: float, price_eur: float, cap: float) -> int:
-    if price_eur <= 0:
+    if not price_eur or price_eur <= 0 or price_eur != price_eur:
         return 0
     capped = min(weight, cap)
     return int((nav_eur * capped) // price_eur)
