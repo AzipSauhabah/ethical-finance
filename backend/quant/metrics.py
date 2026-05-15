@@ -177,6 +177,7 @@ def cvar_historical(r: Sequence[float], confidence: float = 0.95) -> float:
 def var_parametric(r: Sequence[float], confidence: float = 0.95) -> float:
     """Gaussian parametric VaR."""
     import math
+
     arr = _to_arr(r)
     mu, sigma = float(np.mean(arr)), float(np.std(arr, ddof=1))
     # Approximation of norm.ppf using erfinv
@@ -184,14 +185,17 @@ def var_parametric(r: Sequence[float], confidence: float = 0.95) -> float:
     z = math.sqrt(2) * _erfinv(2 * p - 1)
     return float(-(mu + z * sigma))
 
+
 def _erfinv(x: float) -> float:
     """Approximation of the inverse error function."""
     import math
+
     a = 0.147
     ln = math.log(1 - x * x)
     t1 = 2 / (math.pi * a) + ln / 2
     t2 = ln / a
     return math.copysign(math.sqrt(math.sqrt(t1 * t1 - t2) - t1), x)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Distribution & tail risk
@@ -221,7 +225,7 @@ def excess_kurtosis(r: Sequence[float]) -> float:
     sigma = arr.std(ddof=1)
     if sigma == 0:
         return 0.0
-    kurt = float(((arr - mu) ** 4).mean() / sigma ** 4)
+    kurt = float(((arr - mu) ** 4).mean() / sigma**4)
     return kurt - 3.0
 
 
