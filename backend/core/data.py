@@ -284,6 +284,7 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
 async def _fetch_fundamentals_db(ticker: str) -> dict | None:
     """Fetch fundamentals from Supabase REST API."""
     import os
+
     import httpx
 
     supabase_url = os.environ.get("SUPABASE_URL", "")
@@ -321,8 +322,10 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
             }
     except Exception as e:
         import logging
+
         logging.getLogger("api").warning("DB fundamentals failed for %s: %s", ticker, e)
     return None
+
 
 async def _fetch_fundamentals_httpx(ticker: str) -> dict:
     """Fetch fundamentals via Yahoo Finance API with rotating User-Agents."""
