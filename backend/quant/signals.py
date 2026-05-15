@@ -214,9 +214,11 @@ def ml_signal_gbm(
     if n_train < 50:
         return pd.Series(0, index=prices.index)
 
-    clf = lgb.LGBMClassifier(n_estimators=300, max_depth=4, random_state=42, boosting_type='gbdt', verbose=-1)
+    clf = lgb.LGBMClassifier(
+        n_estimators=300, max_depth=4, random_state=42, boosting_type="gbdt", verbose=-1
+    )
     clf.fit(X.iloc[:n_train].values, y[:n_train])
-        
+
     preds = clf.predict(X.iloc[n_train:])
 
     sig = pd.Series(0, index=prices.index)
