@@ -250,7 +250,9 @@ async def get_prices(
     cache_key = f"prices:{':'.join(sorted(tickers))}:{start}:{end}"
     cached_df = await cache.get(cache_key)
     if cached_df is not None:
-        import io; return pd.read_json(io.StringIO(cached_df))
+        import io
+
+        return pd.read_json(io.StringIO(cached_df))
 
     # Essaie Supabase en priorité
     df = await _fetch_prices_supabase(tickers, start, end)
