@@ -34,6 +34,20 @@ import pandas as pd
 from backend.strategies.base import Strategy
 from backend.strategies.registry import strategy_registry
 
+def _min_variance_numpy(cov: np.ndarray, max_w: float = 0.25, n_iter: int = 500) -> np.ndarray:
+    """Min variance optimization via projected gradient descent."""
+    n = cov.shape[0]
+    w = np.ones(n) / n
+    lr = 0.01
+    for _ in range(n_iter):
+        grad = 2 * cov @ w
+        w = w - lr * grad
+        # Project onto simplex with bounds [0, max_w]
+        w = np.clip(w, 0, max_w)
+        s = w.sum()
+        if s > 0:
+            w = w / s
+    return w
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Buy & Hold
 # ─────────────────────────────────────────────────────────────────────────────
@@ -262,17 +276,8 @@ class MinVarianceStrategy(Strategy):
         n = cov.shape[0]
 
         try:
-            from scipy.optimize import minimize
-
-            res = minimize(
-                lambda w: float(w @ cov @ w),
-                np.ones(n) / n,
-                method="SLSQP",
-                bounds=[(0, params.max_position_pct)] * n,
-                constraints={"type": "eq", "fun": lambda w: w.sum() - 1},
-                options={"maxiter": 200},
-            )
-            w_opt = res.x if res.success else np.ones(n) / n
+            # Gradient descent numpy pour Min Variance
+            w_opt = _min_variance_numpy(cov, params.max_position_pct)
         except Exception:
             w_opt = np.ones(n) / n
 
@@ -395,7 +400,7 @@ class MLEnsembleStrategy(Strategy):
 
         # Refit
         try:
-            from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+            import lightgbm as lgb
         except ImportError:
             return {}
 
@@ -410,8 +415,14 @@ class MLEnsembleStrategy(Strategy):
             y_train = y[:-5]
             if len(X_train) < 50:
                 continue
-            rf = RandomForestClassifier(n_estimators=100, max_depth=4, random_state=42, n_jobs=-1)
-            gbm = HistGradientBoostingClassifier(max_iter=100, max_depth=4, random_state=42)
+            rf = lgb.LGBMClassifier(
+                n_estimators=100, max_depth=4, random_state=42,
+                n_jobs=-1, verbose=-1
+            )
+            gbm = lgb.LGBMClassifier(
+                n_estimators=100, max_depth=4, random_state=42,
+                boosting_type='gbdt', verbose=-1
+            )
             rf.fit(X_train, y_train)
             gbm.fit(X_train, y_train)
             models[col] = (rf, gbm)
@@ -427,7 +438,7 @@ class MLEnsembleStrategy(Strategy):
             if X.empty:
                 continue
             feat = X.iloc[[-1]]
-            vote = int(rf.predict(feat)[0]) + int(gbm.predict(feat)[0])
+            vote = int(rf.predict(feat.values)[0]) + int(gbm.predict(feat.values)[0])
             if vote >= 2:
                 longs.append(col)
         if not longs:
