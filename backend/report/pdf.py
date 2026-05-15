@@ -361,10 +361,14 @@ def generate_pdf(tearsheet: dict) -> bytes:
     def fmt_eur(v):
         return "N/A" if v is None else f"{v:,.2f} €".replace(",", " ")
 
-    def png_image(data: bytes, width_cm: float = 17.0):
+    def png_image(data, width_cm: float = 17.0):
+        if data is None:
+            return Spacer(1, 0.1 * cm)
         return Image(io.BytesIO(data), width=width_cm * cm, height=width_cm * cm * 0.45)
 
-    def small_png(data: bytes, width_cm: float = 11.0):
+    def small_png(data, width_cm: float = 11.0):
+        if data is None:
+            return Spacer(1, 0.1 * cm)
         return Image(io.BytesIO(data), width=width_cm * cm, height=width_cm * cm * 0.7)
 
     meta = tearsheet["meta"]
@@ -455,7 +459,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
             body_s,
         ),
         Spacer(1, 0.3 * cm),
-        png_image(_chart_drawdown(dd_ch)),
+        *([png_image(img)] if (img := _chart_drawdown(dd_ch)) else []),
         PageBreak(),
     ]
 
@@ -503,7 +507,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Paragraph("Tests de résistance historiques", section_s),
         HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
         Spacer(1, 0.3 * cm),
-        png_image(_chart_stress_bars(stress)),
+        *([png_image(img)] if (img := _chart_stress_bars(stress)) else []),
         Spacer(1, 0.3 * cm),
     ]
     if stress:
@@ -530,7 +534,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Paragraph("Évolution des coûts dans le temps", section_s),
         HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
         Spacer(1, 0.3 * cm),
-        png_image(_chart_costs(cost_ch)),
+        *([png_image(img)] if (img := _chart_costs(cost_ch)) else []),
         Spacer(1, 0.3 * cm),
         Paragraph(
             f"<b>Coûts totaux :</b> {fmt_eur(costs.get('total_costs_eur'))}  ·  "
@@ -546,7 +550,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Paragraph("Décomposition des coûts", section_s),
         HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
         Spacer(1, 0.3 * cm),
-        small_png(_chart_cost_breakdown(breakd)),
+        *([small_png(img)] if (img := _chart_cost_breakdown(breakd)) else []),
         Spacer(1, 0.3 * cm),
     ]
     cb_data = [
@@ -566,7 +570,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Paragraph("Allocation Cash vs Investi", section_s),
         HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
         Spacer(1, 0.3 * cm),
-        png_image(_chart_allocation(alloc_ch)),
+        *([png_image(img)] if (img := _chart_allocation(alloc_ch)) else []),
         PageBreak(),
     ]
 
