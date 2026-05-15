@@ -32,7 +32,7 @@ try:
     os.environ["KALEIDO_SCOPE_PLOTLY"] = "1"
 except ImportError:
     pass
-  
+
 import io
 from typing import Any
 
