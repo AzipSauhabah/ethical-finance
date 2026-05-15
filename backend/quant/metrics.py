@@ -176,12 +176,22 @@ def cvar_historical(r: Sequence[float], confidence: float = 0.95) -> float:
 
 def var_parametric(r: Sequence[float], confidence: float = 0.95) -> float:
     """Gaussian parametric VaR."""
-    from scipy.stats import norm  # lazy import
-
+    import math
     arr = _to_arr(r)
     mu, sigma = float(np.mean(arr)), float(np.std(arr, ddof=1))
-    return float(-(mu + norm.ppf(1 - confidence) * sigma))
+    # Approximation of norm.ppf using erfinv
+    p = 1 - confidence
+    z = math.sqrt(2) * _erfinv(2 * p - 1)
+    return float(-(mu + z * sigma))
 
+def _erfinv(x: float) -> float:
+    """Approximation of the inverse error function."""
+    import math
+    a = 0.147
+    ln = math.log(1 - x * x)
+    t1 = 2 / (math.pi * a) + ln / 2
+    t2 = ln / a
+    return math.copysign(math.sqrt(math.sqrt(t1 * t1 - t2) - t1), x)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Distribution & tail risk
@@ -189,15 +199,30 @@ def var_parametric(r: Sequence[float], confidence: float = 0.95) -> float:
 
 
 def skewness(r: Sequence[float]) -> float:
-    from scipy.stats import skew
-
-    return float(skew(_to_arr(r)))
+    """Fisher-Pearson skewness coefficient."""
+    arr = _to_arr(r)
+    n = len(arr)
+    if n < 3:
+        return 0.0
+    mu = arr.mean()
+    sigma = arr.std(ddof=1)
+    if sigma == 0:
+        return 0.0
+    return float(n / ((n - 1) * (n - 2)) * ((((arr - mu) / sigma) ** 3).sum()))
 
 
 def excess_kurtosis(r: Sequence[float]) -> float:
-    from scipy.stats import kurtosis
-
-    return float(kurtosis(_to_arr(r)))
+    """Excess kurtosis (Fisher definition, normal = 0)."""
+    arr = _to_arr(r)
+    n = len(arr)
+    if n < 4:
+        return 0.0
+    mu = arr.mean()
+    sigma = arr.std(ddof=1)
+    if sigma == 0:
+        return 0.0
+    kurt = float(((arr - mu) ** 4).mean() / sigma ** 4)
+    return kurt - 3.0
 
 
 def tail_ratio(r: Sequence[float], pct: float = 0.05) -> float:
