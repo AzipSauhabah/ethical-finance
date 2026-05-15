@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +26,7 @@ app.add_middleware(
 # Scheduler optionnel — uniquement sur Docker/Fly.io, pas sur Vercel serverless
 try:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
     scheduler = AsyncIOScheduler()
     HAS_SCHEDULER = True
 except ImportError:
@@ -37,6 +37,7 @@ except ImportError:
 @app.on_event("startup")
 async def _startup() -> None:
     import asyncio
+
     from backend.core.queue import start_worker
 
     start_worker()
@@ -44,6 +45,7 @@ async def _startup() -> None:
 
     if HAS_SCHEDULER and scheduler:
         from backend.core.loader import daily_update
+
         scheduler.add_job(daily_update, "cron", hour=21, minute=0, timezone="UTC")
         scheduler.start()
         log.info("Scheduler started — daily update at 21:00 UTC")
@@ -52,6 +54,7 @@ async def _startup() -> None:
 
 async def _init_and_load() -> None:
     import asyncio
+
     from backend.core.db import get_tickers_in_db, init_db
     from backend.core.loader import load_all_tickers
 
