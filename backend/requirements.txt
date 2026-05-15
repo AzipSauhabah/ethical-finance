@@ -10,3 +10,4 @@ pandas-datareader==0.10.0
 reportlab==4.2.5
 plotly==5.22.0
 kaleido==0.4.1
+psycopg2-binary==2.9.9
