@@ -169,17 +169,15 @@ def ml_signal_rf(
     :param threshold: minimum return to trigger a buy/sell (dead-band)
     """
     try:
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.preprocessing import label_binarize
+        import lightgbm as lgb
     except ImportError:
-        log.warning("sklearn not available — returning zero signal")
+        log.warning("lightgbm not available — returning zero signal")
         return pd.Series(0, index=prices.index)
 
     X = build_features(prices)
     fwd_ret = prices.shift(-forward_days).pct_change(forward_days).reindex(X.index)
     y = np.where(fwd_ret > threshold, 1, np.where(fwd_ret < -threshold, -1, 0))
 
-    # Walk-forward split: train on first 70 %, predict on rest
     n_train = int(len(X) * 0.70)
     if n_train < 50:
         return pd.Series(0, index=prices.index)
@@ -187,9 +185,9 @@ def ml_signal_rf(
     X_tr, X_te = X.iloc[:n_train], X.iloc[n_train:]
     y_tr = y[:n_train]
 
-    clf = RandomForestClassifier(n_estimators=200, max_depth=5, random_state=42, n_jobs=-1)
-    clf.fit(X_tr, y_tr)
-    preds = clf.predict(X_te)
+    clf = lgb.LGBMClassifier(n_estimators=200, max_depth=5, random_state=42, n_jobs=-1, verbose=-1)
+    clf.fit(X_tr.values, y_tr)
+    preds = clf.predict(X_te.values)
 
     sig = pd.Series(0, index=prices.index)
     sig.iloc[n_train:] = preds
@@ -203,9 +201,9 @@ def ml_signal_gbm(
 ) -> pd.Series:
     """Gradient Boosted Trees (sklearn HistGradientBoosting) signal."""
     try:
-        from sklearn.ensemble import HistGradientBoostingClassifier
+        import lightgbm as lgb
     except ImportError:
-        log.warning("sklearn not available — returning zero signal")
+        log.warning("lightgbm not available — returning zero signal")
         return pd.Series(0, index=prices.index)
 
     X = build_features(prices)
@@ -216,8 +214,9 @@ def ml_signal_gbm(
     if n_train < 50:
         return pd.Series(0, index=prices.index)
 
-    clf = HistGradientBoostingClassifier(max_iter=300, max_depth=4, random_state=42)
-    clf.fit(X.iloc[:n_train], y[:n_train])
+    clf = lgb.LGBMClassifier(n_estimators=300, max_depth=4, random_state=42, boosting_type='gbdt', verbose=-1)
+    clf.fit(X.iloc[:n_train].values, y[:n_train])
+        
     preds = clf.predict(X.iloc[n_train:])
 
     sig = pd.Series(0, index=prices.index)
