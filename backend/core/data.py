@@ -282,52 +282,47 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
 
 
 async def _fetch_fundamentals_db(ticker: str) -> dict | None:
-    """Fetch fundamentals from Supabase DB."""
+    """Fetch fundamentals from Supabase REST API."""
     import os
+    import httpx
 
-    db_url = os.environ.get("DATABASE_URL", "")
-    if not db_url:
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
+    if not supabase_url or not supabase_key:
         return None
-    try:
-        import psycopg2
 
-        sync_url = db_url.replace("postgresql+psycopg2://", "postgresql://").replace(
-            "postgres://", "postgresql://"
-        )
-        conn = psycopg2.connect(sync_url)
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT name, sector, industry, country, currency, exchange,
-                   market_cap, beta, dividend_yield, total_debt, total_revenue
-            FROM ticker_fundamentals WHERE ticker = %s
-        """,
-            (ticker,),
-        )
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
-        if row:
+    try:
+        url = f"{supabase_url}/rest/v1/ticker_fundamentals"
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+        }
+        params = {"ticker": f"eq.{ticker}", "select": "*", "limit": "1"}
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(url, headers=headers, params=params)
+            if r.status_code != 200 or not r.json():
+                return None
+            row = r.json()[0]
             return {
                 "ticker": ticker,
-                "name": row[0] or ticker,
-                "sector": row[1] or "",
-                "industry": row[2] or "",
-                "country": row[3] or "",
-                "currency": row[4] or "USD",
-                "exchange": row[5] or "",
-                "market_cap": int(row[6] or 0),
-                "beta": float(row[7] or 1.0),
-                "dividend_yield": float(row[8] or 0.0),
-                "total_debt": int(row[9] or 0),
-                "total_revenue": int(row[10] or 0),
+                "name": row.get("name") or ticker,
+                "sector": row.get("sector") or "",
+                "industry": row.get("industry") or "",
+                "country": row.get("country") or "",
+                "currency": row.get("currency") or "USD",
+                "exchange": row.get("exchange") or "",
+                "market_cap": int(row.get("market_cap") or 0),
+                "beta": float(row.get("beta") or 1.0),
+                "dividend_yield": float(row.get("dividend_yield") or 0.0),
+                "total_debt": int(row.get("total_debt") or 0),
+                "total_revenue": int(row.get("total_revenue") or 0),
                 "interest_expense": 0,
                 "esg_scores": {},
             }
     except Exception as e:
-        log.warning("DB fundamentals failed for %s: %s", ticker, e)
+        import logging
+        logging.getLogger("api").warning("DB fundamentals failed for %s: %s", ticker, e)
     return None
-
 
 async def _fetch_fundamentals_httpx(ticker: str) -> dict:
     """Fetch fundamentals via Yahoo Finance API with rotating User-Agents."""
