@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+import os
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 app = FastAPI(
     title="Ethical Finance Platform API",
     version=API_VERSION,
-    description=" Backtest, signals & reporting engine",
+    description="Sauhabah — Backtest, signals & reporting engine",
 )
 
 app.add_middleware(
@@ -24,36 +24,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-scheduler = AsyncIOScheduler()
+# Scheduler optionnel — uniquement sur Docker/Fly.io, pas sur Vercel serverless
+try:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    scheduler = AsyncIOScheduler()
+    HAS_SCHEDULER = True
+except ImportError:
+    scheduler = None
+    HAS_SCHEDULER = False
 
 
 @app.on_event("startup")
 async def _startup() -> None:
     import asyncio
+    from backend.core.queue import start_worker
 
-    from backend.core.loader import daily_update
+    start_worker()
+    log.info("API ready — strategies loaded")
 
-    # Cron job quotidien à 21h UTC
-    scheduler.add_job(daily_update, "cron", hour=21, minute=0, timezone="UTC")
-    scheduler.start()
-    log.info("Scheduler started — daily update at 21:00 UTC")
-
-    # DB init et chargement en arrière-plan — ne bloque pas le démarrage
-    asyncio.create_task(_init_and_load())
+    if HAS_SCHEDULER and scheduler:
+        from backend.core.loader import daily_update
+        scheduler.add_job(daily_update, "cron", hour=21, minute=0, timezone="UTC")
+        scheduler.start()
+        log.info("Scheduler started — daily update at 21:00 UTC")
+        asyncio.create_task(_init_and_load())
 
 
 async def _init_and_load() -> None:
     import asyncio
-
     from backend.core.db import get_tickers_in_db, init_db
     from backend.core.loader import load_all_tickers
 
-    await asyncio.sleep(5)  # laisse uvicorn démarrer complètement
+    await asyncio.sleep(5)
     try:
         await init_db()
         tickers_in_db = await get_tickers_in_db()
         if len(tickers_in_db) < 10:
-            log.info("First boot — loading full universe (this takes ~10 min)")
+            log.info("First boot — loading full universe")
             await load_all_tickers(years=20)
         else:
             log.info("DB already populated with %d tickers", len(tickers_in_db))
@@ -63,4 +70,5 @@ async def _init_and_load() -> None:
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
-    scheduler.shutdown()
+    if HAS_SCHEDULER and scheduler:
+        scheduler.shutdown()
