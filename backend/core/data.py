@@ -283,8 +283,9 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
 
 async def _fetch_fundamentals_httpx(ticker: str) -> dict:
     """Fetch fundamentals via Yahoo Finance API with rotating User-Agents."""
-    import httpx
     import random
+
+    import httpx
 
     USER_AGENTS = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
@@ -301,10 +302,20 @@ async def _fetch_fundamentals_httpx(ticker: str) -> dict:
     }
 
     empty = {
-        "ticker": ticker, "name": ticker, "sector": "", "industry": "",
-        "market_cap": 0, "total_debt": 0, "total_revenue": 0,
-        "interest_expense": 0, "esg_scores": {}, "currency": "USD",
-        "exchange": "", "country": "", "dividend_yield": 0.0, "beta": 1.0,
+        "ticker": ticker,
+        "name": ticker,
+        "sector": "",
+        "industry": "",
+        "market_cap": 0,
+        "total_debt": 0,
+        "total_revenue": 0,
+        "interest_expense": 0,
+        "esg_scores": {},
+        "currency": "USD",
+        "exchange": "",
+        "country": "",
+        "dividend_yield": 0.0,
+        "beta": 1.0,
     }
 
     try:
