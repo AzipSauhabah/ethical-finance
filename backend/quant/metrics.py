@@ -117,6 +117,9 @@ def treynor_ratio(r: Sequence[float], beta: float, rf: float = RISK_FREE_RATE) -
 def information_ratio(r: Sequence[float], benchmark_r: Sequence[float]) -> float:
     arr = _to_arr(r)
     bench = _to_arr(benchmark_r)
+    # Aligne les deux séries sur la longueur minimale
+    n = min(len(arr), len(bench))
+    arr, bench = arr[-n:], bench[-n:]
     diff = arr - bench
     std = float(np.std(diff, ddof=1))
     if std == 0:
