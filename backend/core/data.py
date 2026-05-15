@@ -214,57 +214,69 @@ async def get_prices(
 
 
 async def get_live_quote(ticker: str) -> dict:
-    """Return latest quote derived from OHLCV data (yf.info unreliable)."""
+    """Return latest quote from Supabase ohlcv DB."""
+    import os
+    import httpx
+
     cache_key = f"live:{ticker}"
     hit = await cache.get(cache_key)
     if hit:
         return hit
 
-    try:
-        loop = asyncio.get_event_loop()
-        df = await loop.run_in_executor(
-            None,
-            partial(
-                yf.download, ticker, period="5d", interval="1d", auto_adjust=True, progress=False
-            ),
-        )
-        if df.empty:
-            raise ValueError("empty")
-
-        # Aplatit les colonnes MultiIndex si nécessaire
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = [col[0] for col in df.columns]
-
-        last = float(df["Close"].iloc[-1])
-        prev = float(df["Close"].iloc[-2]) if len(df) >= 2 else last
-        vol = int(df["Volume"].iloc[-1])
-        chg = (last - prev) / prev * 100 if prev else 0.0
-        high = float(df["High"].iloc[-1])
-        low = float(df["Low"].iloc[-1])
-
-        # Bid/Ask estimés depuis High/Low du jour
-        bid = round(low, 2)
-        ask = round(high, 2)
-
-        info = await loop.run_in_executor(None, partial(_yf_info_sync, ticker))
-        currency = info.get("currency", "USD")
-
-    except Exception:
-        last, bid, ask, vol, chg, currency = 0.0, 0.0, 0.0, 0, 0.0, "USD"
-
-    quote = {
-        "ticker": ticker,
-        "last": round(last, 2),
-        "bid": bid,
-        "ask": ask,
-        "volume": vol,
-        "change_pct": round(chg, 4),
-        "timestamp": pd.Timestamp.utcnow().isoformat(),
-        "currency": currency,
+    empty = {
+        "ticker": ticker, "last": 0.0, "bid": 0.0, "ask": 0.0,
+        "volume": 0, "change_pct": 0.0,
+        "timestamp": pd.Timestamp.utcnow().isoformat(), "currency": "USD",
     }
-    await cache.set(cache_key, quote, LIVE_PRICE_CACHE_TTL)
-    return quote
 
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
+
+    if not supabase_url or not supabase_key:
+        return empty
+
+    try:
+        url = f"{supabase_url}/rest/v1/ohlcv"
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+        }
+        params = {
+            "ticker": f"eq.{ticker}",
+            "select": "date,close,high,low,volume,adj_close",
+            "order": "date.desc",
+            "limit": "2",
+        }
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(url, headers=headers, params=params)
+            if r.status_code != 200 or not r.json():
+                return empty
+            rows = r.json()
+            last_row = rows[0]
+            prev_row = rows[1] if len(rows) > 1 else last_row
+
+            last = float(last_row.get("adj_close") or last_row.get("close") or 0)
+            prev = float(prev_row.get("adj_close") or prev_row.get("close") or last)
+            chg = (last - prev) / prev * 100 if prev else 0.0
+            bid = float(last_row.get("low") or last)
+            ask = float(last_row.get("high") or last)
+            vol = int(last_row.get("volume") or 0)
+
+            quote = {
+                "ticker": ticker,
+                "last": round(last, 2),
+                "bid": round(bid, 2),
+                "ask": round(ask, 2),
+                "volume": vol,
+                "change_pct": round(chg, 4),
+                "timestamp": pd.Timestamp.utcnow().isoformat(),
+                "currency": "USD",
+            }
+            await cache.set(cache_key, quote, LIVE_PRICE_CACHE_TTL)
+            return quote
+    except Exception as e:
+        log.warning("Live quote from DB failed for %s: %s", ticker, e)
+        return empty
 
 async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
     """Fetch latest FX rate *from_ccy* → *to_ccy* via yfinance."""
