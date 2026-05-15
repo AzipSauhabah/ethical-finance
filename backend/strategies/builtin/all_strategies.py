@@ -34,6 +34,7 @@ import pandas as pd
 from backend.strategies.base import Strategy
 from backend.strategies.registry import strategy_registry
 
+
 def _min_variance_numpy(cov: np.ndarray, max_w: float = 0.25, n_iter: int = 500) -> np.ndarray:
     """Min variance optimization via projected gradient descent."""
     n = cov.shape[0]
@@ -48,6 +49,8 @@ def _min_variance_numpy(cov: np.ndarray, max_w: float = 0.25, n_iter: int = 500)
         if s > 0:
             w = w / s
     return w
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Buy & Hold
 # ─────────────────────────────────────────────────────────────────────────────
@@ -416,12 +419,10 @@ class MLEnsembleStrategy(Strategy):
             if len(X_train) < 50:
                 continue
             rf = lgb.LGBMClassifier(
-                n_estimators=100, max_depth=4, random_state=42,
-                n_jobs=-1, verbose=-1
+                n_estimators=100, max_depth=4, random_state=42, n_jobs=-1, verbose=-1
             )
             gbm = lgb.LGBMClassifier(
-                n_estimators=100, max_depth=4, random_state=42,
-                boosting_type='gbdt', verbose=-1
+                n_estimators=100, max_depth=4, random_state=42, boosting_type="gbdt", verbose=-1
             )
             rf.fit(X_train, y_train)
             gbm.fit(X_train, y_train)
