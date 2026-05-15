@@ -52,8 +52,15 @@ GREY = "#666666"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _plotly_to_png(fig, width: int = 825, height: int = 385) -> bytes:
-    import plotly.io as pio
+def _plotly_to_png(fig, width: int = 825, height: int = 385) -> bytes | None:
+    """Convert a plotly figure to PNG bytes via kaleido. Returns None if unavailable."""
+    try:
+        import plotly.io as pio
+        return pio.to_image(fig, format="png", width=width, height=height, scale=1.5, engine="kaleido")
+    except Exception as e:
+        import logging
+        logging.getLogger("api").warning("kaleido unavailable: %s", e)
+        return None
 
     pio.kaleido.scope.default_format = "png"
     return pio.to_image(fig, format="png", width=width, height=height, scale=1.5, engine="kaleido")
@@ -427,7 +434,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Spacer(1, 0.3 * cm),
         Paragraph("Évolution de la valeur du portefeuille (NAV) comparée au benchmark.", body_s),
         Spacer(1, 0.3 * cm),
-        png_image(_chart_nav_vs_benchmark(nav_ch, bench_ch)),
+        *([png_image(img)] if (img := _chart_nav_vs_benchmark(nav_ch, bench_ch)) else []),
         PageBreak(),
     ]
 
