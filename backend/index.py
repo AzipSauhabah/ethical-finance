@@ -261,7 +261,7 @@ async def run_backtest(payload: BacktestIn):
     engine = BacktestEngine(strategy, strat_prices, currencies, fx_rates, params, bench_series)
     result = engine.run()
 
-    bench_returns = bench_series.pct_change().dropna() if bench_series is not None else None
+    bench_returns = bench_series.pct_change(fill_method=None).dropna() if bench_series is not None else None
     return build_tearsheet(result, benchmark_returns=bench_returns)
 
 

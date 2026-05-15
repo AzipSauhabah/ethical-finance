@@ -183,7 +183,7 @@ class BacktestEngine:
 
         # ── Assemble result ──────────────────────────────────────────────
         nav = portfolio.nav_series()
-        rets = nav.pct_change().dropna()
+        rets = nav.pct_change(fill_method=None).dropna()
         dd = pd.Series(drawdown_series(rets.values), index=rets.index)
 
         last_prices = {t: prices[t].iloc[-1] for t in prices.columns}
