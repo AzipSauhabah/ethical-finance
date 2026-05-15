@@ -20,16 +20,17 @@ Charts are rendered with matplotlib → PNG → embedded in ReportLab.
 
 :copyright: 2024 Sauhabah — Ethical Finance Platform
 """
-import sys
+
 import os
 
 # Force plotly à utiliser kaleido depuis les deps installées
 try:
     import kaleido
+
     os.environ["KALEIDO_SCOPE_PLOTLY"] = "1"
 except ImportError:
     pass
-  
+
 from __future__ import annotations
 
 import io
@@ -50,8 +51,10 @@ GREY = "#666666"
 # Chart renderers (plotly → PNG bytes)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _plotly_to_png(fig, width: int = 825, height: int = 385) -> bytes:
     import plotly.io as pio
+
     pio.kaleido.scope.default_format = "png"
     return pio.to_image(fig, format="png", width=width, height=height, scale=1.5, engine="kaleido")
 
