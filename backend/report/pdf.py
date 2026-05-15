@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 :file: backend/report/pdf.py
 :brief: Institutional-grade multi-page PDF tearsheet (Goldman Sachs style).
@@ -39,7 +41,6 @@ from typing import Any
 from backend.config import COPYRIGHT, DISCLAIMER
 from backend.report.glossary import GLOSSARY
 
-NAVY = "#142340"
 GOLD = "#b8962f"
 RED = "#b82424"
 GREEN = "#1d8c41"
