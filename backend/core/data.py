@@ -216,6 +216,7 @@ async def get_prices(
 async def get_live_quote(ticker: str) -> dict:
     """Return latest quote from Supabase ohlcv DB."""
     import os
+
     import httpx
 
     cache_key = f"live:{ticker}"
@@ -224,9 +225,14 @@ async def get_live_quote(ticker: str) -> dict:
         return hit
 
     empty = {
-        "ticker": ticker, "last": 0.0, "bid": 0.0, "ask": 0.0,
-        "volume": 0, "change_pct": 0.0,
-        "timestamp": pd.Timestamp.utcnow().isoformat(), "currency": "USD",
+        "ticker": ticker,
+        "last": 0.0,
+        "bid": 0.0,
+        "ask": 0.0,
+        "volume": 0,
+        "change_pct": 0.0,
+        "timestamp": pd.Timestamp.utcnow().isoformat(),
+        "currency": "USD",
     }
 
     supabase_url = os.environ.get("SUPABASE_URL", "")
@@ -277,6 +283,7 @@ async def get_live_quote(ticker: str) -> dict:
     except Exception as e:
         log.warning("Live quote from DB failed for %s: %s", ticker, e)
         return empty
+
 
 async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
     """Fetch latest FX rate *from_ccy* → *to_ccy* via yfinance."""
