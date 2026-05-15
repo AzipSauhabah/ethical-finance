@@ -56,9 +56,13 @@ def _plotly_to_png(fig, width: int = 825, height: int = 385) -> bytes | None:
     """Convert a plotly figure to PNG bytes via kaleido. Returns None if unavailable."""
     try:
         import plotly.io as pio
-        return pio.to_image(fig, format="png", width=width, height=height, scale=1.5, engine="kaleido")
+
+        return pio.to_image(
+            fig, format="png", width=width, height=height, scale=1.5, engine="kaleido"
+        )
     except Exception as e:
         import logging
+
         logging.getLogger("api").warning("kaleido unavailable: %s", e)
         return None
 
