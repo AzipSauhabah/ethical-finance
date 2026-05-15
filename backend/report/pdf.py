@@ -49,7 +49,7 @@ def _rl_line_chart(
     y_fmt=None,
 ) -> bytes:
     """Génère un graphique en ligne avec ReportLab graphics."""
-    from reportlab.graphics import renderPDF
+    from reportlab.graphics import renderPM
     from reportlab.graphics.shapes import Drawing, Line, PolyLine, String
     from reportlab.lib import colors as rl_colors
 
@@ -145,7 +145,7 @@ def _rl_line_chart(
         d.add(String(lx + 24, ly - 3, label, fontSize=7, fillColor=rl_colors.HexColor("#444444")))
 
     buf = io.BytesIO()
-    renderPDF.drawToFile(d, buf, "chart")
+    renderPM.drawToFile(d, buf, fmt="PNG", dpi=150)
     buf.seek(0)
     return buf.read()
 
@@ -159,7 +159,7 @@ def _rl_area_chart(
     fill_alpha: float = 0.3,
 ) -> bytes:
     """Graphique en aire remplie."""
-    from reportlab.graphics import renderPDF
+    from reportlab.graphics import renderPM
     from reportlab.graphics.shapes import Drawing, Line, Polygon, PolyLine, String
     from reportlab.lib import colors as rl_colors
 
@@ -245,7 +245,7 @@ def _rl_area_chart(
         d.add(PolyLine(line_pts, strokeColor=c, strokeWidth=1.5, fillColor=None))
 
     buf = io.BytesIO()
-    renderPDF.drawToFile(d, buf, "chart")
+    renderPM.drawToFile(d, buf, fmt="PNG", dpi=150)
     buf.seek(0)
     return buf.read()
 
@@ -257,7 +257,7 @@ def _rl_bar_chart(
     height: float = 180,
 ) -> bytes:
     """Graphique en barres horizontales."""
-    from reportlab.graphics import renderPDF
+    from reportlab.graphics import renderPM
     from reportlab.graphics.shapes import Drawing, Line, Rect, String
     from reportlab.lib import colors as rl_colors
 
@@ -315,7 +315,7 @@ def _rl_bar_chart(
         )
 
     buf = io.BytesIO()
-    renderPDF.drawToFile(d, buf, "chart")
+    renderPM.drawToFile(d, buf, fmt="PNG", dpi=150)
     buf.seek(0)
     return buf.read()
 
@@ -326,7 +326,7 @@ def _rl_pie_chart(
     """Camembert ReportLab."""
     import math
 
-    from reportlab.graphics import renderPDF
+    from reportlab.graphics import renderPM
     from reportlab.graphics.shapes import Drawing, String, Wedge
     from reportlab.lib import colors as rl_colors
 
@@ -368,13 +368,13 @@ def _rl_pie_chart(
         angle -= sweep
 
     buf = io.BytesIO()
-    renderPDF.drawToFile(d, buf, "chart")
+    renderPM.drawToFile(d, buf, fmt="PNG", dpi=150)
     buf.seek(0)
     return buf.read()
 
 
 def _empty_chart(width: float, height: float, msg: str = "Pas de données") -> bytes:
-    from reportlab.graphics import renderPDF
+    from reportlab.graphics import renderPM
     from reportlab.graphics.shapes import Drawing, String
     from reportlab.lib import colors as rl_colors
 
@@ -390,7 +390,7 @@ def _empty_chart(width: float, height: float, msg: str = "Pas de données") -> b
         )
     )
     buf = io.BytesIO()
-    renderPDF.drawToFile(d, buf, "chart")
+    renderPM.drawToFile(d, buf, fmt="PNG", dpi=150)
     buf.seek(0)
     return buf.read()
 
