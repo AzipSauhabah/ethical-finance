@@ -242,17 +242,9 @@ async def run_backtest(payload: BacktestIn):
     ]
     # Garde une copie complète avec VIX+GSPC pour EPR5
     strat_prices = prices_full[[c for c in prices_full.columns if c not in {payload.benchmark}]]
-
+    
     if prices_full.empty:
         raise HTTPException(400, "No price data")
-
-    # Split benchmark from strategy universe
-    bench_series = (
-        prices_full[payload.benchmark] if payload.benchmark in prices_full.columns else None
-    )
-    strat_cols = [c for c in prices_full.columns if c not in (payload.benchmark,)]
-    # keep ^VIX + ^GSPC IN the strategy frame so EPR5 can use them
-    strat_prices = prices_full[strat_cols]
 
     eurusd = await get_fx_rate("USD", "EUR")
     fx_rates = {"USDEUR": eurusd, "EURUSD": 1.0 / eurusd}
