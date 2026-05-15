@@ -3,6 +3,7 @@
 :brief: Statistical significance tests for strategy evaluation.
 :copyright: 2024 Sauhabah — Ethical Finance Platform
 """
+
 from __future__ import annotations
 
 import math
@@ -36,7 +37,7 @@ def _norm_cdf(x: float) -> float:
 
 def _t_cdf(t: float, df: int) -> float:
     """Approximation of the Student-t CDF using regularized incomplete beta."""
-    x = df / (df + t * t)
+    df / (df + t * t)
     # Use scipy-free approximation via continued fraction
     if df <= 0:
         return 0.5
@@ -44,7 +45,6 @@ def _t_cdf(t: float, df: int) -> float:
     if df > 30:
         return _norm_cdf(t)
     # Regularized incomplete beta approximation
-    import math
     a = df / 2.0
     b = 0.5
     # Use the relationship: t_cdf(t, df) = 1 - 0.5 * I(df/(df+t^2), df/2, 1/2)
