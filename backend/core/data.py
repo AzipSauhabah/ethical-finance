@@ -184,7 +184,12 @@ async def _fetch_prices_raw(tickers: list[str], start: date, end: date) -> pd.Da
 
 
 async def _fetch_prices_supabase(tickers, start, end):
-    import os, httpx, pandas as pd, logging
+    import logging
+    import os
+
+    import httpx
+    import pandas as pd
+
     supabase_url = os.environ.get("SUPABASE_URL", "")
     supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
     if not supabase_url or not supabase_key:
@@ -194,12 +199,26 @@ async def _fetch_prices_supabase(tickers, start, end):
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             for ticker in tickers:
-                params = {"ticker": f"eq.{ticker}", "date": f"gte.{start.isoformat()}", "select": "date,adj_close,close", "order": "date.asc", "limit": "10000"}
-                r = await client.get(f"{supabase_url}/rest/v1/ohlcv", headers=headers, params=params)
+                params = {
+                    "ticker": f"eq.{ticker}",
+                    "date": f"gte.{start.isoformat()}",
+                    "select": "date,adj_close,close",
+                    "order": "date.asc",
+                    "limit": "10000",
+                }
+                r = await client.get(
+                    f"{supabase_url}/rest/v1/ohlcv", headers=headers, params=params
+                )
                 if r.status_code == 200:
                     for row in r.json():
-                        if row.get("date","") <= end.isoformat():
-                            all_rows.append({"date": row["date"], "ticker": ticker, "close": float(row.get("adj_close") or row.get("close") or 0)})
+                        if row.get("date", "") <= end.isoformat():
+                            all_rows.append(
+                                {
+                                    "date": row["date"],
+                                    "ticker": ticker,
+                                    "close": float(row.get("adj_close") or row.get("close") or 0),
+                                }
+                            )
     except Exception as e:
         logging.getLogger("api").warning("Supabase prices failed: %s", e)
         return pd.DataFrame()
