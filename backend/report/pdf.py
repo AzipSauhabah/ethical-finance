@@ -38,6 +38,7 @@ from typing import Any
 
 from backend.config import COPYRIGHT, DISCLAIMER
 from backend.report.glossary import GLOSSARY
+NAVY = "#142340"
 
 GOLD = "#b8962f"
 RED = "#b82424"
