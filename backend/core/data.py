@@ -281,6 +281,47 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
     return rate
 
 
+async def _fetch_fundamentals_db(ticker: str) -> dict | None:
+    """Fetch fundamentals from Supabase DB."""
+    import os
+    db_url = os.environ.get("DATABASE_URL", "")
+    if not db_url:
+        return None
+    try:
+        import psycopg2
+        sync_url = db_url.replace("postgresql+psycopg2://", "postgresql://").replace("postgres://", "postgresql://")
+        conn = psycopg2.connect(sync_url)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT name, sector, industry, country, currency, exchange,
+                   market_cap, beta, dividend_yield, total_debt, total_revenue
+            FROM ticker_fundamentals WHERE ticker = %s
+        """, (ticker,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            return {
+                "ticker": ticker,
+                "name": row[0] or ticker,
+                "sector": row[1] or "",
+                "industry": row[2] or "",
+                "country": row[3] or "",
+                "currency": row[4] or "USD",
+                "exchange": row[5] or "",
+                "market_cap": int(row[6] or 0),
+                "beta": float(row[7] or 1.0),
+                "dividend_yield": float(row[8] or 0.0),
+                "total_debt": int(row[9] or 0),
+                "total_revenue": int(row[10] or 0),
+                "interest_expense": 0,
+                "esg_scores": {},
+            }
+    except Exception as e:
+        log.warning("DB fundamentals failed for %s: %s", ticker, e)
+    return None
+
+
 async def _fetch_fundamentals_httpx(ticker: str) -> dict:
     """Fetch fundamentals via Yahoo Finance API with rotating User-Agents."""
     import random
@@ -361,7 +402,11 @@ async def get_ticker_fundamentals(ticker: str) -> dict:
     hit = await cache.get(cache_key)
     if hit:
         return hit
-    data = await _fetch_fundamentals_httpx(ticker)
+    # Essaie d'abord la DB Supabase
+    data = await _fetch_fundamentals_db(ticker)
+    if not data:
+        # Fallback vers httpx
+        data = await _fetch_fundamentals_httpx(ticker)
     await cache.set(cache_key, data, 86_400)
     return data
 
