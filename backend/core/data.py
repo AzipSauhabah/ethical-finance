@@ -204,10 +204,13 @@ async def get_prices(
     if cached_df is not None:
         return pd.read_json(cached_df)
 
-    df = pd.DataFrame()
-    for chunk in _ticker_chunks(tickers):
-        part = await _fetch_prices_raw(chunk, start, end)
-        df = part if df.empty else df.join(part, how="outer")
+    # Essaie Supabase en priorité
+    df = await _fetch_prices_supabase(tickers, start, end)
+    if df.empty:
+        # Fallback yfinance
+        for chunk in _ticker_chunks(tickers):
+            part = await _fetch_prices_raw(chunk, start, end)
+            df = part if df.empty else df.join(part, how="outer")
 
     await cache.set(cache_key, df.to_json(), PRICE_CACHE_TTL)
     return df
