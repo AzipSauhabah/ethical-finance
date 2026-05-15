@@ -281,31 +281,77 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
     return rate
 
 
+async def _fetch_fundamentals_httpx(ticker: str) -> dict:
+    """Fetch fundamentals via Yahoo Finance API with rotating User-Agents."""
+    import httpx
+    import random
+
+    USER_AGENTS = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/119.0.0.0 Safari/537.36",
+    ]
+
+    url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker}"
+    params = {"modules": "summaryDetail,assetProfile,defaultKeyStatistics,financialData"}
+    headers = {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    empty = {
+        "ticker": ticker, "name": ticker, "sector": "", "industry": "",
+        "market_cap": 0, "total_debt": 0, "total_revenue": 0,
+        "interest_expense": 0, "esg_scores": {}, "currency": "USD",
+        "exchange": "", "country": "", "dividend_yield": 0.0, "beta": 1.0,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url, params=params, headers=headers)
+            if r.status_code != 200:
+                return empty
+            js = r.json()
+            result = js.get("quoteSummary", {}).get("result", [{}])[0] or {}
+            sd = result.get("summaryDetail", {})
+            ap = result.get("assetProfile", {})
+            ks = result.get("defaultKeyStatistics", {})
+            fd = result.get("financialData", {})
+
+            def val(d, k):
+                v = d.get(k, 0)
+                return v.get("raw", 0) if isinstance(v, dict) else (v or 0)
+
+            return {
+                "ticker": ticker,
+                "name": ap.get("longName", ap.get("shortName", ticker)),
+                "sector": ap.get("sector", ""),
+                "industry": ap.get("industry", ""),
+                "market_cap": val(sd, "marketCap") or val(ks, "marketCap"),
+                "total_debt": val(fd, "totalDebt"),
+                "total_revenue": val(fd, "totalRevenue"),
+                "interest_expense": val(fd, "interestExpense"),
+                "esg_scores": {},
+                "currency": sd.get("currency", "USD"),
+                "exchange": ap.get("exchange", ""),
+                "country": ap.get("country", ""),
+                "dividend_yield": val(sd, "dividendYield"),
+                "beta": val(sd, "beta") or val(ks, "beta") or 1.0,
+            }
+    except Exception as e:
+        log.warning("Fundamentals fetch failed for %s: %s", ticker, e)
+        return empty
+
+
 async def get_ticker_fundamentals(ticker: str) -> dict:
     """Return key fundamental data used for ethical screening and metrics."""
     cache_key = f"fund:{ticker}"
     hit = await cache.get(cache_key)
     if hit:
         return hit
-    loop = asyncio.get_event_loop()
-    info = await loop.run_in_executor(None, partial(_yf_info_sync, ticker))
-    data = {
-        "ticker": ticker,
-        "name": info.get("longName", ticker),
-        "sector": info.get("sector", ""),
-        "industry": info.get("industry", ""),
-        "market_cap": info.get("marketCap", 0),
-        "total_debt": info.get("totalDebt", 0),
-        "total_revenue": info.get("totalRevenue", 0),
-        "interest_expense": info.get("interestExpense", 0),
-        "esg_scores": info.get("esgScores", {}),
-        "currency": info.get("currency", "USD"),
-        "exchange": info.get("exchange", ""),
-        "country": info.get("country", ""),
-        "dividend_yield": info.get("dividendYield", 0.0),
-        "beta": info.get("beta", 1.0),
-    }
-    await cache.set(cache_key, data, 86_400)  # 24 h TTL for fundamentals
+    data = await _fetch_fundamentals_httpx(ticker)
+    await cache.set(cache_key, data, 86_400)
     return data
 
 
