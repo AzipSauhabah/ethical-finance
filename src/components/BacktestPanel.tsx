@@ -87,7 +87,7 @@ export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
         margin: '1rem 0'
       }}>
         <Field label="Stratégie">
-          <select value={params.strategy} onChange={(e) => setParams({ ...params, strategy: e.target.value }); onStrategyChange?.(e.target.value);} style={input}>
+          <select value={params.strategy} onChange={(e) => { setParams({ ...params, strategy: e.target.value }); onStrategyChange?.(e.target.value); }} style={input}>
             {strategies.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
           </select>
         </Field>
