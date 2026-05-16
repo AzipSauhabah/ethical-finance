@@ -6,25 +6,33 @@ import AboutPanel    from './components/AboutPanel';
 import TickerManager from './components/TickerManager';
 import BacktestPanel from './components/BacktestPanel';
 import SignalsPanel  from './components/SignalsPanel';
+import ScreeningPanel from './components/ScreeningPanel';
 
-type Tab = 'about' | 'tickers' | 'backtest' | 'signals';
+type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'about',    label: 'Vue d\'ensemble', icon: '◈' },
   { key: 'tickers',  label: 'Portefeuille',    icon: '◎' },
+  { key: 'screener', label: 'Screener',         icon: '▣' },
   { key: 'backtest', label: 'Analyse',          icon: '◉' },
   { key: 'signals',  label: 'Signaux',          icon: '◆' },
 ];
 
 export default function App() {
-  const [tab, setTab]         = useState<Tab>('about');
-  const [tickers, setTickers] = useState<string[]>([]);
+  const [tab, setTab]           = useState<Tab>('about');
+  const [tickers, setTickers]   = useState<string[]>([]);
   const [strategy, setStrategy] = useState<string>('buy_hold');
+
+  function handleScreenerSelection(selected: string[]) {
+    // Merge screener selection into existing tickers (deduplicated)
+    setTickers((prev) => Array.from(new Set([...prev, ...selected])));
+    setTab('backtest');
+  }
 
   return (
     <div style={{ fontFamily: '"Inter", system-ui, sans-serif', color: '#e8e8e8', minHeight: '100vh', background: '#0a0f1e' }}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-      
+
       <header style={{
         background: 'linear-gradient(135deg, #0d1528 0%, #142340 100%)',
         borderBottom: '1px solid rgba(184,150,47,0.3)',
@@ -39,7 +47,7 @@ export default function App() {
             width: 32, height: 32, borderRadius: 6,
             background: 'linear-gradient(135deg, #b8962f, #e8c547)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1rem', fontWeight: 700,
+            fontSize: '1rem', fontWeight: 700, color: '#000',
           }}>S</div>
           <div>
             <div style={{ fontSize: '0.75rem', letterSpacing: '3px', color: '#b8962f', fontWeight: 600, textTransform: 'uppercase' }}>Sauhabah</div>
@@ -70,15 +78,29 @@ export default function App() {
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {tickers.length > 0 && (
+            <div style={{
+              padding: '0.2rem 0.6rem',
+              background: 'rgba(184,150,47,0.1)',
+              border: '1px solid rgba(184,150,47,0.3)',
+              borderRadius: 4,
+              fontSize: '0.65rem',
+              color: '#b8962f',
+              fontFamily: '"JetBrains Mono", monospace',
+            }}>
+              {tickers.length} ticker{tickers.length > 1 ? 's' : ''}
+            </div>
+          )}
           <div style={{ width: 8, height: 8, borderRadius: 4, background: '#1d8c41', boxShadow: '0 0 6px #1d8c41' }} />
           <span style={{ fontSize: '0.7rem', color: '#666' }}>LIVE</span>
-          <span style={{ fontSize: '0.65rem', color: '#444', fontFamily: '"JetBrains Mono", monospace' }}>v2.0</span>
+          <span style={{ fontSize: '0.65rem', color: '#444', fontFamily: '"JetBrains Mono", monospace' }}>v2.1</span>
         </div>
       </header>
 
       <main>
         {tab === 'about'    && <AboutPanel />}
         {tab === 'tickers'  && <TickerManager tickers={tickers} setTickers={setTickers} />}
+        {tab === 'screener' && <ScreeningPanel onSelectTickers={handleScreenerSelection} />}
         {tab === 'backtest' && <BacktestPanel tickers={tickers} onStrategyChange={setStrategy} />}
         {tab === 'signals'  && <SignalsPanel tickers={tickers} strategy={strategy} />}
       </main>
