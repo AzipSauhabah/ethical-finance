@@ -39,29 +39,44 @@ from backend.strategies.registry import strategy_registry
 
 
 def _get_fundamentals(ticker: str) -> dict:
-    """Lazy yfinance fundamentals — returns {} on failure."""
+    """Fetch fundamentals from Supabase ticker_fundamentals table."""
+    import os, urllib.request, json
+
+    empty = {"earning_yield": 0.0, "roic": 0.0, "pb_ratio": 1.0, "roic_5y_avg": 0.0}
+
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
+    if not supabase_url or not supabase_key:
+        return empty
+
     try:
-        import yfinance as yf
+        url = f"{supabase_url}/rest/v1/ticker_fundamentals?ticker=eq.{ticker}&select=market_cap,total_debt,total_revenue&limit=1"
+        req = urllib.request.Request(url, headers={
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+        })
+        with urllib.request.urlopen(req, timeout=3) as r:
+            rows = json.loads(r.read())
+        if not rows:
+            return empty
+        row = rows[0]
+        market_cap = float(row.get("market_cap") or 0)
+        total_debt = float(row.get("total_debt") or 0)
+        total_revenue = float(row.get("total_revenue") or 0)
 
-        info = yf.Ticker(ticker).info or {}
+        # Approximations Magic Formula depuis les données disponibles
+        ev = market_cap + total_debt
+        ebit = total_revenue * 0.15  # proxy marge EBIT ~15%
+        net_assets = max(market_cap * 0.5, 1)  # proxy
+
+        return {
+            "earning_yield": (ebit / ev) if ev > 0 else 0.0,
+            "roic": (ebit / net_assets) if net_assets > 0 else 0.0,
+            "pb_ratio": 1.0,  # non disponible sans bilan détaillé
+            "roic_5y_avg": (ebit / net_assets) if net_assets > 0 else 0.0,
+        }
     except Exception:
-        return {}
-
-    ebit = info.get("ebitda", info.get("operatingCashflow", 0)) or 0
-    ev = info.get("enterpriseValue", 0) or 0
-    book_value = info.get("bookValue", 0) or 0
-    price = info.get("regularMarketPrice", info.get("currentPrice", 0)) or 0
-    market_cap = info.get("marketCap", 0) or 0
-    debt = info.get("totalDebt", 0) or 0
-    cash = info.get("totalCash", 0) or 0
-    net_assets = market_cap + debt - cash  # rough net fixed + working capital proxy
-
-    return {
-        "earning_yield": (ebit / ev) if ev > 0 else 0.0,
-        "roic": (ebit / net_assets) if net_assets > 0 else 0.0,
-        "pb_ratio": (price / book_value) if book_value > 0 else float("inf"),
-        "roic_5y_avg": (ebit / net_assets) if net_assets > 0 else 0.0,  # proxy
-    }
+        return empty
 
 
 # ─────────────────────────────────────────────────────────────────────────────
