@@ -354,7 +354,7 @@ function BacktestResults({ result }: { result: Tearsheet }) {
       <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Positions finales</h4>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
         {[
-          ['NAV', result.positions.nav_eur.toFixed(2) + ' €'],
+          ['NAV', (result.positions?.nav_eur ?? 0).toFixed(2) + ' €'],
           ['Cash', result.positions.cash_eur.toFixed(2) + ' €'],
           ['Investi', result.positions.invested_eur.toFixed(2) + ' €'],
           ['Trades', result.positions.n_trades.toString()],
