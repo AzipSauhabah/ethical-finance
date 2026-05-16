@@ -134,9 +134,7 @@ def build_tearsheet(
             "trades": {
                 "count": len(result.trades_df),
                 "sample": (
-                    result.trades_df.to_dict("records")
-                    if not result.trades_df.empty
-                    else []
+                    result.trades_df.to_dict("records") if not result.trades_df.empty else []
                 ),
             },
             "nav_chart": nav_chart,
