@@ -95,6 +95,26 @@ def build_tearsheet(
 
     # Trade cost breakdown
     cost_breakdown = {"commission": 0.0, "slippage": 0.0, "fx_spread": 0.0, "ttf": 0.0}
+    # VaR par position
+    risk_by_position = {}
+    if not prices.empty and result.positions_final.get("positions"):
+        for ticker, pos_info in result.positions_final["positions"].items():
+            if ticker in prices.columns:
+                ticker_rets = prices[ticker].pct_change(fill_method=None).dropna()
+                if len(ticker_rets) > 20:
+                    var_95 = float(np.percentile(ticker_rets, 5))
+                    cvar_95 = float(ticker_rets[ticker_rets <= var_95].mean()) if len(ticker_rets[ticker_rets <= var_95]) > 0 else var_95
+                    weight = pos_info.get("weight", 0)
+                    value_eur = pos_info.get("value_eur", 0)
+                    risk_by_position[ticker] = {
+                        "weight": weight,
+                        "value_eur": value_eur,
+                        "var_95_daily": var_95,
+                        "cvar_95_daily": cvar_95,
+                        "var_95_eur": var_95 * value_eur,
+                        "contribution_pct": weight * var_95,
+                    }
+
     if not result.trades_df.empty:
         td = result.trades_df
         cost_breakdown = {
@@ -131,7 +151,8 @@ def build_tearsheet(
             "stress_tests": stress,
             "cost_summary": result.cost_summary,
             "cost_breakdown": cost_breakdown,
-            "trades": {
+            "risk_by_position": risk_by_position,
+        "trades": {
                 "count": len(result.trades_df),
                 "sample": (
                     result.trades_df.to_dict("records") if not result.trades_df.empty else []

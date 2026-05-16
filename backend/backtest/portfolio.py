@@ -235,6 +235,7 @@ class Portfolio:
                     "value_eur": p.market_value(prices_eur.get(t, 0.0)),
                     "unrealised": p.unrealised_pnl(prices_eur.get(t, 0.0)),
                     "avg_cost": p.avg_cost_eur,
+                    "weight": p.market_value(prices_eur.get(t, 0.0)) / nav if nav > 0 else 0.0,
                 }
                 for t, p in self._positions.items()
                 if p.shares > 0

@@ -731,6 +731,41 @@ def generate_pdf(tearsheet: dict) -> bytes:
             ]
         S += [PageBreak()]
 
+    # PAGE 12a — RISQUE PAR POSITION
+    risk_pos = tearsheet.get("risk_by_position", {})
+    if risk_pos:
+        S += [
+            Paragraph("Risque par position — VaR et contribution", section_s), hr(), Spacer(1, .3*cm),
+            Paragraph(
+                "La VaR (Valeur a Risque) est calculee par simulation historique sur les rendements "
+                "journaliers de chaque titre. La contribution au risque mesure l impact de chaque "
+                "position sur le risque global du portefeuille, pondere par son poids.",
+                body_s,
+            ),
+            Spacer(1, .3*cm),
+        ]
+        risk_data = [["Ticker", "Poids", "Valeur EUR", "VaR 95% jour", "CVaR 95% jour", "VaR EUR", "Contrib. risque"]]
+        for ticker, r in sorted(risk_pos.items(), key=lambda x: abs(x[1].get("var_95_eur", 0)), reverse=True):
+            risk_data.append([
+                ticker,
+                f"{r.get('weight', 0)*100:.1f}%",
+                e(r.get("value_eur")),
+                f"{r.get('var_95_daily', 0)*100:.2f}%",
+                f"{r.get('cvar_95_daily', 0)*100:.2f}%",
+                e(r.get("var_95_eur")),
+                f"{r.get('contribution_pct', 0)*100:.3f}%",
+            ])
+        t = Table(risk_data, colWidths=[2.0*cm, 1.8*cm, 2.8*cm, 2.2*cm, 2.5*cm, 2.5*cm, 2.6*cm])
+        t.setStyle(tbl_style())
+        S += [t, Spacer(1, .3*cm),
+              Paragraph(
+                  "Note : la VaR historique ne capture pas les evenements hors de l historique observe. "
+                  "La CVaR (Expected Shortfall) mesure la perte moyenne au-dela du seuil VaR — "
+                  "elle est plus conservative et recommandee par Bale III.",
+                  small_s,
+              ),
+              PageBreak()]
+
     # PAGE 12b — SECTION ML
     tearsheet.get("ml_info", {})
     S += [
