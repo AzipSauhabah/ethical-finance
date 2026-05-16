@@ -13,9 +13,10 @@ import type { BacktestParams, StrategyMeta, Tearsheet } from '../types';
 
 interface Props {
   tickers: string[];
+  onStrategyChange?: (s: string) => void;
 }
 
-export default function BacktestPanel({ tickers }: Props) {
+export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
   const [strategies, setStrategies] = useState<StrategyMeta[]>([]);
   const [result, setResult] = useState<Tearsheet | null>(null);
   const [loading, setLoading] = useState(false);
@@ -86,7 +87,7 @@ export default function BacktestPanel({ tickers }: Props) {
         margin: '1rem 0'
       }}>
         <Field label="Stratégie">
-          <select value={params.strategy} onChange={(e) => setParams({ ...params, strategy: e.target.value })} style={input}>
+          <select value={params.strategy} onChange={(e) => setParams({ ...params, strategy: e.target.value }); onStrategyChange?.(e.target.value);} style={input}>
             {strategies.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
           </select>
         </Field>
