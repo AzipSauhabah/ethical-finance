@@ -1,12 +1,13 @@
 # ─── Screener endpoint — à ajouter à la fin de backend/index.py ───────────────
 
+
 class ScreenerIn(BaseModel):
-    method: str = "magic_formula"          # magic_formula | momentum | low_vol | ml | combined
-    top_n: int = 20                        # nombre de tickers à retourner
+    method: str = "magic_formula"  # magic_formula | momentum | low_vol | ml | combined
+    top_n: int = 20  # nombre de tickers à retourner
     require_ethical: bool = False
     require_sharia: bool = False
-    min_market_cap: float = 1e9            # filtre taille minimale (1 Md$ par défaut)
-    universe: str = "all"                  # all | sp500 | cac40
+    min_market_cap: float = 1e9  # filtre taille minimale (1 Md$ par défaut)
+    universe: str = "all"  # all | sp500 | cac40
 
 
 @app.post("/api/screener")
@@ -30,36 +31,46 @@ async def screener(payload: ScreenerIn):
 
         # 1. Load fundamentals
         with engine.connect() as conn:
-            rows = conn.execute(sa.text("""
+            rows = conn.execute(
+                sa.text("""
                 SELECT ticker, name, sector, industry, market_cap,
                        total_debt, total_revenue, beta, dividend_yield
                 FROM ticker_fundamentals
                 WHERE market_cap >= :min_cap
                 ORDER BY market_cap DESC
-            """), {"min_cap": payload.min_market_cap}).fetchall()
+            """),
+                {"min_cap": payload.min_market_cap},
+            ).fetchall()
 
         if not rows:
             return []
 
         import pandas as pd
-        df = pd.DataFrame(rows, columns=[
-            "ticker", "name", "sector", "industry", "market_cap",
-            "total_debt", "total_revenue", "beta", "dividend_yield"
-        ])
+
+        df = pd.DataFrame(
+            rows,
+            columns=[
+                "ticker",
+                "name",
+                "sector",
+                "industry",
+                "market_cap",
+                "total_debt",
+                "total_revenue",
+                "beta",
+                "dividend_yield",
+            ],
+        )
 
         # 2. Ethical / Sharia filter
         if payload.require_ethical:
             ethical_blacklist = ["weapons", "tobacco", "gambling", "fossil", "coal", "oil"]
-            mask = ~df["sector"].str.lower().apply(
-                lambda s: any(b in s for b in ethical_blacklist)
-            )
+            mask = ~df["sector"].str.lower().apply(lambda s: any(b in s for b in ethical_blacklist))
             df = df[mask]
 
         if payload.require_sharia:
             sharia_blacklist = ["bank", "insurance", "financial", "alcohol", "casino", "tobacco"]
-            mask = ~df["sector"].str.lower().apply(
-                lambda s: any(b in s for b in sharia_blacklist)
-            )
+            mask = ~df["sector"].str.lower().apply(lambda s: any(b in s for b in sharia_blacklist))
             df = df[mask]
             # Debt ratio filter
             df["debt_ratio"] = df["total_debt"] / (df["market_cap"] + 1)
@@ -72,13 +83,16 @@ async def screener(payload: ScreenerIn):
 
         # 3. Load recent prices for technical scoring
         with engine.connect() as conn:
-            price_rows = conn.execute(sa.text("""
+            price_rows = conn.execute(
+                sa.text("""
                 SELECT ticker, date, adj_close
                 FROM ohlcv
                 WHERE ticker = ANY(:tickers)
                   AND date >= CURRENT_DATE - INTERVAL '300 days'
                 ORDER BY ticker, date
-            """), {"tickers": tickers}).fetchall()
+            """),
+                {"tickers": tickers},
+            ).fetchall()
 
         price_df = pd.DataFrame(price_rows, columns=["ticker", "date", "price"])
         price_pivot = price_df.pivot(index="date", columns="ticker", values="price")
@@ -140,9 +154,7 @@ async def screener(payload: ScreenerIn):
 
         elif payload.method == "momentum":
             scores_df["score"] = (
-                scores_df["ret_12m"] * 0.5 +
-                scores_df["ret_6m"] * 0.3 +
-                scores_df["ret_1m"] * 0.2
+                scores_df["ret_12m"] * 0.5 + scores_df["ret_6m"] * 0.3 + scores_df["ret_1m"] * 0.2
             )
             scores_df = scores_df.sort_values("score", ascending=False)
 
@@ -153,10 +165,17 @@ async def screener(payload: ScreenerIn):
         elif payload.method == "ml":
             # RandomForest scoring
             try:
-                from sklearn.ensemble import RandomForestClassifier
                 from sklearn.preprocessing import StandardScaler
 
-                features = ["earning_yield", "roic", "ret_1m", "ret_6m", "ret_12m", "vol_20", "beta"]
+                features = [
+                    "earning_yield",
+                    "roic",
+                    "ret_1m",
+                    "ret_6m",
+                    "ret_12m",
+                    "vol_20",
+                    "beta",
+                ]
                 X = scores_df[features].fillna(0).values
 
                 # Simple unsupervised scoring: distance from ideal (high ey, roic, momentum, low vol)
@@ -175,13 +194,15 @@ async def screener(payload: ScreenerIn):
         elif payload.method == "combined":
             scores_df["rank_ey"] = scores_df["earning_yield"].rank(ascending=False)
             scores_df["rank_roic"] = scores_df["roic"].rank(ascending=False)
-            scores_df["rank_mom"] = (scores_df["ret_6m"] + scores_df["ret_12m"]).rank(ascending=False)
+            scores_df["rank_mom"] = (scores_df["ret_6m"] + scores_df["ret_12m"]).rank(
+                ascending=False
+            )
             scores_df["rank_vol"] = scores_df["vol_20"].rank(ascending=True)
             scores_df["score"] = (
-                scores_df["rank_ey"] +
-                scores_df["rank_roic"] +
-                scores_df["rank_mom"] * 0.5 +
-                scores_df["rank_vol"] * 0.3
+                scores_df["rank_ey"]
+                + scores_df["rank_roic"]
+                + scores_df["rank_mom"] * 0.5
+                + scores_df["rank_vol"] * 0.3
             )
             scores_df = scores_df.sort_values("score")
 

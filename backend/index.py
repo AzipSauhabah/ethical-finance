@@ -249,23 +249,28 @@ async def screener(payload: ScreenerIn):
 
         df = pd.DataFrame(
             rows,
-            columns=["ticker", "name", "sector", "industry", "market_cap",
-                     "total_debt", "total_revenue", "beta", "dividend_yield"],
+            columns=[
+                "ticker",
+                "name",
+                "sector",
+                "industry",
+                "market_cap",
+                "total_debt",
+                "total_revenue",
+                "beta",
+                "dividend_yield",
+            ],
         )
 
         # 2. Ethical / Sharia filter
         if payload.require_ethical:
             ethical_blacklist = ["weapons", "tobacco", "gambling", "fossil", "coal", "oil"]
-            mask = ~df["sector"].str.lower().apply(
-                lambda s: any(b in s for b in ethical_blacklist)
-            )
+            mask = ~df["sector"].str.lower().apply(lambda s: any(b in s for b in ethical_blacklist))
             df = df[mask]
 
         if payload.require_sharia:
             sharia_blacklist = ["bank", "insurance", "financial", "alcohol", "casino", "tobacco"]
-            mask = ~df["sector"].str.lower().apply(
-                lambda s: any(b in s for b in sharia_blacklist)
-            )
+            mask = ~df["sector"].str.lower().apply(lambda s: any(b in s for b in sharia_blacklist))
             df = df[mask]
             df["debt_ratio"] = df["total_debt"] / (df["market_cap"] + 1)
             df = df[df["debt_ratio"] <= 0.33]
@@ -307,7 +312,11 @@ async def screener(payload: ScreenerIn):
             earning_yield = (ebit / ev) if ev > 0 else 0.0
             roic = (ebit / net_assets) if net_assets > 0 else 0.0
 
-            ser = price_pivot[ticker].dropna() if ticker in price_pivot.columns else pd.Series(dtype=float)
+            ser = (
+                price_pivot[ticker].dropna()
+                if ticker in price_pivot.columns
+                else pd.Series(dtype=float)
+            )
 
             ret_1m = float(ser.pct_change(21).iloc[-1]) if len(ser) >= 22 else 0.0
             ret_6m = float(ser.pct_change(126).iloc[-1]) if len(ser) >= 127 else 0.0
@@ -342,9 +351,7 @@ async def screener(payload: ScreenerIn):
 
         elif payload.method == "momentum":
             scores_df["score"] = (
-                scores_df["ret_12m"] * 0.5
-                + scores_df["ret_6m"] * 0.3
-                + scores_df["ret_1m"] * 0.2
+                scores_df["ret_12m"] * 0.5 + scores_df["ret_6m"] * 0.3 + scores_df["ret_1m"] * 0.2
             )
             scores_df = scores_df.sort_values("score", ascending=False)
 
@@ -356,7 +363,15 @@ async def screener(payload: ScreenerIn):
             try:
                 from sklearn.preprocessing import StandardScaler
 
-                features = ["earning_yield", "roic", "ret_1m", "ret_6m", "ret_12m", "vol_20", "beta"]
+                features = [
+                    "earning_yield",
+                    "roic",
+                    "ret_1m",
+                    "ret_6m",
+                    "ret_12m",
+                    "vol_20",
+                    "beta",
+                ]
                 X = scores_df[features].fillna(0).values
                 scaler = StandardScaler()
                 X_scaled = scaler.fit_transform(X)
@@ -371,7 +386,9 @@ async def screener(payload: ScreenerIn):
         elif payload.method == "combined":
             scores_df["rank_ey"] = scores_df["earning_yield"].rank(ascending=False)
             scores_df["rank_roic"] = scores_df["roic"].rank(ascending=False)
-            scores_df["rank_mom"] = (scores_df["ret_6m"] + scores_df["ret_12m"]).rank(ascending=False)
+            scores_df["rank_mom"] = (scores_df["ret_6m"] + scores_df["ret_12m"]).rank(
+                ascending=False
+            )
             scores_df["rank_vol"] = scores_df["vol_20"].rank(ascending=True)
             scores_df["score"] = (
                 scores_df["rank_ey"]
