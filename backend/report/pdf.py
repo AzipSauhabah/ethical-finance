@@ -732,9 +732,12 @@ def generate_pdf(tearsheet: dict) -> bytes:
         S += [PageBreak()]
 
     # PAGE 13 — METHODOLOGIE
-    from backend.report.glossary import METHODOLOGY_TEXT, LIMITATIONS_TEXT
+    from backend.report.glossary import LIMITATIONS_TEXT, METHODOLOGY_TEXT
+
     S += [
-        Paragraph("Methodologie et hypotheses", section_s), hr(), Spacer(1, .3*cm),
+        Paragraph("Methodologie et hypotheses", section_s),
+        hr(),
+        Spacer(1, 0.3 * cm),
     ]
     for para in METHODOLOGY_TEXT.split("\n\n"):
         if para.strip():
@@ -742,17 +745,19 @@ def generate_pdf(tearsheet: dict) -> bytes:
                 S.append(Paragraph(para.strip(), body_s))
             else:
                 S.append(Paragraph(para.strip(), body_s))
-            S.append(Spacer(1, .15*cm))
+            S.append(Spacer(1, 0.15 * cm))
     S += [PageBreak()]
 
     # PAGE 14 — LIMITES DU MODELE
     S += [
-        Paragraph("Limites du modele et avertissements", section_s), hr(), Spacer(1, .3*cm),
+        Paragraph("Limites du modele et avertissements", section_s),
+        hr(),
+        Spacer(1, 0.3 * cm),
     ]
     for para in LIMITATIONS_TEXT.split("\n\n"):
         if para.strip():
             S.append(Paragraph(para.strip(), body_s))
-            S.append(Spacer(1, .15*cm))
+            S.append(Spacer(1, 0.15 * cm))
     S += [PageBreak()]
 
     # PAGE 15 — GLOSSARY
