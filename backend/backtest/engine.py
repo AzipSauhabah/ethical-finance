@@ -155,7 +155,13 @@ class BacktestEngine:
         for ts in prices.index:
             dt = ts.date() if hasattr(ts, "date") else ts
             row_native = prices.loc[ts].to_dict()
-            prices_eur = _fx_convert(row_native, self.currencies, self.fx_rates)
+            # Taux FX historique du jour si disponible
+            fx_today = dict(self.fx_rates)
+            eurusd = row_native.pop("EURUSD=X", None)
+            if eurusd and eurusd > 0:
+                fx_today["USDEUR"] = 1.0 / eurusd
+                fx_today["EURUSD"] = eurusd
+            prices_eur = _fx_convert(row_native, self.currencies, fx_today)
 
             # ── Monthly contribution (first trading day of month) ─────────
             cur_month = ts.month

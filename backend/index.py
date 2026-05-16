@@ -230,7 +230,7 @@ async def run_backtest(payload: BacktestIn):
     # Always also fetch benchmark + VIX (EPR5 needs them; harmless otherwise)
     INDICATOR_TICKERS = {"^VIX", "^GSPC", "^FCHI", "^STOXX50E", "^GDAXI", "^N225"}
 
-    all_tickers = list(set(tickers + [payload.benchmark, "^VIX", "^GSPC"]))
+    all_tickers = list(set(tickers + [payload.benchmark, "^VIX", "^GSPC", "EURUSD=X"]))
     prices_full = await get_prices(all_tickers, period=payload.period)
 
     bench_series = (
