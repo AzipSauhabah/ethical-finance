@@ -149,7 +149,7 @@ export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
   const stressData = (result?.stress_tests || [])
     .filter((s: any) => s.total_return !== undefined)
     .map((s: any) => ({
-      name: s.label?.replace(' 20', ' '20'),
+      name: 's.label,
       Stratégie: +((s.total_return ?? 0) * 100).toFixed(2),
       Benchmark: +((s.benchmark?.total_return ?? 0) * 100).toFixed(2),
     }));
