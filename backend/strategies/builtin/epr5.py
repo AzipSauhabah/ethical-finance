@@ -40,7 +40,9 @@ from backend.strategies.registry import strategy_registry
 
 def _get_fundamentals(ticker: str) -> dict:
     """Fetch fundamentals from Supabase ticker_fundamentals table."""
-    import os, urllib.request, json
+    import json
+    import os
+    import urllib.request
 
     empty = {"earning_yield": 0.0, "roic": 0.0, "pb_ratio": 1.0, "roic_5y_avg": 0.0}
 
@@ -51,10 +53,13 @@ def _get_fundamentals(ticker: str) -> dict:
 
     try:
         url = f"{supabase_url}/rest/v1/ticker_fundamentals?ticker=eq.{ticker}&select=market_cap,total_debt,total_revenue&limit=1"
-        req = urllib.request.Request(url, headers={
-            "apikey": supabase_key,
-            "Authorization": f"Bearer {supabase_key}",
-        })
+        req = urllib.request.Request(
+            url,
+            headers={
+                "apikey": supabase_key,
+                "Authorization": f"Bearer {supabase_key}",
+            },
+        )
         with urllib.request.urlopen(req, timeout=3) as r:
             rows = json.loads(r.read())
         if not rows:
