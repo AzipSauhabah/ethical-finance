@@ -32,6 +32,7 @@ export default function BacktestPanel({ tickers }: Props) {
     rebalance_frequency: 'monthly',
     max_position_pct: 0.25,
     stop_loss_pct: 0.10,
+    use_var_constraint: false,
     benchmark: '^FCHI',
     require_ethical: false,
     require_sharia: false,
@@ -137,6 +138,8 @@ export default function BacktestPanel({ tickers }: Props) {
 
         <Field label="Stop-loss (%)">
           <input type="number" step="0.01" value={params.stop_loss_pct ?? ''} onChange={(e) => setParams({ ...params, stop_loss_pct: e.target.value === '' ? 0 : +e.target.value })} style={input} />
+          <label style={{fontSize:12, color:'#666'}}>Contrainte VaR (réduit poids si VaR jour &gt; 5%)</label>
+          <input type="checkbox" checked={params.use_var_constraint} onChange={(e) => setParams({ ...params, use_var_constraint: e.target.checked })} />
         </Field>
 
         <Field label="Benchmark">
