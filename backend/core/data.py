@@ -340,7 +340,10 @@ async def get_live_quote(ticker: str) -> dict:
 
 async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
     """Fetch latest FX rate from Supabase ohlcv DB."""
-    import os, httpx
+    import os
+
+    import httpx
+
     if from_ccy == to_ccy:
         return 1.0
     key = f"fx:{from_ccy}{to_ccy}"
@@ -356,9 +359,16 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
         try:
             ticker = f"{from_ccy}{to_ccy}=X"
             headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
-            params = {"ticker": f"eq.{ticker}", "select": "close", "order": "date.desc", "limit": "1"}
+            params = {
+                "ticker": f"eq.{ticker}",
+                "select": "close",
+                "order": "date.desc",
+                "limit": "1",
+            }
             async with httpx.AsyncClient(timeout=5) as client:
-                r = await client.get(f"{supabase_url}/rest/v1/ohlcv", headers=headers, params=params)
+                r = await client.get(
+                    f"{supabase_url}/rest/v1/ohlcv", headers=headers, params=params
+                )
                 if r.status_code == 200 and r.json():
                     rate = float(r.json()[0].get("close") or 1.0)
         except Exception as e:
