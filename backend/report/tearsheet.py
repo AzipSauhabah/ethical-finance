@@ -24,6 +24,7 @@ def build_tearsheet(
     result: BacktestResult,
     benchmark_returns: pd.Series | None = None,
     strategy_label: str | None = None,
+    prices: "pd.DataFrame | None" = None,
 ) -> dict:
     r = result.returns_series.values
     nav = result.nav_series

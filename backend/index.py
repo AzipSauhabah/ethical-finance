@@ -266,7 +266,7 @@ async def run_backtest(payload: BacktestIn):
     bench_returns = (
         bench_series.pct_change(fill_method=None).dropna() if bench_series is not None else None
     )
-    return build_tearsheet(result, benchmark_returns=bench_returns)
+    return build_tearsheet(result, benchmark_returns=bench_returns, prices=prices_full)
 
 
 @app.post("/api/backtest/pdf")
