@@ -269,8 +269,10 @@ async def get_prices(
 async def get_live_quote(ticker: str) -> dict:
     """Return latest quote from local PostgreSQL ohlcv table."""
     import asyncio
-    from backend.core.db import engine
+
     import sqlalchemy as sa
+
+    from backend.core.db import engine
 
     cache_key = f"live:{ticker}"
     hit = await cache.get(cache_key)
@@ -290,6 +292,7 @@ async def get_live_quote(ticker: str) -> dict:
 
     def _fetch():
         from sqlalchemy.orm import Session
+
         with Session(engine) as session:
             rows = session.execute(
                 sa.text("""
@@ -299,7 +302,7 @@ async def get_live_quote(ticker: str) -> dict:
                     ORDER BY date DESC
                     LIMIT 2
                 """),
-                {"ticker": ticker}
+                {"ticker": ticker},
             ).fetchall()
         return rows
 
