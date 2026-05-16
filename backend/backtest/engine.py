@@ -227,8 +227,8 @@ class BacktestEngine:
         dt: date,
         prices_eur: dict[str, float],
         target_weights: dict[str, float],
-        past_prices=None,
         params: StrategyParams,
+        past_prices=None,
     ) -> None:
         nav = portfolio.market_value(prices_eur)
         if nav <= 0:
