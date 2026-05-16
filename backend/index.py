@@ -72,6 +72,7 @@ class BacktestIn(BaseModel):
     custom_params: dict = Field(default_factory=dict)
     require_ethical: bool = False
     require_sharia: bool = False
+    use_var_constraint: bool = False
 
 
 class CustomStrategyIn(BaseModel):
@@ -256,6 +257,7 @@ async def run_backtest(payload: BacktestIn):
         max_position_pct=payload.max_position_pct,
         stop_loss_pct=payload.stop_loss_pct,
         custom=payload.custom_params,
+        use_var_constraint=payload.use_var_constraint,
     )
 
     engine = BacktestEngine(strategy, strat_prices, currencies, fx_rates, params, bench_series)

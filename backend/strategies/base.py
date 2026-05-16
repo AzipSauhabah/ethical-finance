@@ -34,6 +34,7 @@ class StrategyParams:
     account_type: str = "CTO"
     rebalance_frequency: str = "monthly"
     custom: dict[str, Any] = field(default_factory=dict)
+    use_var_constraint: bool = False
 
 
 class Strategy(abc.ABC):

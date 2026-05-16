@@ -260,8 +260,8 @@ class BacktestEngine:
             if price <= 0:
                 continue
 
-            # Contrainte VaR : si VaR journaliere > 5%, reduit le poids de 50%
-            if past_prices is not None and ticker in past_prices.columns:
+            # Contrainte VaR : si activee et VaR journaliere > 5%, reduit le poids de 50%
+            if params.use_var_constraint and past_prices is not None and ticker in past_prices.columns:
                 rets = past_prices[ticker].pct_change(fill_method=None).dropna()
                 if len(rets) >= 20:
                     var_95 = float(rets.quantile(0.05))
