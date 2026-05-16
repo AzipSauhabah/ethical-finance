@@ -104,7 +104,21 @@ def build_tearsheet(
             "ttf": float(td["ttf"].sum()),
         }
 
-    return {
+    import math
+
+    def _clean(obj):
+        """Remplace inf et NaN par None pour la sérialisation JSON."""
+        if isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            return obj
+        if isinstance(obj, dict):
+            return {k: _clean(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [_clean(v) for v in obj]
+        return obj
+
+    return _clean({
         "meta": {
             "strategy": strategy_label or result.strategy_name,
             "generated_at": date.today().isoformat(),
@@ -128,4 +142,4 @@ def build_tearsheet(
         "cost_chart": cost_chart,
         "allocation_chart": allocation_chart,
         "positions": result.positions_final,
-    }
+    })
