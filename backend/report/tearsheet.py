@@ -103,7 +103,11 @@ def build_tearsheet(
                 ticker_rets = prices[ticker].pct_change(fill_method=None).dropna()
                 if len(ticker_rets) > 20:
                     var_95 = float(np.percentile(ticker_rets, 5))
-                    cvar_95 = float(ticker_rets[ticker_rets <= var_95].mean()) if len(ticker_rets[ticker_rets <= var_95]) > 0 else var_95
+                    cvar_95 = (
+                        float(ticker_rets[ticker_rets <= var_95].mean())
+                        if len(ticker_rets[ticker_rets <= var_95]) > 0
+                        else var_95
+                    )
                     weight = pos_info.get("weight", 0)
                     value_eur = pos_info.get("value_eur", 0)
                     risk_by_position[ticker] = {
@@ -152,7 +156,7 @@ def build_tearsheet(
             "cost_summary": result.cost_summary,
             "cost_breakdown": cost_breakdown,
             "risk_by_position": risk_by_position,
-        "trades": {
+            "trades": {
                 "count": len(result.trades_df),
                 "sample": (
                     result.trades_df.to_dict("records") if not result.trades_df.empty else []
