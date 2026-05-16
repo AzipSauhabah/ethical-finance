@@ -732,9 +732,11 @@ def generate_pdf(tearsheet: dict) -> bytes:
         S += [PageBreak()]
 
     # PAGE 12b — SECTION ML
-    ml_section = tearsheet.get("ml_info", {})
+    tearsheet.get("ml_info", {})
     S += [
-        Paragraph("Intelligence artificielle et signaux ML", section_s), hr(), Spacer(1, .3*cm),
+        Paragraph("Intelligence artificielle et signaux ML", section_s),
+        hr(),
+        Spacer(1, 0.3 * cm),
         Paragraph(
             "Cette strategie utilise des modeles d apprentissage automatique supervise "
             "pour generer des signaux directionnels (achat/vente/neutre) sur chaque titre. "
@@ -742,7 +744,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
             "(approche walk-forward stricte sans re-entrainement pour eviter le look-ahead bias).",
             body_s,
         ),
-        Spacer(1, .3*cm),
+        Spacer(1, 0.3 * cm),
         Paragraph("<b>Features utilisees (indicateurs techniques)</b>", body_s),
     ]
     features_data = [
@@ -759,9 +761,9 @@ def generate_pdf(tearsheet: dict) -> bytes:
         ["mom_20", "Momentum 20 jours", "20j"],
         ["mom_60", "Momentum 60 jours", "60j"],
     ]
-    t = Table(features_data, colWidths=[3*cm, 9*cm, 3.5*cm])
+    t = Table(features_data, colWidths=[3 * cm, 9 * cm, 3.5 * cm])
     t.setStyle(tbl_style())
-    S += [t, Spacer(1, .3*cm)]
+    S += [t, Spacer(1, 0.3 * cm)]
 
     S += [
         Paragraph("<b>Modeles utilises</b>", body_s),
@@ -773,7 +775,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
             "(classes : +1 achat, -1 vente, 0 neutre).",
             body_s,
         ),
-        Spacer(1, .2*cm),
+        Spacer(1, 0.2 * cm),
         Paragraph("<b>Hypotheses et limites du ML</b>", body_s),
         Paragraph(
             "1. Les modeles supposent que les patterns historiques se repetent. "
@@ -788,7 +790,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
             "en periode de faible volatilite.",
             body_s,
         ),
-        Spacer(1, .2*cm),
+        Spacer(1, 0.2 * cm),
         Paragraph("<b>Interpretation des signaux</b>", body_s),
         Paragraph(
             "+1 (Achat) : le modele predit un rendement > +1% sur 5 jours. "
