@@ -339,17 +339,32 @@ async def get_live_quote(ticker: str) -> dict:
 
 
 async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
-    """Fetch latest FX rate *from_ccy* → *to_ccy* via yfinance."""
+    """Fetch latest FX rate from Supabase ohlcv DB."""
+    import os, httpx
     if from_ccy == to_ccy:
         return 1.0
     key = f"fx:{from_ccy}{to_ccy}"
     hit = await cache.get(key)
     if hit:
         return float(hit)
-    loop = asyncio.get_event_loop()
-    info = await loop.run_in_executor(None, partial(_yf_info_sync, f"{from_ccy}{to_ccy}=X"))
-    rate = float(info.get("regularMarketPrice", 1.0) or 1.0)
-    await cache.set(key, rate, 300)  # 5 min TTL for FX
+
+    supabase_url = os.environ.get("SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
+    rate = 1.0
+
+    if supabase_url and supabase_key:
+        try:
+            ticker = f"{from_ccy}{to_ccy}=X"
+            headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+            params = {"ticker": f"eq.{ticker}", "select": "close", "order": "date.desc", "limit": "1"}
+            async with httpx.AsyncClient(timeout=5) as client:
+                r = await client.get(f"{supabase_url}/rest/v1/ohlcv", headers=headers, params=params)
+                if r.status_code == 200 and r.json():
+                    rate = float(r.json()[0].get("close") or 1.0)
+        except Exception as e:
+            log.warning("FX rate from DB failed: %s", e)
+
+    await cache.set(key, rate, 3600)
     return rate
 
 
