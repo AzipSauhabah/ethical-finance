@@ -355,8 +355,8 @@ function BacktestResults({ result }: { result: Tearsheet }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
         {[
           ['NAV', (result.positions?.nav_eur ?? 0).toFixed(2) + ' €'],
-          ['Cash', result.positions.cash_eur.toFixed(2) + ' €'],
-          ['Investi', result.positions.invested_eur.toFixed(2) + ' €'],
+          ['Cash', (result.positions?.cash_eur ?? 0).toFixed(2) + ' €'],
+          ['Investi', (result.positions?.invested_eur ?? 0).toFixed(2) + ' €'],
           ['Trades', result.positions.n_trades.toString()],
           ['Coûts totaux', result.positions.total_costs_eur.toFixed(2) + ' €'],
           ['Taxes totales', result.positions.total_taxes_eur.toFixed(2) + ' €'],
