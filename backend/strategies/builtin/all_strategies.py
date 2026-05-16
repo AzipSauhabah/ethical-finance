@@ -419,9 +419,7 @@ class MLEnsembleStrategy(Strategy):
             if len(X_train) < 50:
                 continue
             rf = LGBMClassifier(max_iter=100, max_depth=4, random_state=42)
-            gbm = LGBMClassifier(
-                max_iter=100, max_depth=4, random_state=42
-            )
+            gbm = LGBMClassifier(max_iter=100, max_depth=4, random_state=42)
             rf.fit(X_train, y_train)
             gbm.fit(X_train, y_train)
             models[col] = (rf, gbm)
