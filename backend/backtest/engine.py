@@ -182,7 +182,9 @@ class BacktestEngine:
                     log.warning("on_bar error at %s: %s", dt, exc)
                     target_weights = {}
                 if target_weights:
-                    self._execute_rebalance(portfolio, dt, prices_eur, target_weights, params, past_prices=past_view)
+                    self._execute_rebalance(
+                        portfolio, dt, prices_eur, target_weights, params, past_prices=past_view
+                    )
 
             # ── Snapshot ─────────────────────────────────────────────────
             portfolio.snapshot(dt, prices_eur)
@@ -261,13 +263,19 @@ class BacktestEngine:
                 continue
 
             # Contrainte VaR : si activee et VaR journaliere > 5%, reduit le poids de 50%
-            if params.use_var_constraint and past_prices is not None and ticker in past_prices.columns:
+            if (
+                params.use_var_constraint
+                and past_prices is not None
+                and ticker in past_prices.columns
+            ):
                 rets = past_prices[ticker].pct_change(fill_method=None).dropna()
                 if len(rets) >= 20:
                     var_95 = float(rets.quantile(0.05))
                     if var_95 < -0.05:  # VaR > 5% par jour
                         target_w = target_w * 0.5
-                        log.debug("VaR constraint applied to %s: weight reduced to %.2f", ticker, target_w)
+                        log.debug(
+                            "VaR constraint applied to %s: weight reduced to %.2f", ticker, target_w
+                        )
 
             pos = portfolio._positions.get(ticker)
             cur_shares = pos.shares if pos else 0
