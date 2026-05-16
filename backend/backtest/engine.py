@@ -182,7 +182,7 @@ class BacktestEngine:
                     log.warning("on_bar error at %s: %s", dt, exc)
                     target_weights = {}
                 if target_weights:
-                    self._execute_rebalance(portfolio, dt, prices_eur, target_weights, params)
+                    self._execute_rebalance(portfolio, dt, prices_eur, target_weights, params, past_prices=past_view)
 
             # ── Snapshot ─────────────────────────────────────────────────
             portfolio.snapshot(dt, prices_eur)
@@ -227,6 +227,7 @@ class BacktestEngine:
         dt: date,
         prices_eur: dict[str, float],
         target_weights: dict[str, float],
+        past_prices=None,
         params: StrategyParams,
     ) -> None:
         nav = portfolio.market_value(prices_eur)
@@ -258,6 +259,16 @@ class BacktestEngine:
             price = prices_eur.get(ticker, 0.0)
             if price <= 0:
                 continue
+
+            # Contrainte VaR : si VaR journaliere > 5%, reduit le poids de 50%
+            if past_prices is not None and ticker in past_prices.columns:
+                rets = past_prices[ticker].pct_change(fill_method=None).dropna()
+                if len(rets) >= 20:
+                    var_95 = float(rets.quantile(0.05))
+                    if var_95 < -0.05:  # VaR > 5% par jour
+                        target_w = target_w * 0.5
+                        log.debug("VaR constraint applied to %s: weight reduced to %.2f", ticker, target_w)
+
             pos = portfolio._positions.get(ticker)
             cur_shares = pos.shares if pos else 0
             target_shares = _target_shares(
