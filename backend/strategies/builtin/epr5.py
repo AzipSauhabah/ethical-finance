@@ -137,12 +137,22 @@ def _build_features(prices: pd.Series) -> np.ndarray | None:
         # Momentum rank (z-score of 12-1 month returns)
         mom = float(p.pct_change(252).iloc[-1]) if len(p) >= 252 else ret_60
 
-        return np.array([
-            ret_1, ret_5, ret_20, ret_60,
-            vol_20, vol_60,
-            above_20, above_50, above_200,
-            float(rsi), mom,
-        ], dtype=np.float32)
+        return np.array(
+            [
+                ret_1,
+                ret_5,
+                ret_20,
+                ret_60,
+                vol_20,
+                vol_60,
+                above_20,
+                above_50,
+                above_200,
+                float(rsi),
+                mom,
+            ],
+            dtype=np.float32,
+        )
 
     except Exception:
         return None
@@ -332,7 +342,7 @@ class EPR5Strategy(Strategy):
                 vix_today = float(v.iloc[-1])
                 vix_yesterday = float(v.iloc[-2])
                 vix_ma_today = float(v.iloc[-vix_ma:].mean())
-                vix_ma_yesterday = float(v.iloc[-(vix_ma + 1):-1].mean())
+                vix_ma_yesterday = float(v.iloc[-(vix_ma + 1) : -1].mean())
                 # Cross DOWN: yesterday above MA, today below MA
                 vix_cross_down = (vix_yesterday >= vix_ma_yesterday) and (vix_today < vix_ma_today)
                 # Also allow if VIX is already below MA (not just on the cross)
