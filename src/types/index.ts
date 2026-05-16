@@ -52,6 +52,7 @@ export interface BacktestParams {
   rebalance_frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly';
   max_position_pct: number;
   stop_loss_pct: number | null;
+  use_var_constraint: boolean;
   benchmark: string;
   custom_params?: Record<string, number>;
   require_ethical: boolean;
