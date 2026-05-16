@@ -267,10 +267,10 @@ async def get_prices(
 
 
 async def get_live_quote(ticker: str) -> dict:
-    """Return latest quote from Supabase ohlcv DB."""
-    import os
-
-    import httpx
+    """Return latest quote from local PostgreSQL ohlcv table."""
+    import asyncio
+    from backend.core.db import engine
+    import sqlalchemy as sa
 
     cache_key = f"live:{ticker}"
     hit = await cache.get(cache_key)
@@ -287,6 +287,46 @@ async def get_live_quote(ticker: str) -> dict:
         "timestamp": pd.Timestamp.utcnow().isoformat(),
         "currency": "USD",
     }
+
+    def _fetch():
+        from sqlalchemy.orm import Session
+        with Session(engine) as session:
+            rows = session.execute(
+                sa.text("""
+                    SELECT date, adj_close, close, volume
+                    FROM ohlcv
+                    WHERE ticker = :ticker
+                    ORDER BY date DESC
+                    LIMIT 2
+                """),
+                {"ticker": ticker}
+            ).fetchall()
+        return rows
+
+    try:
+        loop = asyncio.get_event_loop()
+        rows = await loop.run_in_executor(None, _fetch)
+        if not rows:
+            return empty
+        last_row = rows[0]
+        price = float(last_row[1] or last_row[2] or 0)
+        prev_price = float(rows[1][1] or rows[1][2] or price) if len(rows) > 1 else price
+        change_pct = ((price - prev_price) / prev_price * 100) if prev_price else 0.0
+        result = {
+            "ticker": ticker,
+            "last": price,
+            "bid": price,
+            "ask": price,
+            "volume": int(last_row[3] or 0),
+            "change_pct": round(change_pct, 2),
+            "timestamp": pd.Timestamp.utcnow().isoformat(),
+            "currency": "USD",
+        }
+        await cache.set(cache_key, result, ttl=300)
+        return result
+    except Exception as exc:
+        log.warning("DB live quote error %s: %s", ticker, exc)
+        return empty
 
     supabase_url = os.environ.get("SUPABASE_URL", "")
     supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
