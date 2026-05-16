@@ -403,7 +403,7 @@ class MLEnsembleStrategy(Strategy):
 
         # Refit
         try:
-            import lightgbm as lgb
+            from sklearn.ensemble import HistGradientBoostingClassifier as LGBMClassifier
         except ImportError:
             return {}
 
@@ -418,10 +418,10 @@ class MLEnsembleStrategy(Strategy):
             y_train = y[:-5]
             if len(X_train) < 50:
                 continue
-            rf = lgb.LGBMClassifier(
-                n_estimators=100, max_depth=4, random_state=42, n_jobs=1, num_threads=1, verbose=-1
+            rf = LGBMClassifier(
+                max_iter=100, max_depth=4, random_state=42
             )
-            gbm = lgb.LGBMClassifier(
+            gbm = LGBMClassifier(
                 n_estimators=100, max_depth=4, random_state=42, boosting_type="gbdt", verbose=-1
             )
             rf.fit(X_train, y_train)
