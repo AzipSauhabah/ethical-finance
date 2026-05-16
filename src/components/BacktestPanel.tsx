@@ -1,26 +1,85 @@
-// Backtest panel: pick strategy & params, fire backtest, render results.
+// BacktestPanel.tsx — Goldman Sachs dark theme
 // © 2024 Sauhabah
 
 import { useEffect, useState } from 'react';
 import {
-  XAxis, YAxis, Tooltip, Legend,
+  XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, CartesianGrid,
-  BarChart, Bar, LineChart, Line,
+  BarChart, Bar, ComposedChart, Line,
   PieChart, Pie, Cell,
 } from 'recharts';
 import { api } from '../utils/api';
 import type { BacktestParams, StrategyMeta, Tearsheet } from '../types';
+
+const NAVY = '#0d1528';
+const GOLD = '#b8962f';
+const GREEN = '#1d8c41';
+const RED = '#b82424';
+const CARD_BG = '#111827';
+const BORDER = '#1e2d4a';
 
 interface Props {
   tickers: string[];
   onStrategyChange?: (s: string) => void;
 }
 
+const select: React.CSSProperties = {
+  padding: '0.5rem 0.75rem',
+  background: '#1a2035',
+  border: '1px solid #2a3555',
+  borderRadius: 4,
+  color: '#e8e8e8',
+  fontSize: '0.82rem',
+  width: '100%',
+  outline: 'none',
+  cursor: 'pointer',
+};
+
+const inputStyle: React.CSSProperties = {
+  ...select,
+  fontFamily: '"JetBrains Mono", monospace',
+};
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', marginBottom: 4, textTransform: 'uppercase' as const }}>{children}</div>;
+}
+
+function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  const isNeg = value.startsWith('-');
+  const isPos = value.startsWith('+') || (!isNeg && parseFloat(value) > 0 && value.includes('%'));
+  return (
+    <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 6, padding: '0.875rem 1rem' }}>
+      <div style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', marginBottom: 6 }}>{label}</div>
+      <div style={{
+        fontSize: '1.2rem', fontWeight: 700,
+        fontFamily: '"JetBrains Mono", monospace',
+        color: isNeg ? RED : isPos ? GREEN : '#e8e8e8',
+      }}>{value}</div>
+      {sub && <div style={{ fontSize: '0.65rem', color: '#444', marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
+
+const CustomTooltip = ({ active, payload, label, fmt }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: '#0d1528', border: '1px solid #2a3555', borderRadius: 4, padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}>
+      <div style={{ color: '#666', marginBottom: 4, fontFamily: '"JetBrains Mono", monospace' }}>{label}</div>
+      {payload.map((p: any) => (
+        <div key={p.name} style={{ color: p.color, fontFamily: '"JetBrains Mono", monospace' }}>
+          {p.name}: {fmt ? fmt(p.value) : p.value}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
   const [strategies, setStrategies] = useState<StrategyMeta[]>([]);
   const [result, setResult] = useState<Tearsheet | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const [params, setParams] = useState<BacktestParams>({
     tickers,
@@ -39,338 +98,298 @@ export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
     require_sharia: false,
   });
 
-  useEffect(() => {
-    api.strategies()
-      .then((r) => setStrategies(r.strategies))
-      .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    setParams((p) => ({ ...p, tickers }));
-  }, [tickers]);
+  useEffect(() => { api.strategies().then(r => setStrategies(r.strategies)).catch(console.error); }, []);
+  useEffect(() => { setParams(p => ({ ...p, tickers })); }, [tickers]);
 
   const run = async () => {
-    if (!tickers.length) {
-      setError('Ajoutez au moins un ticker.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.backtest(params);
-      setResult(res);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erreur inconnue');
-    } finally {
-      setLoading(false);
-    }
+    if (!tickers.length) { setError('Ajoutez au moins un ticker.'); return; }
+    setLoading(true); setError(null);
+    try { setResult(await api.backtest(params)); }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Erreur'); }
+    finally { setLoading(false); }
   };
 
   const downloadPdf = async () => {
-    const blob = await api.backtestPdf(params);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `rapport_${params.strategy}_${new Date().toISOString().slice(0, 10)}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setPdfLoading(true);
+    try {
+      const blob = await api.backtestPdf(params);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `sauhabah_${params.strategy}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click(); URL.revokeObjectURL(url);
+    } finally { setPdfLoading(false); }
   };
 
-  return (
-    <div style={{ padding: '1rem' }}>
-      <h2 style={{ color: '#142340' }}>Backtest & Performance</h2>
+  const m = result?.metrics;
+  const pct = (v?: number | null) => v == null ? 'N/A' : (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
+  const eur = (v?: number | null) => v == null ? 'N/A' : v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '0.75rem',
-        margin: '1rem 0'
-      }}>
-        <Field label="Stratégie">
-          <select value={params.strategy} onChange={(e) => { setParams({ ...params, strategy: e.target.value }); onStrategyChange?.(e.target.value); }} style={input}>
-            {strategies.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
-          </select>
-        </Field>
-
-        <Field label="Période">
-          <select value={params.period} onChange={(e) => setParams({ ...params, period: e.target.value })} style={input}>
-            <option value="1y">1 an</option>
-            <option value="3y">3 ans</option>
-            <option value="5y">5 ans</option>
-            <option value="10y">10 ans</option>
-            <option value="15y">15 ans</option>
-            <option value="20y">20 ans</option>
-          </select>
-        </Field>
-
-        <Field label="Capital initial (€)">
-          <input type="number" value={params.initial_capital} onChange={(e) => setParams({ ...params, initial_capital: +e.target.value })} style={input} />
-        </Field>
-
-        <Field label="Versement mensuel (€)">
-          <input type="number" value={params.monthly_contribution} onChange={(e) => setParams({ ...params, monthly_contribution: +e.target.value })} style={input} />
-        </Field>
-
-        <Field label="Courtier">
-          <select value={params.broker} onChange={(e) => setParams({ ...params, broker: e.target.value })} style={input}>
-            <option value="degiro">Degiro</option>
-            <option value="fortuneo">Fortuneo</option>
-            <option value="bourse_direct">Bourse Direct</option>
-            <option value="interactive_brokers">Interactive Brokers</option>
-            <option value="default">Autre / défaut</option>
-          </select>
-        </Field>
-
-        <Field label="Compte">
-          <select value={params.account_type} onChange={(e) => setParams({ ...params, account_type: e.target.value as 'CTO' | 'PEA' })} style={input}>
-            <option value="CTO">CTO</option>
-            <option value="PEA">PEA</option>
-          </select>
-        </Field>
-
-        <Field label="Rebalance">
-          <select value={params.rebalance_frequency} onChange={(e) => setParams({ ...params, rebalance_frequency: e.target.value as BacktestParams['rebalance_frequency'] })} style={input}>
-            <option value="daily">Quotidien</option>
-            <option value="weekly">Hebdomadaire</option>
-            <option value="monthly">Mensuel</option>
-            <option value="quarterly">Trimestriel</option>
-          </select>
-        </Field>
-
-        <Field label="Stop-loss (%)">
-          <input type="number" step="0.01" value={params.stop_loss_pct ?? ''} onChange={(e) => setParams({ ...params, stop_loss_pct: e.target.value === '' ? 0 : +e.target.value })} style={input} />
-          <label style={{fontSize:12, color:'#666'}}>Contrainte VaR (réduit poids si VaR jour &gt; 5%)</label>
-          <input type="checkbox" checked={params.use_var_constraint} onChange={(e) => setParams({ ...params, use_var_constraint: e.target.checked })} />
-        </Field>
-
-        <Field label="Benchmark">
-          <select value={params.benchmark} onChange={(e) => setParams({ ...params, benchmark: e.target.value })} style={input}>
-            <option value="^GSPC">S&P 500</option>
-            <option value="^FCHI">CAC 40</option>
-            <option value="^STOXX50E">EuroStoxx 50</option>
-          </select>
-        </Field>
-      </div>
-
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <button onClick={run} disabled={loading} style={btnPrimary}>
-          {loading ? 'Calcul en cours…' : 'Lancer le backtest'}
-        </button>
-        {result && (
-          <button onClick={downloadPdf} style={btnGold}>
-            📄 Télécharger le rapport PDF
-          </button>
-        )}
-      </div>
-
-      {error && <div style={{ color: '#b82424', marginBottom: '1rem' }}>{error}</div>}
-      {result && <BacktestResults result={result} />}
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#444' }}>
-      <span style={{ marginBottom: '0.25rem' }}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-const input: React.CSSProperties = { padding: '0.4rem', border: '1px solid #ccc', borderRadius: 4, fontSize: '0.85rem' };
-const btnPrimary: React.CSSProperties = { padding: '0.6rem 1.2rem', background: '#142340', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 };
-const btnGold: React.CSSProperties = { padding: '0.6rem 1.2rem', background: '#b8962f', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 };
-
-const COLORS = ['#142340', '#b8962f', '#2e7d32', '#c62828', '#1565c0', '#6a1b9a', '#00838f', '#ef6c00'];
-
-function BacktestResults({ result }: { result: Tearsheet }) {
-  const m = result.metrics;
-  const pct = (v: number) => (v * 100).toFixed(2) + '%';
-
-  // Combine nav + benchmark pour le graphique principal
-  const navWithBench = result.nav_chart.map((p, i) => ({
-    ...p,
-    benchmark: result.benchmark_chart?.[i]?.nav ?? null,
+  const navWithBench = (result?.nav_chart || []).map((d: any, i: number) => ({
+    date: d.date,
+    NAV: d.nav,
+    Benchmark: result?.benchmark_chart?.[i]?.nav,
   }));
 
-  // Coûts cumulés
-  const costData = result.cost_chart?.map(p => ({
-    date: p.date,
-    'Commissions': +(p.costs ?? 0).toFixed(2),
-    'Taxes': +(p.taxes ?? 0).toFixed(2),
-  })) ?? [];
+  const allocData = (result?.allocation_chart || []).map((d: any) => ({
+    date: d.date, Investi: d.invested, Cash: d.cash,
+  }));
 
-  // Allocation cash vs investi
-  const allocData = result.allocation_chart?.map(p => ({
-    date: p.date,
-    'Investi': +(p.invested ?? 0).toFixed(2),
-    'Cash': +(p.cash ?? 0).toFixed(2),
-  })) ?? [];
+  const costData = (result?.cost_chart || []).map((d: any) => ({
+    date: d.date, Commissions: d.costs, Taxes: d.total - d.costs,
+  }));
 
-  // Répartition des coûts (pie)
-  const cb = result.cost_breakdown;
+  const cb = result?.cost_breakdown || {};
   const pieData = [
-    { name: 'Commissions', value: +cb.commission.toFixed(2) },
-    { name: 'Slippage', value: +cb.slippage.toFixed(2) },
-    { name: 'FX Spread', value: +cb.fx_spread.toFixed(2) },
-    { name: 'TTF', value: +cb.ttf.toFixed(2) },
+    { name: 'Commissions', value: +(cb.commission || 0).toFixed(2) },
+    { name: 'Slippage', value: +(cb.slippage || 0).toFixed(2) },
+    { name: 'FX Spread', value: +(cb.fx_spread || 0).toFixed(2) },
+    { name: 'TTF', value: +(cb.ttf || 0).toFixed(2) },
   ].filter(d => d.value > 0);
 
-  // Stress tests
-  const stressData = result.stress_tests
-    .filter(s => s.total_return !== undefined)
-    .map(s => ({
-      name: s.label,
-      'Stratégie': +((s.total_return ?? 0) * 100).toFixed(2),
-      'Benchmark': +((s.benchmark?.total_return ?? 0) * 100).toFixed(2),
+  const stressData = (result?.stress_tests || [])
+    .filter((s: any) => s.total_return !== undefined)
+    .map((s: any) => ({
+      name: s.label?.replace(' 20', ' '20'),
+      Stratégie: +((s.total_return ?? 0) * 100).toFixed(2),
+      Benchmark: +((s.benchmark?.total_return ?? 0) * 100).toFixed(2),
     }));
 
+  const PIE_COLORS = [NAVY, GOLD, '#8a6f9c', '#3e8260'];
+
   return (
-    <div>
-      <h3 style={{ color: '#b8962f' }}>Résultats</h3>
-
-      {/* Métriques clés */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        {[
-          ['Return', pct(m.total_return)],
-          ['CAGR', pct(m.cagr)],
-          ['Sharpe', (m.sharpe_ratio ?? 0).toFixed(2)],
-          ['Sortino', (m.sortino_ratio ?? 0).toFixed(2)],
-          ['Calmar', (m.calmar_ratio ?? 0).toFixed(2)],
-          ['Max DD', pct(m.max_drawdown)],
-          ['Vol', pct((m.annualised_volatility ?? 0))],
-          ['Beta', (m.beta ?? 0).toFixed(2) ?? 'N/A'],
-          ['Alpha', m.alpha_jensen?.toFixed(4) ?? 'N/A'],
-          ['VaR 95%', pct(m.var_95)],
-          ['CVaR 95%', pct(m.cvar_95)],
-          ['Hit Rate', pct(m.hit_rate)],
-        ].map(([k, v]) => (
-          <div key={k} style={{ background: '#f8f8f8', padding: '0.5rem', borderRadius: 4, border: '1px solid #eee' }}>
-            <div style={{ fontSize: '0.7rem', color: '#888' }}>{k}</div>
-            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#142340' }}>{v}</div>
-          </div>
-        ))}
+    <div style={{ padding: '2rem', maxWidth: 1400, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '2rem', borderBottom: '1px solid #1a2035', paddingBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <div style={{ fontSize: '0.65rem', letterSpacing: '3px', color: GOLD, marginBottom: 4 }}>ANALYSE QUANTITATIVE</div>
+          <h2 style={{ margin: 0, fontSize: '1.8rem', fontFamily: '"Playfair Display", serif', color: '#e8e8e8', fontWeight: 400 }}>
+            Backtest & Performance
+          </h2>
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button onClick={run} disabled={loading} style={{
+            padding: '0.6rem 2rem', background: loading ? '#1a2035' : GOLD,
+            color: loading ? '#666' : '#0a0f1e', border: 'none', borderRadius: 4,
+            fontWeight: 700, fontSize: '0.8rem', letterSpacing: '1.5px', cursor: loading ? 'wait' : 'pointer',
+          }}>{loading ? 'CALCUL…' : 'LANCER'}</button>
+          {result && (
+            <button onClick={downloadPdf} disabled={pdfLoading} style={{
+              padding: '0.6rem 1.5rem', background: 'transparent',
+              color: GOLD, border: `1px solid ${GOLD}`, borderRadius: 4,
+              fontWeight: 600, fontSize: '0.78rem', letterSpacing: '1px', cursor: 'pointer',
+            }}>{pdfLoading ? '…' : '↓ RAPPORT PDF'}</button>
+          )}
+        </div>
       </div>
 
-      {/* NAV + Benchmark */}
-      {navWithBench.length > 0 && (
-        <>
-          <h4 style={{ color: '#142340' }}>Évolution du portefeuille vs Benchmark</h4>
-          <AreaChart width={700} height={280} data={navWithBench} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-            <YAxis tick={{ fontSize: 9 }} />
-            <Tooltip formatter={(v: number) => v.toFixed(2) + ' €'} />
-            <Legend />
-            <Area type="monotone" dataKey="nav" stroke="#142340" fill="#e8edf5" name="NAV (€)" />
-            <Line type="monotone" dataKey="benchmark" stroke="#b8962f" dot={false} name="Benchmark (€)" />
-          </AreaChart>
-        </>
-      )}
+      {/* Params grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div><Label>Stratégie</Label>
+          <select value={params.strategy} onChange={e => { setParams({ ...params, strategy: e.target.value }); onStrategyChange?.(e.target.value); }} style={select}>
+            {strategies.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+          </select>
+        </div>
+        <div><Label>Période</Label>
+          <select value={params.period} onChange={e => setParams({ ...params, period: e.target.value })} style={select}>
+            {[['1y','1 an'],['3y','3 ans'],['5y','5 ans'],['10y','10 ans'],['20y','20 ans']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </div>
+        <div><Label>Capital initial (€)</Label>
+          <input type="number" value={params.initial_capital} onChange={e => setParams({ ...params, initial_capital: +e.target.value })} style={inputStyle} />
+        </div>
+        <div><Label>Versement mensuel (€)</Label>
+          <input type="number" value={params.monthly_contribution} onChange={e => setParams({ ...params, monthly_contribution: +e.target.value })} style={inputStyle} />
+        </div>
+        <div><Label>Courtier</Label>
+          <select value={params.broker} onChange={e => setParams({ ...params, broker: e.target.value })} style={select}>
+            {['degiro','interactive_brokers','trade_republic','boursorama','default'].map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
+        <div><Label>Compte</Label>
+          <select value={params.account_type} onChange={e => setParams({ ...params, account_type: e.target.value })} style={select}>
+            <option value="CTO">CTO</option><option value="PEA">PEA</option>
+          </select>
+        </div>
+        <div><Label>Rebalancement</Label>
+          <select value={params.rebalance_frequency} onChange={e => setParams({ ...params, rebalance_frequency: e.target.value as BacktestParams['rebalance_frequency'] })} style={select}>
+            {[['daily','Quotidien'],['weekly','Hebdo'],['monthly','Mensuel'],['quarterly','Trimestriel'],['annually','Annuel']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </div>
+        <div><Label>Benchmark</Label>
+          <select value={params.benchmark} onChange={e => setParams({ ...params, benchmark: e.target.value })} style={select}>
+            {[['^FCHI','CAC 40'],['^GSPC','S&P 500'],['^STOXX50E','EuroStoxx 50'],['^GDAXI','DAX']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </div>
+        <div><Label>Stop-loss (%)</Label>
+          <input type="number" step="0.01" value={params.stop_loss_pct ?? ''} onChange={e => setParams({ ...params, stop_loss_pct: e.target.value === '' ? null : +e.target.value })} style={inputStyle} />
+        </div>
+        <div><Label>Position max (%)</Label>
+          <input type="number" step="0.05" value={params.max_position_pct} onChange={e => setParams({ ...params, max_position_pct: +e.target.value })} style={inputStyle} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingTop: '1.2rem' }}>
+          <input type="checkbox" id="ethical" checked={params.require_ethical} onChange={e => setParams({ ...params, require_ethical: e.target.checked })} />
+          <label htmlFor="ethical" style={{ fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>Éthique uniquement</label>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingTop: '1.2rem' }}>
+          <input type="checkbox" id="var" checked={params.use_var_constraint} onChange={e => setParams({ ...params, use_var_constraint: e.target.checked })} />
+          <label htmlFor="var" style={{ fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>Contrainte VaR</label>
+        </div>
+      </div>
 
-      {/* Drawdown */}
-      {result.drawdown_chart?.length > 0 && (
-        <>
-          <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Drawdown</h4>
-          <AreaChart width={700} height={180} data={result.drawdown_chart} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-            <YAxis tickFormatter={(v) => (v * 100).toFixed(1) + '%'} tick={{ fontSize: 9 }} />
-            <Tooltip formatter={(v: number) => (v * 100).toFixed(2) + '%'} />
-            <Area type="monotone" dataKey="drawdown" stroke="#b82424" fill="#f5e8e8" name="Drawdown" />
-          </AreaChart>
-        </>
-      )}
+      {error && <div style={{ background: 'rgba(184,36,36,0.1)', border: '1px solid #b82424', borderRadius: 4, padding: '0.75rem 1rem', color: '#b82424', fontSize: '0.82rem', marginBottom: '1rem' }}>{error}</div>}
 
-      {/* Allocation cash vs investi */}
-      {allocData.length > 0 && (
-        <>
-          <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Allocation Cash vs Investi</h4>
-          <AreaChart width={700} height={200} data={allocData} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-            <YAxis tick={{ fontSize: 9 }} />
-            <Tooltip formatter={(v: number) => v.toFixed(2) + ' €'} />
-            <Legend />
-            <Area type="monotone" dataKey="Investi" stackId="1" stroke="#142340" fill="#e8edf5" />
-            <Area type="monotone" dataKey="Cash" stackId="1" stroke="#b8962f" fill="#fdf3d8" />
-          </AreaChart>
-        </>
-      )}
+      {/* RESULTS */}
+      {result && m && (
+        <div>
+          {/* KPIs */}
+          <div style={{ fontSize: '0.65rem', letterSpacing: '3px', color: GOLD, marginBottom: '0.75rem', marginTop: '0.5rem' }}>MÉTRIQUES DE PERFORMANCE</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            <KpiCard label="RETURN TOTAL" value={pct(m.total_return)} />
+            <KpiCard label="CAGR" value={pct(m.cagr)} />
+            <KpiCard label="SHARPE" value={(m.sharpe_ratio ?? 0).toFixed(2)} sub="Taux sans risque 2%" />
+            <KpiCard label="SORTINO" value={(m.sortino_ratio ?? 0).toFixed(2)} />
+            <KpiCard label="CALMAR" value={(m.calmar_ratio ?? 0).toFixed(2)} />
+            <KpiCard label="MAX DRAWDOWN" value={pct(m.max_drawdown)} />
+            <KpiCard label="VOLATILITÉ" value={pct(m.annualised_volatility)} sub="Annualisée" />
+            <KpiCard label="BETA" value={(m.beta ?? 0).toFixed(3)} />
+            <KpiCard label="ALPHA JENSEN" value={(m.alpha_jensen ?? 0).toFixed(4)} sub="Annualisé" />
+            <KpiCard label="VAR 95%" value={pct(m.var_95)} sub="Journalière" />
+            <KpiCard label="CVAR 95%" value={pct(m.cvar_95)} sub="Expected Shortfall" />
+            <KpiCard label="HIT RATE" value={pct(m.hit_rate)} />
+          </div>
 
-      {/* Coûts cumulés */}
-      {costData.length > 0 && (
-        <>
-          <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Coûts cumulés (€)</h4>
-          <AreaChart width={700} height={180} data={costData} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-            <YAxis tick={{ fontSize: 9 }} />
-            <Tooltip formatter={(v: number) => v.toFixed(2) + ' €'} />
-            <Legend />
-            <Area type="monotone" dataKey="Commissions" stackId="1" stroke="#142340" fill="#e8edf5" />
-            <Area type="monotone" dataKey="Taxes" stackId="1" stroke="#b82424" fill="#f5e8e8" />
-          </AreaChart>
-        </>
-      )}
-
-      {/* Répartition des coûts (Pie) */}
-      {pieData.length > 0 && (
-        <>
-          <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Répartition des coûts</h4>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            <PieChart width={220} height={220}>
-              <Pie data={pieData} cx={100} cy={100} outerRadius={90} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(v: number) => v.toFixed(2) + ' €'} />
-            </PieChart>
-            <div>
-              {pieData.map((d, i) => (
-                <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.85rem' }}>
-                  <span style={{ width: 12, height: 12, borderRadius: 2, background: COLORS[i % COLORS.length], display: 'inline-block' }} />
-                  {d.name}: {d.value.toFixed(2)} €
-                </div>
-              ))}
+          {/* NAV Chart */}
+          {navWithBench.length > 0 && (
+            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '1.5rem', marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#555', marginBottom: '1rem' }}>ÉVOLUTION DU PORTEFEUILLE VS BENCHMARK</div>
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={navWithBench}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a2035" />
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#555' }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: '#555' }} tickLine={false} axisLine={false} tickFormatter={v => v.toLocaleString('fr-FR')} />
+                  <Tooltip content={<CustomTooltip fmt={(v: number) => eur(v)} />} />
+                  <Legend wrapperStyle={{ fontSize: '0.75rem', color: '#888' }} />
+                  <Area type="monotone" dataKey="NAV" stroke="#4a7fd4" fill="rgba(74,127,212,0.15)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Benchmark" stroke={GOLD} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        </>
-      )}
+          )}
 
-      {/* Stress tests */}
-      {stressData.length > 0 && (
-        <>
-          <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Stress Tests — Crises historiques (%)</h4>
-          <BarChart width={700} height={220} data={stressData} margin={{ top: 5, right: 20, bottom: 40, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" tick={{ fontSize: 9 }} angle={-20} textAnchor="end" />
-            <YAxis tickFormatter={(v) => v + '%'} tick={{ fontSize: 9 }} />
-            <Tooltip formatter={(v: number) => v.toFixed(2) + '%'} />
-            <Legend />
-            <Bar dataKey="Stratégie" fill="#142340" />
-            <Bar dataKey="Benchmark" fill="#b8962f" />
-          </BarChart>
-        </>
-      )}
-
-      {/* Résumé positions */}
-      <h4 style={{ color: '#142340', marginTop: '1.5rem' }}>Positions finales</h4>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
-        {[
-          ['NAV', (result.positions?.nav_eur ?? 0).toFixed(2) + ' €'],
-          ['Cash', (result.positions?.cash_eur ?? 0).toFixed(2) + ' €'],
-          ['Investi', (result.positions?.invested_eur ?? 0).toFixed(2) + ' €'],
-          ['Trades', result.positions.n_trades.toString()],
-          ['Coûts totaux', result.positions.total_costs_eur.toFixed(2) + ' €'],
-          ['Taxes totales', result.positions.total_taxes_eur.toFixed(2) + ' €'],
-        ].map(([k, v]) => (
-          <div key={k} style={{ background: '#f8f8f8', padding: '0.5rem', borderRadius: 4, border: '1px solid #eee' }}>
-            <div style={{ fontSize: '0.7rem', color: '#888' }}>{k}</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#142340' }}>{v}</div>
+          {/* Drawdown + Allocation row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            {result.drawdown_chart?.length > 0 && (
+              <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '1.5rem' }}>
+                <div style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#555', marginBottom: '1rem' }}>DRAWDOWN</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={result.drawdown_chart}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a2035" />
+                    <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#555' }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 8, fill: '#555' }} tickLine={false} axisLine={false} tickFormatter={v => (v * 100).toFixed(0) + '%'} />
+                    <Tooltip content={<CustomTooltip fmt={(v: number) => (v * 100).toFixed(2) + '%'} />} />
+                    <Area type="monotone" dataKey="drawdown" stroke={RED} fill="rgba(184,36,36,0.2)" strokeWidth={1.5} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            {allocData.length > 0 && (
+              <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '1.5rem' }}>
+                <div style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#555', marginBottom: '1rem' }}>ALLOCATION CASH VS INVESTI</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={allocData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a2035" />
+                    <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#555' }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 8, fill: '#555' }} tickLine={false} axisLine={false} />
+                    <Tooltip content={<CustomTooltip fmt={(v: number) => eur(v)} />} />
+                    <Legend wrapperStyle={{ fontSize: '0.72rem', color: '#888' }} />
+                    <Area type="monotone" dataKey="Investi" stackId="1" stroke="#4a7fd4" fill="rgba(74,127,212,0.4)" strokeWidth={1} dot={false} />
+                    <Area type="monotone" dataKey="Cash" stackId="1" stroke={GOLD} fill="rgba(184,150,47,0.3)" strokeWidth={1} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+
+          {/* Costs row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            {costData.length > 0 && (
+              <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '1.5rem' }}>
+                <div style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#555', marginBottom: '1rem' }}>COÛTS CUMULÉS (€)</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <AreaChart data={costData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a2035" />
+                    <XAxis dataKey="date" tick={{ fontSize: 8, fill: '#555' }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 8, fill: '#555' }} tickLine={false} axisLine={false} />
+                    <Tooltip content={<CustomTooltip fmt={(v: number) => eur(v)} />} />
+                    <Legend wrapperStyle={{ fontSize: '0.72rem', color: '#888' }} />
+                    <Area type="monotone" dataKey="Commissions" stackId="1" stroke="#4a7fd4" fill="rgba(74,127,212,0.4)" strokeWidth={1} dot={false} />
+                    <Area type="monotone" dataKey="Taxes" stackId="1" stroke={RED} fill="rgba(184,36,36,0.3)" strokeWidth={1} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            {pieData.length > 0 && (
+              <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '1.5rem' }}>
+                <div style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#555', marginBottom: '1rem' }}>RÉPARTITION COÛTS</div>
+                <PieChart width={200} height={160}>
+                  <Pie data={pieData} cx={100} cy={75} outerRadius={65} dataKey="value" labelLine={false}>
+                    {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [eur(v), '']} />
+                </PieChart>
+                <div style={{ marginTop: '0.5rem' }}>
+                  {pieData.map((d, i) => (
+                    <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.7rem', color: '#888', marginBottom: 2 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: PIE_COLORS[i % PIE_COLORS.length], display: 'inline-block', flexShrink: 0 }} />
+                      {d.name}: {eur(d.value)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Stress tests */}
+          {stressData.length > 0 && (
+            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '1.5rem', marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#555', marginBottom: '1rem' }}>STRESS TESTS — CRISES HISTORIQUES</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={stressData} margin={{ bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1a2035" />
+                  <XAxis dataKey="name" tick={{ fontSize: 8, fill: '#555' }} angle={-20} textAnchor="end" tickLine={false} />
+                  <YAxis tick={{ fontSize: 8, fill: '#555' }} tickLine={false} axisLine={false} tickFormatter={v => v + '%'} />
+                  <Tooltip content={<CustomTooltip fmt={(v: number) => v.toFixed(2) + '%'} />} />
+                  <Legend wrapperStyle={{ fontSize: '0.72rem', color: '#888' }} />
+                  <Bar dataKey="Stratégie" fill="#4a7fd4" radius={[2,2,0,0]} />
+                  <Bar dataKey="Benchmark" fill={GOLD} radius={[2,2,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Positions summary */}
+          {result.positions && (
+            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '1.5rem' }}>
+              <div style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#555', marginBottom: '1rem' }}>POSITIONS FINALES</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.5rem' }}>
+                {[
+                  ['NAV', eur(result.positions?.nav_eur)],
+                  ['CASH', eur(result.positions?.cash_eur)],
+                  ['INVESTI', eur(result.positions?.invested_eur)],
+                  ['TRADES', result.positions.n_trades?.toString() || '0'],
+                  ['COÛTS', eur(result.positions.total_costs_eur)],
+                  ['TAXES', eur(result.positions.total_taxes_eur)],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ padding: '0.75rem', background: '#0d1528', borderRadius: 4, border: '1px solid #1a2035' }}>
+                    <div style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#444', marginBottom: 4 }}>{k}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#e8e8e8', fontFamily: '"JetBrains Mono", monospace' }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
