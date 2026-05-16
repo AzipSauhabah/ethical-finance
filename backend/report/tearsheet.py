@@ -118,28 +118,32 @@ def build_tearsheet(
             return [_clean(v) for v in obj]
         return obj
 
-    return _clean({
-        "meta": {
-            "strategy": strategy_label or result.strategy_name,
-            "generated_at": date.today().isoformat(),
-            "copyright": COPYRIGHT,
-            "disclaimer": DISCLAIMER,
-        },
-        "metrics": metrics,
-        "significance": sig,
-        "stress_tests": stress,
-        "cost_summary": result.cost_summary,
-        "cost_breakdown": cost_breakdown,
-        "trades": {
-            "count": len(result.trades_df),
-            "sample": (
-                result.trades_df.head(20).to_dict("records") if not result.trades_df.empty else []
-            ),
-        },
-        "nav_chart": nav_chart,
-        "benchmark_chart": benchmark_chart,
-        "drawdown_chart": dd_chart,
-        "cost_chart": cost_chart,
-        "allocation_chart": allocation_chart,
-        "positions": result.positions_final,
-    })
+    return _clean(
+        {
+            "meta": {
+                "strategy": strategy_label or result.strategy_name,
+                "generated_at": date.today().isoformat(),
+                "copyright": COPYRIGHT,
+                "disclaimer": DISCLAIMER,
+            },
+            "metrics": metrics,
+            "significance": sig,
+            "stress_tests": stress,
+            "cost_summary": result.cost_summary,
+            "cost_breakdown": cost_breakdown,
+            "trades": {
+                "count": len(result.trades_df),
+                "sample": (
+                    result.trades_df.head(20).to_dict("records")
+                    if not result.trades_df.empty
+                    else []
+                ),
+            },
+            "nav_chart": nav_chart,
+            "benchmark_chart": benchmark_chart,
+            "drawdown_chart": dd_chart,
+            "cost_chart": cost_chart,
+            "allocation_chart": allocation_chart,
+            "positions": result.positions_final,
+        }
+    )
