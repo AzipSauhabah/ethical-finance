@@ -420,7 +420,7 @@ class MLEnsembleStrategy(Strategy):
                 continue
             rf = LGBMClassifier(max_iter=100, max_depth=4, random_state=42)
             gbm = LGBMClassifier(
-                n_estimators=100, max_depth=4, random_state=42, boosting_type="gbdt", verbose=-1
+                max_iter=100, max_depth=4, random_state=42, boosting_type="gbdt", verbose=-1
             )
             rf.fit(X_train, y_train)
             gbm.fit(X_train, y_train)
