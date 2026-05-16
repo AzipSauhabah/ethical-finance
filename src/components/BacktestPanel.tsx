@@ -138,7 +138,7 @@ export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
     date: d.date, Commissions: d.costs, Taxes: d.total - d.costs,
   }));
 
-  const cb = result?.cost_breakdown || {};
+  const cb = (result?.cost_breakdown || {}) as any;
   const pieData = [
     { name: 'Commissions', value: +(cb.commission || 0).toFixed(2) },
     { name: 'Slippage', value: +(cb.slippage || 0).toFixed(2) },
@@ -206,7 +206,7 @@ export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
           </select>
         </div>
         <div><Label>Compte</Label>
-          <select value={params.account_type} onChange={e => setParams({ ...params, account_type: e.target.value })} style={select}>
+          <select value={params.account_type} onChange={e => setParams({ ...params, account_type: e.target.value as 'CTO' | 'PEA' })} style={select}>
             <option value="CTO">CTO</option><option value="PEA">PEA</option>
           </select>
         </div>
