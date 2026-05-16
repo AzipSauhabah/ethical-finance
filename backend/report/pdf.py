@@ -731,6 +731,76 @@ def generate_pdf(tearsheet: dict) -> bytes:
             ]
         S += [PageBreak()]
 
+    # PAGE 12b — SECTION ML
+    ml_section = tearsheet.get("ml_info", {})
+    S += [
+        Paragraph("Intelligence artificielle et signaux ML", section_s), hr(), Spacer(1, .3*cm),
+        Paragraph(
+            "Cette strategie utilise des modeles d apprentissage automatique supervise "
+            "pour generer des signaux directionnels (achat/vente/neutre) sur chaque titre. "
+            "Les modeles sont entrained sur 70% de l historique et testes sur les 30% restants "
+            "(approche walk-forward stricte sans re-entrainement pour eviter le look-ahead bias).",
+            body_s,
+        ),
+        Spacer(1, .3*cm),
+        Paragraph("<b>Features utilisees (indicateurs techniques)</b>", body_s),
+    ]
+    features_data = [
+        ["Feature", "Description", "Fenetre"],
+        ["ret_1", "Rendement 1 jour", "1j"],
+        ["ret_5", "Rendement 5 jours", "5j"],
+        ["ret_20", "Rendement 20 jours", "20j"],
+        ["vol_10", "Volatilite realisee", "10j"],
+        ["vol_20", "Volatilite realisee", "20j"],
+        ["rsi_14", "RSI normalise [0,1]", "14j"],
+        ["ema_ratio", "EMA20/EMA50 - 1 (tendance)", "20/50j"],
+        ["macd_hist", "Histogramme MACD normalise", "12/26/9j"],
+        ["bb_pos", "Position dans les bandes Bollinger [0,1]", "20j"],
+        ["mom_20", "Momentum 20 jours", "20j"],
+        ["mom_60", "Momentum 60 jours", "60j"],
+    ]
+    t = Table(features_data, colWidths=[3*cm, 9*cm, 3.5*cm])
+    t.setStyle(tbl_style())
+    S += [t, Spacer(1, .3*cm)]
+
+    S += [
+        Paragraph("<b>Modeles utilises</b>", body_s),
+        Paragraph(
+            "LightGBM (Light Gradient Boosting Machine) — deux configurations : "
+            "(1) RF-like : 200 arbres, profondeur 5, bagging. "
+            "(2) GBDT : 300 arbres, profondeur 4, boosting sequentiel. "
+            "La variable cible est le signe du rendement a 5 jours avec un seuil de 1% "
+            "(classes : +1 achat, -1 vente, 0 neutre).",
+            body_s,
+        ),
+        Spacer(1, .2*cm),
+        Paragraph("<b>Hypotheses et limites du ML</b>", body_s),
+        Paragraph(
+            "1. Les modeles supposent que les patterns historiques se repetent. "
+            "Cette hypothese est fragile en periode de rupture de regime (crise, changement macro). "
+            "2. Le split 70/30 introduit un biais temporel : le modele est entrained sur une periode "
+            "qui peut avoir un regime different du test. "
+            "3. Aucune regularisation dynamique n est appliquee : les modeles ne se reajustent pas "
+            "aux nouvelles donnees au fil du temps (pas de rolling refit). "
+            "4. Les features sont purement techniques : aucune donnee fondamentale ou macro "
+            "n est utilisee dans les signaux ML (sauf pour EPR5 qui utilise des ratios fondamentaux). "
+            "5. Le threshold de 1% filtre le bruit mais peut eliminer des signaux valides "
+            "en periode de faible volatilite.",
+            body_s,
+        ),
+        Spacer(1, .2*cm),
+        Paragraph("<b>Interpretation des signaux</b>", body_s),
+        Paragraph(
+            "+1 (Achat) : le modele predit un rendement > +1% sur 5 jours. "
+            "-1 (Vente/Short) : rendement predit < -1%. "
+            "0 (Neutre) : rendement predit dans la plage [-1%, +1%], pas de position. "
+            "Les signaux sont generes une fois par jour apres la cloture et executes "
+            "a la cloture du jour suivant.",
+            body_s,
+        ),
+        PageBreak(),
+    ]
+
     # PAGE 13 — METHODOLOGIE
     from backend.report.glossary import LIMITATIONS_TEXT, METHODOLOGY_TEXT
 
