@@ -250,11 +250,11 @@ export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
             <KpiCard label="SORTINO" value={(m.sortino_ratio ?? 0).toFixed(2)} />
             <KpiCard label="CALMAR" value={(m.calmar_ratio ?? 0).toFixed(2)} />
             <KpiCard label="MAX DRAWDOWN" value={pct(m.max_drawdown)} />
-            <KpiCard label="VOLATILITÉ" value={pct(m.annualised_volatility)} sub="Annualisée" />
+            <KpiCard label="VOLATILITÉ" value={(( m.annualised_volatility ?? 0) * 100).toFixed(2) + "%"} sub="Annualisée" />
             <KpiCard label="BETA" value={(m.beta ?? 0).toFixed(3)} />
             <KpiCard label="ALPHA JENSEN" value={(m.alpha_jensen ?? 0).toFixed(4)} sub="Annualisé" />
-            <KpiCard label="VAR 95%" value={pct(m.var_95)} sub="Journalière" />
-            <KpiCard label="CVAR 95%" value={pct(m.cvar_95)} sub="Expected Shortfall" />
+            <KpiCard label="VAR 95%" value={((m.var_95 ?? 0) * 100).toFixed(2) + "%"} sub="Journalière" />
+            <KpiCard label="CVAR 95%" value={((m.cvar_95 ?? 0) * 100).toFixed(2) + "%"} sub="Expected Shortfall" />
             <KpiCard label="HIT RATE" value={pct(m.hit_rate)} />
           </div>
 
