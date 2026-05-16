@@ -666,7 +666,53 @@ def generate_pdf(tearsheet: dict) -> bytes:
         t.setStyle(tbl_style())
         S += [t, PageBreak()]
 
-    # PAGE 12 — GLOSSARY
+    # PAGE 12 — TRADES DÉTAILLÉS
+    trades = tearsheet.get("trades", {})
+    trade_list = trades.get("sample", [])
+    if trade_list:
+        S += [
+            Paragraph("Journal des trades", section_s), hr(), Spacer(1, .3*cm),
+            Paragraph(
+                f"<b>{trades.get('count', 0)} trades</b> exécutés sur la période. "
+                "Tous les coûts réels (commission, slippage, TTF, spread FX) sont inclus.",
+                body_s,
+            ),
+            Spacer(1, .3*cm),
+        ]
+        # Tableau par blocs de 30 trades max par page
+        headers = ["Date", "Ticker", "Côté", "Parts", "Prix €", "Notionnel €", "Coût €", "P&L €"]
+        chunk_size = 30
+        for chunk_start in range(0, min(len(trade_list), 300), chunk_size):
+            chunk = trade_list[chunk_start:chunk_start + chunk_size]
+            td_data = [headers]
+            for tr in chunk:
+                side = tr.get("side", "")
+                side_color = "buy" if side == "buy" else "sell"
+                td_data.append([
+                    str(tr.get("date", "")),
+                    str(tr.get("ticker", "")),
+                    side.upper(),
+                    str(tr.get("shares", 0)),
+                    f(tr.get("price_eur")),
+                    e(tr.get("notional_eur")),
+                    e(tr.get("total_cost")),
+                    e(tr.get("pnl")),
+                ])
+            t = Table(td_data, colWidths=[2.2*cm, 1.8*cm, 1.2*cm, 1.2*cm, 2.2*cm, 2.8*cm, 2.0*cm, 2.0*cm])
+            ts_ = tbl_style()
+            # Colorise les lignes buy/sell
+            for i, tr in enumerate(chunk, 1):
+                if tr.get("side") == "buy":
+                    ts_.add("BACKGROUND", (2, i), (2, i), colors.HexColor("#e8f5e9"))
+                else:
+                    ts_.add("BACKGROUND", (2, i), (2, i), colors.HexColor("#ffebee"))
+            t.setStyle(ts_)
+            S += [t, Spacer(1, .3*cm)]
+        if len(trade_list) > 300:
+            S += [Paragraph(f"... et {len(trade_list) - 300} trades supplémentaires non affichés.", body_s)]
+        S += [PageBreak()]
+
+    # PAGE 13 — GLOSSARY
     S += [Paragraph("Glossaire financier", section_s), hr(), Spacer(1, 0.3 * cm)]
     for entry in GLOSSARY:
         S.append(
