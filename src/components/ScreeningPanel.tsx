@@ -45,7 +45,7 @@ function fmtCap(n: number) {
 export default function ScreeningPanel({
   onSelectTickers,
 }: {
-  onSelectTickers?: (tickers: string[]) => void;
+  onSelectTickers?: (tickers: string[], method: string) => void;
 }) {
   const [method, setMethod] = useState("magic_formula");
   const [topN, setTopN] = useState(20);
@@ -94,7 +94,7 @@ export default function ScreeningPanel({
 
   function sendToBacktest() {
     if (onSelectTickers) {
-      onSelectTickers(Array.from(selected));
+      onSelectTickers(Array.from(selected), method);
     }
   }
 

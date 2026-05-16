@@ -21,6 +21,7 @@ const BORDER = '#1e2d4a';
 interface Props {
   tickers: string[];
   onStrategyChange?: (s: string) => void;
+  defaultStrategy?: string;
 }
 
 const select: React.CSSProperties = {
@@ -74,12 +75,16 @@ const CustomTooltip = ({ active, payload, label, fmt }: any) => {
   );
 };
 
-export default function BacktestPanel({ tickers, onStrategyChange }: Props) {
+export default function BacktestPanel({ tickers, onStrategyChange, defaultStrategy }: Props) {
   const [strategies, setStrategies] = useState<StrategyMeta[]>([]);
   const [result, setResult] = useState<Tearsheet | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+
+  useEffect(() => {
+    if (defaultStrategy) setParams(p => ({ ...p, strategy: defaultStrategy }));
+  }, [defaultStrategy]);
 
   const [params, setParams] = useState<BacktestParams>({
     tickers,

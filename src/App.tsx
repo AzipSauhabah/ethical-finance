@@ -10,6 +10,14 @@ import ScreeningPanel from './components/ScreeningPanel';
 
 type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals';
 
+const METHOD_LABELS: Record<string, { label: string; strategy: string }> = {
+  magic_formula: { label: 'Magic Formula (Greenblatt)', strategy: 'epr5' },
+  momentum:      { label: 'Momentum 12-6-1 mois',       strategy: 'momentum' },
+  low_vol:       { label: 'Low Volatility',              strategy: 'risk_parity' },
+  ml:            { label: 'IA / ML Score',               strategy: 'ml_ensemble' },
+  combined:      { label: 'Combiné Value+Momentum+ML',   strategy: 'epr5' },
+};
+
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'about',    label: 'Vue d\'ensemble', icon: '◈' },
   { key: 'tickers',  label: 'Portefeuille',    icon: '◎' },
@@ -21,11 +29,14 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 export default function App() {
   const [tab, setTab]           = useState<Tab>('about');
   const [tickers, setTickers]   = useState<string[]>([]);
-  const [strategy, setStrategy] = useState<string>('buy_hold');
+  const [strategy, setStrategy] = useState<string>("buy_hold");
+  const [screenerSource, setScreenerSource] = useState<{ method: string; count: number } | null>(null);
 
-  function handleScreenerSelection(selected: string[]) {
-    // Merge screener selection into existing tickers (deduplicated)
-    setTickers((prev) => Array.from(new Set([...prev, ...selected])));
+  function handleScreenerSelection(selected: string[], method: string) {
+    setTickers(Array.from(new Set(selected)));
+    const mapped = METHOD_LABELS[method];
+    if (mapped) setStrategy(mapped.strategy);
+    setScreenerSource({ method, count: selected.length });
     setTab('backtest');
   }
 
@@ -101,7 +112,7 @@ export default function App() {
         {tab === 'about'    && <AboutPanel />}
         {tab === 'tickers'  && <TickerManager tickers={tickers} setTickers={setTickers} />}
         {tab === 'screener' && <ScreeningPanel onSelectTickers={handleScreenerSelection} />}
-        {tab === 'backtest' && <BacktestPanel tickers={tickers} onStrategyChange={setStrategy} />}
+        {tab === 'backtest' && <BacktestPanel tickers={tickers} onStrategyChange={setStrategy} defaultStrategy={strategy} />}
         {tab === 'signals'  && <SignalsPanel tickers={tickers} strategy={strategy} />}
       </main>
 
