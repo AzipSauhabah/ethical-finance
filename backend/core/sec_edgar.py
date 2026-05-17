@@ -439,6 +439,7 @@ async def upsert_sec_fundamentals(tickers: list[str]) -> int:
 
     # Upsert dans la DB
     from datetime import date
+
     today = date.today().isoformat()
     updated = 0
     with engine.begin() as conn:
