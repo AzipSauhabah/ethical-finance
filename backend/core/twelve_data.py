@@ -25,7 +25,6 @@ import logging
 import os
 import time
 from datetime import date, timedelta
-from functools import lru_cache
 
 import pandas as pd
 import requests
@@ -45,10 +44,11 @@ def _get_api_key() -> str:
 
 # ─── Mapping ticker yfinance → Twelve Data ───────────────────────────────────
 
+
 def _normalize_ticker(ticker: str) -> tuple[str, str]:
     """
     Convertit un ticker yfinance en ticker Twelve Data + exchange.
-    
+
     Returns:
         (symbol, exchange) pour l'API Twelve Data
     """
@@ -69,30 +69,30 @@ def _normalize_ticker(ticker: str) -> tuple[str, str]:
 
     # Tickers avec suffixe de bourse
     suffix_exchange = {
-        ".PA": ("", "XPAR"),    # Euronext Paris
-        ".AS": ("", "XAMS"),    # Euronext Amsterdam
-        ".DE": ("", "XETR"),    # XETRA (Deutsche Börse)
-        ".L": ("", "XLON"),     # London Stock Exchange
-        ".SW": ("", "XSWX"),    # SIX Swiss Exchange
-        ".MI": ("", "XMIL"),    # Borsa Italiana
-        ".MC": ("", "XMAD"),    # Bolsa de Madrid
-        ".AX": ("", "XASX"),    # ASX (Australie)
-        ".T": ("", "XTKS"),     # Tokyo Stock Exchange
-        ".HK": ("", "XHKG"),    # Hong Kong Stock Exchange
-        ".SS": ("", "XSHG"),    # Shanghai Stock Exchange
-        ".SZ": ("", "XSHE"),    # Shenzhen Stock Exchange
-        ".KS": ("", "XKRX"),    # Korea Stock Exchange
-        ".NS": ("", "XNSE"),    # National Stock Exchange India
-        ".SA": ("", "BVMF"),    # B3 (Brésil)
-        ".JO": ("", "XJSE"),    # JSE (Afrique du Sud)
-        ".ST": ("", "XSTO"),    # Nasdaq Stockholm
-        ".OL": ("", "XOSL"),    # Oslo Børs
-        ".HE": ("", "XHEL"),    # Nasdaq Helsinki
-        ".CO": ("", "XCSE"),    # Nasdaq Copenhagen
-        ".TO": ("", "XTSE"),    # Toronto Stock Exchange
-        ".BR": ("", "XBRU"),    # Euronext Brussels
-        ".LS": ("", "XLIS"),    # Euronext Lisbon
-        ".WA": ("", "XWAR"),    # Warsaw Stock Exchange
+        ".PA": ("", "XPAR"),  # Euronext Paris
+        ".AS": ("", "XAMS"),  # Euronext Amsterdam
+        ".DE": ("", "XETR"),  # XETRA (Deutsche Börse)
+        ".L": ("", "XLON"),  # London Stock Exchange
+        ".SW": ("", "XSWX"),  # SIX Swiss Exchange
+        ".MI": ("", "XMIL"),  # Borsa Italiana
+        ".MC": ("", "XMAD"),  # Bolsa de Madrid
+        ".AX": ("", "XASX"),  # ASX (Australie)
+        ".T": ("", "XTKS"),  # Tokyo Stock Exchange
+        ".HK": ("", "XHKG"),  # Hong Kong Stock Exchange
+        ".SS": ("", "XSHG"),  # Shanghai Stock Exchange
+        ".SZ": ("", "XSHE"),  # Shenzhen Stock Exchange
+        ".KS": ("", "XKRX"),  # Korea Stock Exchange
+        ".NS": ("", "XNSE"),  # National Stock Exchange India
+        ".SA": ("", "BVMF"),  # B3 (Brésil)
+        ".JO": ("", "XJSE"),  # JSE (Afrique du Sud)
+        ".ST": ("", "XSTO"),  # Nasdaq Stockholm
+        ".OL": ("", "XOSL"),  # Oslo Børs
+        ".HE": ("", "XHEL"),  # Nasdaq Helsinki
+        ".CO": ("", "XCSE"),  # Nasdaq Copenhagen
+        ".TO": ("", "XTSE"),  # Toronto Stock Exchange
+        ".BR": ("", "XBRU"),  # Euronext Brussels
+        ".LS": ("", "XLIS"),  # Euronext Lisbon
+        ".WA": ("", "XWAR"),  # Warsaw Stock Exchange
     }
 
     for suffix, (_, exchange) in suffix_exchange.items():
@@ -158,13 +158,15 @@ def fetch_ohlcv(
         df = pd.DataFrame(values)
         df["datetime"] = pd.to_datetime(df["datetime"])
         df = df.set_index("datetime")
-        df = df.rename(columns={
-            "open": "Open",
-            "high": "High",
-            "low": "Low",
-            "close": "Close",
-            "volume": "Volume",
-        })
+        df = df.rename(
+            columns={
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "volume": "Volume",
+            }
+        )
 
         for col in ["Open", "High", "Low", "Close"]:
             if col in df.columns:
@@ -244,37 +246,114 @@ def fetch_fundamentals_twelve(ticker: str) -> dict | None:
 # Tickers MSCI World supplémentaires par région
 MSCI_WORLD_EXTENDED = {
     "UK": [
-        "HSBA.L", "BP.L", "GSK.L", "AZN.L", "ULVR.L", "RIO.L", "BHP.L",
-        "SHEL.L", "LSEG.L", "REL.L", "NG.L", "BARC.L", "LLOY.L", "STAN.L",
-        "VOD.L", "BT-A.L", "RKT.L", "CPG.L", "IMB.L", "PRU.L",
+        "HSBA.L",
+        "BP.L",
+        "GSK.L",
+        "AZN.L",
+        "ULVR.L",
+        "RIO.L",
+        "BHP.L",
+        "SHEL.L",
+        "LSEG.L",
+        "REL.L",
+        "NG.L",
+        "BARC.L",
+        "LLOY.L",
+        "STAN.L",
+        "VOD.L",
+        "BT-A.L",
+        "RKT.L",
+        "CPG.L",
+        "IMB.L",
+        "PRU.L",
     ],
     "AU": [
-        "BHP.AX", "CBA.AX", "CSL.AX", "NAB.AX", "WBC.AX", "ANZ.AX",
-        "WES.AX", "WOW.AX", "MQG.AX", "RIO.AX", "FMG.AX", "TLS.AX",
+        "BHP.AX",
+        "CBA.AX",
+        "CSL.AX",
+        "NAB.AX",
+        "WBC.AX",
+        "ANZ.AX",
+        "WES.AX",
+        "WOW.AX",
+        "MQG.AX",
+        "RIO.AX",
+        "FMG.AX",
+        "TLS.AX",
     ],
     "JP": [
-        "7203.T", "6758.T", "9984.T", "6861.T", "8306.T", "9432.T",
-        "8316.T", "4063.T", "6367.T", "9433.T", "7267.T", "6902.T",
+        "7203.T",
+        "6758.T",
+        "9984.T",
+        "6861.T",
+        "8306.T",
+        "9432.T",
+        "8316.T",
+        "4063.T",
+        "6367.T",
+        "9433.T",
+        "7267.T",
+        "6902.T",
     ],
     "CH": [
-        "NESN.SW", "ROG.SW", "NOVN.SW", "ABBN.SW", "ZURN.SW",
-        "CSGN.SW", "UBSG.SW", "SIKA.SW", "LONN.SW", "CFR.SW",
+        "NESN.SW",
+        "ROG.SW",
+        "NOVN.SW",
+        "ABBN.SW",
+        "ZURN.SW",
+        "CSGN.SW",
+        "UBSG.SW",
+        "SIKA.SW",
+        "LONN.SW",
+        "CFR.SW",
     ],
     "SE": [
-        "VOLV-B.ST", "ERIC-B.ST", "SEB-A.ST", "INVE-B.ST", "SAND.ST",
-        "ALFA.ST", "ATCO-A.ST", "HM-B.ST", "SWED-A.ST", "TELE2-B.ST",
+        "VOLV-B.ST",
+        "ERIC-B.ST",
+        "SEB-A.ST",
+        "INVE-B.ST",
+        "SAND.ST",
+        "ALFA.ST",
+        "ATCO-A.ST",
+        "HM-B.ST",
+        "SWED-A.ST",
+        "TELE2-B.ST",
     ],
     "NO": [
-        "EQNR.OL", "DNB.OL", "TEL.OL", "MOWI.OL", "ORKLA.OL",
-        "SALM.OL", "YAR.OL", "AKERBP.OL", "NHY.OL", "SGSN.OL",
+        "EQNR.OL",
+        "DNB.OL",
+        "TEL.OL",
+        "MOWI.OL",
+        "ORKLA.OL",
+        "SALM.OL",
+        "YAR.OL",
+        "AKERBP.OL",
+        "NHY.OL",
+        "SGSN.OL",
     ],
     "DK": [
-        "NOVO-B.CO", "MAERSK-B.CO", "DSV.CO", "ORSTED.CO", "CARL-B.CO",
-        "NFLX.CO", "CHR.CO", "DEMANT.CO", "PNDORA.CO", "COLO-B.CO",
+        "NOVO-B.CO",
+        "MAERSK-B.CO",
+        "DSV.CO",
+        "ORSTED.CO",
+        "CARL-B.CO",
+        "NFLX.CO",
+        "CHR.CO",
+        "DEMANT.CO",
+        "PNDORA.CO",
+        "COLO-B.CO",
     ],
     "ZA": [
-        "NPN.JO", "PRX.JO", "BHP.JO", "AGL.JO", "FSR.JO",
-        "SBK.JO", "SOL.JO", "MTN.JO", "NED.JO", "REM.JO",
+        "NPN.JO",
+        "PRX.JO",
+        "BHP.JO",
+        "AGL.JO",
+        "FSR.JO",
+        "SBK.JO",
+        "SOL.JO",
+        "MTN.JO",
+        "NED.JO",
+        "REM.JO",
     ],
 }
 
@@ -293,6 +372,7 @@ async def load_ticker_twelve(ticker: str, years: int = 20) -> int:
         nombre de lignes insérées
     """
     import asyncio
+
     from backend.core.db import get_last_date, upsert_ohlcv
 
     loop = asyncio.get_event_loop()
@@ -308,9 +388,7 @@ async def load_ticker_twelve(ticker: str, years: int = 20) -> int:
 
     end = date.today()
 
-    df = await loop.run_in_executor(
-        None, lambda: fetch_ohlcv(ticker, start, end)
-    )
+    df = await loop.run_in_executor(None, lambda: fetch_ohlcv(ticker, start, end))
 
     if df.empty:
         log.warning("No data from Twelve Data for %s", ticker)

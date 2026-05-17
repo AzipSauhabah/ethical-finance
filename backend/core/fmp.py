@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 
 import requests
 
@@ -264,6 +263,7 @@ async def upsert_fmp_fundamentals(tickers: list[str]) -> int:
     )
 
     from datetime import date
+
     today = date.today().isoformat()
     updated = 0
 
