@@ -102,6 +102,7 @@ export interface Tearsheet {
   trades: { count: number; sample: Record<string, unknown>[] };
   nav_chart: NavPoint[];
   benchmark_chart: NavPoint[];
+  nav_multiccy: Record<string, NavPoint[]>;
   drawdown_chart: DDPoint[];
   cost_chart: CostPoint[];
   allocation_chart: AllocPoint[];
