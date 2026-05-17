@@ -156,24 +156,38 @@ def total_trade_cost(
     currency: str = "EUR",
     market_cap_eur: float = 2e9,
     side: Literal["buy", "sell"] = "buy",
+    country: str = "US",
 ) -> dict[str, float]:
-    """Compute all costs for a single trade.
+    """Compute all costs for a single trade — modèle réaliste complet.
 
-    :returns: dict with keys commission, slippage, fx_spread, ttf, total
+    Inclut :
+    - Commission broker (grille tarifaire réelle)
+    - Slippage bid-ask (selon capitalisation)
+    - Impact marché (modèle racine carrée)
+    - Spread FX (si non-EUR)
+    - TTF (actions françaises > 1Md€)
+    - Stamp duty (UK 0.5%, BE 0.35%, IT 0.2%)
+
+    :returns: dict avec le détail de chaque composante et le total
     """
     comm = broker_commission(notional_eur, broker, asset_type)
     slip = slippage_cost(notional_eur, cap_size)
+    impact = market_impact_cost(notional_eur, cap_size)
     fx = fx_spread_cost(notional_eur, currency)
     tax = ttf_tax(notional_eur, market_cap_eur) if side == "buy" else 0.0
-    total = comm + slip + fx + tax
+    stamp = stamp_duty_cost(notional_eur, country, market_cap_eur)
+    total = comm + slip + impact + fx + tax + stamp
     return {
-        "commission": comm,
-        "slippage": slip,
-        "fx_spread": fx,
-        "ttf": tax,
-        "total": total,
+        "commission": round(comm, 4),
+        "slippage": round(slip, 4),
+        "market_impact": round(impact, 4),
+        "fx_spread": round(fx, 4),
+        "ttf": round(tax, 4),
+        "stamp_duty": round(stamp, 4),
+        "total": round(total, 4),
         "notional": notional_eur,
-        "cost_pct": total / notional_eur if notional_eur > 0 else 0.0,
+        "cost_pct": round(total / notional_eur * 100, 4) if notional_eur > 0 else 0.0,
+        "cost_bps": round(total / notional_eur * 10_000, 2) if notional_eur > 0 else 0.0,
     }
 
 
