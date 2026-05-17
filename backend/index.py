@@ -578,6 +578,13 @@ async def sentiment_analysis(payload: TickerListIn):
     return result
 
 
+@app.post("/api/admin/drive-sync")
+async def admin_drive_sync():
+    """Déclenche manuellement la synchronisation Google Drive → DB."""
+    from backend.core.drive_sync import trigger_drive_sync
+    return await trigger_drive_sync()
+
+
 @app.get("/api/sentiment/market")
 async def market_sentiment():
     """Sentiment global du marché (SP500 + Nasdaq)."""

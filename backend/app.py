@@ -92,6 +92,17 @@ async def _startup() -> None:
             except Exception as e:
                 log.warning("PG backup error: %s", e)
 
+        # Drive sync — import OHLCV depuis Google Drive à 23h30 UTC
+        async def drive_sync_job():
+            try:
+                from backend.core.drive_sync import trigger_drive_sync
+                log.info("Drive sync job started")
+                result = await trigger_drive_sync()
+                log.info("Drive sync job complete: %s", result)
+            except Exception as e:
+                log.warning("Drive sync job error: %s", e)
+
+        scheduler.add_job(drive_sync_job, "cron", hour=23, minute=30, timezone="UTC")
         scheduler.add_job(pg_backup_job, "cron", hour=23, minute=0, timezone="UTC")
 
         # FMP — mise à jour fondamentaux non-US à 22h30 UTC

@@ -38,6 +38,7 @@ services:
     volumes:
       - /volume1/docker/ethical-finance/data:/app/data
       - /volume1/docker/ethical-finance/backups:/data/backups
+      - /volume1/docker/ethical-finance/ethical-finance-nas-14c8ed110211.json:/app/ethical-finance-nas-14c8ed110211.json:ro
     depends_on:
       db:
         condition: service_healthy
