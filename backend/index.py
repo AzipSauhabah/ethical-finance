@@ -244,7 +244,9 @@ async def screener(payload: ScreenerIn):
             rows = conn.execute(
                 sa.text(f"""
                     SELECT ticker, name, sector, industry, market_cap,
-                           total_debt, total_revenue, beta, dividend_yield
+                           total_debt, total_revenue, beta, dividend_yield,
+                           earning_yield_sec, roic_sec, pe_ratio, ev_ebitda,
+                           net_margin, fcf_yield, debt_equity, current_ratio
                     FROM ticker_fundamentals
                     WHERE market_cap >= :min_cap
                     {universe_filter}
@@ -270,6 +272,14 @@ async def screener(payload: ScreenerIn):
                 "total_revenue",
                 "beta",
                 "dividend_yield",
+                "earning_yield_sec",
+                "roic_sec",
+                "pe_ratio",
+                "ev_ebitda",
+                "net_margin",
+                "fcf_yield",
+                "debt_equity",
+                "current_ratio",
             ],
         )
 
@@ -307,9 +317,7 @@ async def screener(payload: ScreenerIn):
         price_df = pd.DataFrame(price_rows, columns=["ticker", "date", "price"])
         price_pivot = price_df.pivot(index="date", columns="ticker", values="price")
 
-        # 4. Compute scores — SEC EDGAR en priorité, fallback proxy
-        from backend.core.sec_edgar import fetch_fundamentals_sec
-        sec_cache = {}
+        # 4. Compute scores — colonnes SEC depuis DB en priorité, fallback proxy
         scores = {}
         for ticker in tickers:
             row = df[df["ticker"] == ticker].iloc[0]
@@ -318,20 +326,11 @@ async def screener(payload: ScreenerIn):
             total_revenue = float(row["total_revenue"] or 0)
             beta = float(row["beta"] or 1.0)
 
-            # Tenter SEC EDGAR
-            earning_yield = 0.0
-            roic = 0.0
-            try:
-                if ticker not in sec_cache:
-                    sec_cache[ticker] = fetch_fundamentals_sec(ticker, market_cap=market_cap)
-                sec = sec_cache[ticker]
-                if sec and sec.get("ratios"):
-                    earning_yield = sec["ratios"].get("earning_yield_sec", 0.0) or 0.0
-                    roic = sec["ratios"].get("roic_sec", 0.0) or 0.0
-            except Exception:
-                pass
+            # SEC depuis DB (pré-calculé par le scheduler 22h)
+            earning_yield = float(row["earning_yield_sec"] or 0.0)
+            roic = float(row["roic_sec"] or 0.0)
 
-            # Fallback proxy si SEC indisponible
+            # Fallback proxy si colonnes SEC vides
             if earning_yield == 0.0 and roic == 0.0:
                 ev = market_cap + total_debt
                 ebit = total_revenue * 0.15

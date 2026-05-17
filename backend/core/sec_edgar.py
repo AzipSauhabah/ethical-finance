@@ -438,6 +438,8 @@ async def upsert_sec_fundamentals(tickers: list[str]) -> int:
     )
 
     # Upsert dans la DB
+    from datetime import date
+    today = date.today().isoformat()
     updated = 0
     with engine.begin() as conn:
         for ticker, data in sec_data.items():
@@ -448,16 +450,34 @@ async def upsert_sec_fundamentals(tickers: list[str]) -> int:
                 conn.execute(
                     sa.text("""
                         UPDATE ticker_fundamentals SET
-                            total_debt    = COALESCE(:total_debt, total_debt),
-                            total_revenue = COALESCE(:total_revenue, total_revenue),
-                            updated_at    = :updated_at
+                            total_debt         = COALESCE(:total_debt, total_debt),
+                            total_revenue      = COALESCE(:total_revenue, total_revenue),
+                            earning_yield_sec  = :earning_yield_sec,
+                            roic_sec           = :roic_sec,
+                            pe_ratio           = :pe_ratio,
+                            ev_ebitda          = :ev_ebitda,
+                            net_margin         = :net_margin,
+                            fcf_yield          = :fcf_yield,
+                            debt_equity        = :debt_equity,
+                            current_ratio      = :current_ratio,
+                            sec_updated_at     = :sec_updated_at,
+                            updated_at         = :updated_at
                         WHERE ticker = :ticker
                     """),
                     {
                         "ticker": ticker,
                         "total_debt": int(ratios.get("total_debt", 0) or 0),
                         "total_revenue": int(raw.get("revenue", 0) or 0),
-                        "updated_at": "2026-05-17",
+                        "earning_yield_sec": ratios.get("earning_yield_sec"),
+                        "roic_sec": ratios.get("roic_sec"),
+                        "pe_ratio": ratios.get("pe_ratio"),
+                        "ev_ebitda": ratios.get("ev_ebitda"),
+                        "net_margin": ratios.get("net_margin"),
+                        "fcf_yield": ratios.get("fcf_yield"),
+                        "debt_equity": ratios.get("debt_equity"),
+                        "current_ratio": ratios.get("current_ratio"),
+                        "sec_updated_at": today,
+                        "updated_at": today,
                     },
                 )
                 updated += 1
