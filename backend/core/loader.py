@@ -223,12 +223,23 @@ ALL_TICKERS = list(set(SP500_TICKERS + CAC40_TICKERS + MSCI_WORLD_EXTRA + ETF_TI
 
 def _stooq_ticker(ticker: str) -> str:
     mapping = {
-        "GLD": "gld.us", "IAU": "iau.us", "SLV": "slv.us",
-        "SGOL": "sgol.us", "PPLT": "pplt.us", "PALL": "pall.us",
-        "IWDA.AS": "iwda.as", "VWRL.AS": "vwrl.as", "CSPX.AS": "cspx.as",
-        "EUNL.DE": "eunl.de", "VUSA.AS": "vusa.as",
-        "^GSPC": "^spx", "^FCHI": "^cac", "^GDAXI": "^dax",
-        "^VIX": "^vix", "^STOXX50E": "^sx5e", "^N225": "^nkx",
+        "GLD": "gld.us",
+        "IAU": "iau.us",
+        "SLV": "slv.us",
+        "SGOL": "sgol.us",
+        "PPLT": "pplt.us",
+        "PALL": "pall.us",
+        "IWDA.AS": "iwda.as",
+        "VWRL.AS": "vwrl.as",
+        "CSPX.AS": "cspx.as",
+        "EUNL.DE": "eunl.de",
+        "VUSA.AS": "vusa.as",
+        "^GSPC": "^spx",
+        "^FCHI": "^cac",
+        "^GDAXI": "^dax",
+        "^VIX": "^vix",
+        "^STOXX50E": "^sx5e",
+        "^N225": "^nkx",
     }
     return mapping.get(ticker, ticker.lower().replace("-", ".") + ".us")
 
@@ -251,6 +262,7 @@ def _download_sync(ticker: str, start: date, end: date) -> pd.DataFrame:
 
     try:
         import pandas_datareader as pdr
+
         stooq_t = _stooq_ticker(ticker)
         df = pdr.get_data_stooq(stooq_t, start=start, end=end)
         if not df.empty:
