@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/components/aboutpanel.tsx","./src/components/backtestpanel.tsx","./src/components/signalspanel.tsx","./src/components/tickermanager.tsx","./src/hooks/uselivequotes.ts","./src/types/index.ts","./src/utils/api.ts"],"version":"5.6.3"}
