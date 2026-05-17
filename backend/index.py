@@ -307,7 +307,9 @@ async def screener(payload: ScreenerIn):
         price_df = pd.DataFrame(price_rows, columns=["ticker", "date", "price"])
         price_pivot = price_df.pivot(index="date", columns="ticker", values="price")
 
-        # 4. Compute scores
+        # 4. Compute scores — SEC EDGAR en priorité, fallback proxy
+        from backend.core.sec_edgar import fetch_fundamentals_sec
+        sec_cache = {}
         scores = {}
         for ticker in tickers:
             row = df[df["ticker"] == ticker].iloc[0]
@@ -316,12 +318,26 @@ async def screener(payload: ScreenerIn):
             total_revenue = float(row["total_revenue"] or 0)
             beta = float(row["beta"] or 1.0)
 
-            ev = market_cap + total_debt
-            ebit = total_revenue * 0.15
-            net_assets = max(market_cap * 0.5, 1)
+            # Tenter SEC EDGAR
+            earning_yield = 0.0
+            roic = 0.0
+            try:
+                if ticker not in sec_cache:
+                    sec_cache[ticker] = fetch_fundamentals_sec(ticker, market_cap=market_cap)
+                sec = sec_cache[ticker]
+                if sec and sec.get("ratios"):
+                    earning_yield = sec["ratios"].get("earning_yield_sec", 0.0) or 0.0
+                    roic = sec["ratios"].get("roic_sec", 0.0) or 0.0
+            except Exception:
+                pass
 
-            earning_yield = (ebit / ev) if ev > 0 else 0.0
-            roic = (ebit / net_assets) if net_assets > 0 else 0.0
+            # Fallback proxy si SEC indisponible
+            if earning_yield == 0.0 and roic == 0.0:
+                ev = market_cap + total_debt
+                ebit = total_revenue * 0.15
+                net_assets = max(market_cap * 0.5, 1)
+                earning_yield = (ebit / ev) if ev > 0 else 0.0
+                roic = (ebit / net_assets) if net_assets > 0 else 0.0
 
             ser = (
                 price_pivot[ticker].dropna()
