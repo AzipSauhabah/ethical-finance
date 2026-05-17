@@ -105,7 +105,7 @@ export default function AboutPanel() {
             {[
               {
                 icon: '◆', title: 'Magic Formula (Greenblatt)',
-                desc: 'Sélection par Earning Yield (EBIT/EV) et ROIC. Top quintile de l'univers rankés par somme des rangs. Filtre de régime : SPX > MM200. Filtre VIX : VIX < MM10.',
+                desc: 'Sélection par Earning Yield (EBIT/EV) et ROIC. Top quintile de l\'univers rankés par somme des rangs. Filtre de régime : SPX > MM200. Filtre VIX : VIX < MM10.',
                 color: '#b8962f',
               },
               {
