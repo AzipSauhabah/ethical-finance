@@ -564,7 +564,8 @@ async def daily_signals(payload: TickerListIn):
 async def sentiment_analysis(payload: TickerListIn):
     """Analyse de sentiment RSS Yahoo Finance + VADER pour une liste de tickers."""
     import asyncio
-    from backend.quant.sentiment import analyze_portfolio_sentiment, analyze_market_sentiment
+
+    from backend.quant.sentiment import analyze_market_sentiment, analyze_portfolio_sentiment
 
     loop = asyncio.get_event_loop()
 
@@ -581,6 +582,7 @@ async def sentiment_analysis(payload: TickerListIn):
 async def market_sentiment():
     """Sentiment global du marché (SP500 + Nasdaq)."""
     import asyncio
+
     from backend.quant.sentiment import analyze_market_sentiment
 
     loop = asyncio.get_event_loop()

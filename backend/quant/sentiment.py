@@ -21,30 +21,66 @@ import logging
 import time
 from datetime import datetime, timedelta
 from functools import lru_cache
-from typing import Any
 
 log = logging.getLogger(__name__)
 
 # Mots financiers bullish/bearish pour booster VADER
 FINANCIAL_LEXICON = {
     # Bullish
-    "beat": 2.0, "beats": 2.0, "outperform": 2.5, "upgrade": 2.0,
-    "buyback": 1.5, "dividend": 1.0, "growth": 1.5, "surge": 2.5,
-    "rally": 2.0, "breakout": 2.0, "record": 1.5, "profit": 1.5,
-    "revenue": 0.5, "expand": 1.5, "acquisition": 1.0, "partnership": 1.0,
-    "innovation": 1.5, "margin": 1.0, "guidance": 0.5, "raised": 1.5,
+    "beat": 2.0,
+    "beats": 2.0,
+    "outperform": 2.5,
+    "upgrade": 2.0,
+    "buyback": 1.5,
+    "dividend": 1.0,
+    "growth": 1.5,
+    "surge": 2.5,
+    "rally": 2.0,
+    "breakout": 2.0,
+    "record": 1.5,
+    "profit": 1.5,
+    "revenue": 0.5,
+    "expand": 1.5,
+    "acquisition": 1.0,
+    "partnership": 1.0,
+    "innovation": 1.5,
+    "margin": 1.0,
+    "guidance": 0.5,
+    "raised": 1.5,
     # Bearish
-    "miss": -2.0, "misses": -2.0, "downgrade": -2.5, "loss": -2.0,
-    "layoffs": -2.5, "recall": -2.0, "lawsuit": -2.0, "bankruptcy": -3.0,
-    "fraud": -3.0, "decline": -1.5, "drop": -1.5, "fell": -1.5,
-    "plunge": -2.5, "crash": -3.0, "warning": -2.0, "cut": -1.5,
-    "reduces": -1.5, "below": -1.0, "weak": -1.5, "disappointing": -2.0,
-    "shortfall": -2.0, "debt": -1.0, "deficit": -1.5, "investigation": -2.0,
+    "miss": -2.0,
+    "misses": -2.0,
+    "downgrade": -2.5,
+    "loss": -2.0,
+    "layoffs": -2.5,
+    "recall": -2.0,
+    "lawsuit": -2.0,
+    "bankruptcy": -3.0,
+    "fraud": -3.0,
+    "decline": -1.5,
+    "drop": -1.5,
+    "fell": -1.5,
+    "plunge": -2.5,
+    "crash": -3.0,
+    "warning": -2.0,
+    "cut": -1.5,
+    "reduces": -1.5,
+    "below": -1.0,
+    "weak": -1.5,
+    "disappointing": -2.0,
+    "shortfall": -2.0,
+    "debt": -1.0,
+    "deficit": -1.5,
+    "investigation": -2.0,
 }
 
 # RSS feeds Yahoo Finance par ticker
-YAHOO_RSS_TEMPLATE = "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
-YAHOO_MARKET_RSS = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EIXIC&region=US&lang=en-US"
+YAHOO_RSS_TEMPLATE = (
+    "https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+)
+YAHOO_MARKET_RSS = (
+    "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EIXIC&region=US&lang=en-US"
+)
 
 
 # ─── VADER avec lexique financier ────────────────────────────────────────────
@@ -55,6 +91,7 @@ def _get_analyzer():
     """Charge VADER avec le lexique financier personnalisé."""
     try:
         from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
         analyzer = SentimentIntensityAnalyzer()
         # Ajouter le lexique financier
         analyzer.lexicon.update(FINANCIAL_LEXICON)
@@ -80,6 +117,7 @@ def _fetch_rss(url: str, max_items: int = 10) -> list[dict]:
     """Fetch un flux RSS et retourne les items récents."""
     try:
         import feedparser
+
         feed = feedparser.parse(url)
         items = []
         cutoff = datetime.now() - timedelta(days=7)  # 7 derniers jours
@@ -97,12 +135,14 @@ def _fetch_rss(url: str, max_items: int = 10) -> list[dict]:
             summary = getattr(entry, "summary", "")
             text = f"{title}. {summary}"
 
-            items.append({
-                "title": title,
-                "text": text,
-                "date": pub_date.isoformat() if pub_date else None,
-                "url": getattr(entry, "link", ""),
-            })
+            items.append(
+                {
+                    "title": title,
+                    "text": text,
+                    "date": pub_date.isoformat() if pub_date else None,
+                    "url": getattr(entry, "link", ""),
+                }
+            )
 
         return items
     except Exception as e:
@@ -214,8 +254,7 @@ def analyze_market_sentiment() -> dict:
         "signal_fr": signal_fr,
         "n_articles": len(articles),
         "top_news": [
-            {"title": a["title"], "score": a["score"], "date": a["date"]}
-            for a in top_news
+            {"title": a["title"], "score": a["score"], "date": a["date"]} for a in top_news
         ],
     }
 
@@ -286,6 +325,7 @@ def sentiment_return_correlation(
         n = len(common)
         t_stat = corr * np.sqrt(n - 2) / np.sqrt(max(1 - corr**2, 1e-9))
         from scipy import stats
+
         p_value = float(2 * stats.t.sf(abs(t_stat), df=n - 2))
 
         return {
@@ -294,9 +334,13 @@ def sentiment_return_correlation(
             "significant": p_value < 0.05,
             "n_tickers": n,
             "interpretation": (
-                "Corrélation positive significative : le sentiment prédit les rendements." if corr > 0.3 and p_value < 0.05 else
-                "Corrélation négative : sentiment contrarian." if corr < -0.3 and p_value < 0.05 else
-                "Pas de corrélation significative sur la période."
+                "Corrélation positive significative : le sentiment prédit les rendements."
+                if corr > 0.3 and p_value < 0.05
+                else (
+                    "Corrélation négative : sentiment contrarian."
+                    if corr < -0.3 and p_value < 0.05
+                    else "Pas de corrélation significative sur la période."
+                )
             ),
         }
     except Exception as e:

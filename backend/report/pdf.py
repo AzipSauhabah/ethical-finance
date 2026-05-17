@@ -631,20 +631,40 @@ def generate_pdf(tearsheet: dict) -> bytes:
         ["Métrique", "Valeur", "Interprétation"],
         ["Rendement total", p(m.get("total_return")), interpretations.get("cagr", "")[:90]],
         ["CAGR", p(m.get("cagr")), interpretations.get("cagr", "")[:90]],
-        ["Volatilité annualisée", p(m.get("annualised_volatility")), interpretations.get("annualised_volatility", "")[:90]],
+        [
+            "Volatilité annualisée",
+            p(m.get("annualised_volatility")),
+            interpretations.get("annualised_volatility", "")[:90],
+        ],
         ["Sharpe", f(m.get("sharpe_ratio")), interpretations.get("sharpe_ratio", "")[:90]],
         ["Sortino", f(m.get("sortino_ratio")), interpretations.get("sortino_ratio", "")[:90]],
         ["Calmar", f(m.get("calmar_ratio")), interpretations.get("calmar_ratio", "")[:90]],
         ["Omega", f(m.get("omega_ratio")), "Omega > 1 : les gains dominent les pertes."],
         ["Max Drawdown", p(m.get("max_drawdown")), interpretations.get("max_drawdown", "")[:90]],
-        ["Average Drawdown", p(m.get("average_drawdown")), "Niveau de stress habituel du portefeuille."],
-        ["Recovery Factor", f(m.get("recovery_factor")), "RF > 3 : stratégie robuste. RF > 1 : viable."],
+        [
+            "Average Drawdown",
+            p(m.get("average_drawdown")),
+            "Niveau de stress habituel du portefeuille.",
+        ],
+        [
+            "Recovery Factor",
+            f(m.get("recovery_factor")),
+            "RF > 3 : stratégie robuste. RF > 1 : viable.",
+        ],
     ]
     if "beta" in m:
         rows += [
             ["Bêta", f(m["beta"]), interpretations.get("beta", "")[:90]],
-            ["Alpha Jensen", p(m.get("alpha_jensen")), interpretations.get("alpha_jensen", "")[:90]],
-            ["Information Ratio", f(m.get("information_ratio")), "IR > 0.5 : surperformance régulière."],
+            [
+                "Alpha Jensen",
+                p(m.get("alpha_jensen")),
+                interpretations.get("alpha_jensen", "")[:90],
+            ],
+            [
+                "Information Ratio",
+                f(m.get("information_ratio")),
+                "IR > 0.5 : surperformance régulière.",
+            ],
         ]
     t = Table(rows, colWidths=[5 * cm, 3 * cm, 9 * cm])
     t.setStyle(tbl_style())
