@@ -181,6 +181,7 @@ def total_trade_cost(
 # Impact marché (modèle linéaire)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def market_impact_cost(
     notional_eur: float,
     cap_size: str = "mid_cap",
@@ -206,13 +207,14 @@ def market_impact_cost(
 
     # Impact proportionnel à la racine carrée de la participation
     participation = min(notional_eur / max(adv, 1), 1.0)
-    impact = notional_eur * impact_bps / 10_000.0 * (participation ** 0.5)
+    impact = notional_eur * impact_bps / 10_000.0 * (participation**0.5)
     return impact
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Withholding tax sur dividendes
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def withholding_tax_cost(
     dividend_eur: float,
@@ -249,6 +251,7 @@ def withholding_tax_cost(
 # Stamp duty / PTT
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def stamp_duty_cost(
     notional_eur: float,
     country: str = "US",
@@ -279,6 +282,7 @@ def stamp_duty_cost(
 # Frais de garde (custody fees)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def custody_fee_daily(
     portfolio_value_eur: float,
     broker: str = "default",
@@ -293,10 +297,7 @@ def custody_fee_daily(
     Returns:
         frais de garde pour la journée en EUR
     """
-    annual_bps = CUSTODY_FEES_ANNUAL_BPS.get(
-        broker.lower(),
-        CUSTODY_FEES_ANNUAL_BPS["default"]
-    )
+    annual_bps = CUSTODY_FEES_ANNUAL_BPS.get(broker.lower(), CUSTODY_FEES_ANNUAL_BPS["default"])
     annual_fee = portfolio_value_eur * annual_bps / 10_000.0
     return annual_fee / 252.0  # fraction journalière
 
@@ -304,6 +305,7 @@ def custody_fee_daily(
 # ─────────────────────────────────────────────────────────────────────────────
 # Coût total réaliste d'une transaction
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def total_transaction_cost(
     notional_eur: float,
