@@ -127,6 +127,7 @@ export default function ScreeningPanel({
             { id: "cac40", label: "CAC 40", desc: "34 titres FR" },
             { id: "etf_broad", label: "ETF World", desc: "MSCI World · Vanguard · iShares" },
             { id: "etf_precious_metals", label: "ETF Métaux", desc: "Or · Argent · Platine" },
+            { id: "msci_world", label: "MSCI World", desc: "UK · AU · JP · CH · SE · NO · DK · ZA" },
             { id: "all", label: "Tous", desc: "Univers complet" },
           ].map((u) => (
             <button
