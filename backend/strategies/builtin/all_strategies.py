@@ -382,15 +382,37 @@ class DualMomentumStrategy(Strategy):
 
     def on_bar(self, dt, past_prices, params, state):
         lb = int(params.custom.get("lookback_days", 252))
+        stop_loss = float(params.custom.get("stop_loss_pct", 0.10))
+
         if len(past_prices) < lb + 1:
             return {}
+
+        weights = dict(state.get("weights", {}))
+
+        # Trailing stop sur position concentrée
+        weights, _ = self.apply_stops(
+            weights, past_prices, state,
+            stop_loss_pct=stop_loss,
+            use_trailing=True,
+            trailing_pct=0.12,
+        )
+
         recent = past_prices.iloc[-1]
-        past = past_prices.iloc[-lb]
-        mom = (recent / past - 1).dropna()
+        past_bar = past_prices.iloc[-lb]
+        mom = (recent / past_bar - 1).dropna()
+        mom = mom[~mom.index.str.startswith("^")]
         if mom.empty or mom.max() <= 0:
+            state["weights"] = {}
             return {}  # all cash
+
         best = mom.idxmax()
-        return {best: min(1.0, params.max_position_pct * 4)}  # concentrate
+        if best not in weights:
+            w = self.size_by_atr(best, past_prices, risk_pct=0.015)
+            weights = {best: max(w, 0.5)}  # concentration Antonacci
+            state.get("entry_prices", {}).clear()
+
+        state["weights"] = weights
+        return weights
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -417,16 +439,41 @@ class AdaptiveTrendStrategy(Strategy):
     def on_bar(self, dt, past_prices, params, state):
         fast = int(params.custom.get("ema_fast", 12))
         slow = int(params.custom.get("ema_slow", 26))
+        stop_loss = float(params.custom.get("stop_loss_pct", 0.08))
+
         if len(past_prices) < slow + 5:
             return {}
+
+        weights = dict(state.get("weights", {}))
+
+        # Trailing stop — trend following
+        weights, _ = self.apply_stops(
+            weights, past_prices, state,
+            stop_loss_pct=stop_loss,
+            use_trailing=True,
+            trailing_pct=0.10,
+            stop_atr_mult=2.0,
+        )
+
         ema_f = past_prices.ewm(span=fast, adjust=False).mean().iloc[-1]
         ema_s = past_prices.ewm(span=slow, adjust=False).mean().iloc[-1]
         trending_up = ema_f > ema_s
-        longs = ema_f[trending_up].index
-        if len(longs) == 0:
-            return {}
-        w = 1.0 / len(longs)
-        return {t: w for t in longs}
+        longs = [t for t in ema_f[trending_up].index if not t.startswith("^")]
+
+        # Fermer les positions dont le signal s'est inversé
+        for ticker in list(weights.keys()):
+            if ticker not in longs:
+                weights.pop(ticker, None)
+                state.get("entry_prices", {}).pop(ticker, None)
+
+        # ATR sizing pour les nouvelles entrées
+        for ticker in longs:
+            if ticker not in weights:
+                w = self.size_by_atr(ticker, past_prices, risk_pct=0.01, stop_atr_mult=2.0)
+                weights[ticker] = w
+
+        state["weights"] = weights
+        return weights
 
 
 # ─────────────────────────────────────────────────────────────────────────────
