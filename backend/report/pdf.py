@@ -230,7 +230,15 @@ def _chart_allocation(alloc_data):
 
 def _chart_breakdown(breakdown):
     labels = ["Commissions", "Slippage", "Spread FX", "TTF"]
-    values = [breakdown.get(k, 0) for k in ["commission", "slippage", "fx_spread", "ttf"]]
+    labels = ["Commissions", "Slippage", "Impact marché", "Spread FX", "TTF", "Stamp Duty"]
+    values = [breakdown.get(k, 0) for k in ["commission", "slippage", "market_impact", "fx_spread", "ttf", "stamp_duty"]]
+    # Filtrer les valeurs nulles
+    non_zero = [(l, v) for l, v in zip(labels, values) if v > 0]
+    if non_zero:
+        labels, values = zip(*non_zero)
+        labels, values = list(labels), list(values)
+    else:
+        labels, values = ["Aucun coût"], [1]
     return _pie_chart(labels, values)
 
 
@@ -885,10 +893,12 @@ def generate_pdf(tearsheet: dict) -> bytes:
     ]
     cb = [
         ["Poste", "Montant"],
-        ["Commissions", e(bd.get("commission"))],
-        ["Slippage", e(bd.get("slippage"))],
+        ["Commissions courtage", e(bd.get("commission"))],
+        ["Slippage bid-ask", e(bd.get("slippage"))],
+        ["Impact marché", e(bd.get("market_impact"))],
         ["Spread FX", e(bd.get("fx_spread"))],
-        ["TTF", e(bd.get("ttf"))],
+        ["TTF (Tobin Tax FR)", e(bd.get("ttf"))],
+        ["Stamp Duty (UK/BE/IT)", e(bd.get("stamp_duty"))],
         ["Taxes PFU/PEA", e(cs.get("total_taxes_eur"))],
     ]
     t = Table(cb, colWidths=[10 * cm, 7 * cm])
@@ -971,7 +981,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
             Spacer(1, 0.3 * cm),
             Paragraph(
                 f"<b>{trades.get('count', 0)} trades</b> exécutés sur la période. "
-                "Tous les coûts réels (commission, slippage, TTF, spread FX) sont inclus.",
+                "Tous les coûts réels (commission, slippage, impact marché, TTF, stamp duty, spread FX) sont inclus.",
                 body_s,
             ),
             Spacer(1, 0.3 * cm),

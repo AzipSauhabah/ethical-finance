@@ -185,8 +185,10 @@ def build_tearsheet(
         cost_breakdown = {
             "commission": float(td["commission"].sum()),
             "slippage": float(td["slippage"].sum()),
+            "market_impact": float(td["market_impact"].sum() if "market_impact" in td.columns else 0.0),
             "fx_spread": float(td["fx_spread"].sum() if "fx_spread" in td.columns else 0.0),
-            "ttf": float(td["ttf"].sum()),
+            "ttf": float(td["ttf"].sum() if "ttf" in td.columns else 0.0),
+            "stamp_duty": float(td["stamp_duty"].sum() if "stamp_duty" in td.columns else 0.0),
         }
 
     import math
