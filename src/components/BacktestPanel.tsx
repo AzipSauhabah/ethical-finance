@@ -147,8 +147,10 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
   const pieData = [
     { name: 'Commissions', value: +(cb.commission || 0).toFixed(2) },
     { name: 'Slippage', value: +(cb.slippage || 0).toFixed(2) },
+    { name: 'Impact marché', value: +(cb.market_impact || 0).toFixed(2) },
     { name: 'FX Spread', value: +(cb.fx_spread || 0).toFixed(2) },
     { name: 'TTF', value: +(cb.ttf || 0).toFixed(2) },
+    { name: 'Stamp Duty', value: +(cb.stamp_duty || 0).toFixed(2) },
   ].filter(d => d.value > 0);
 
   const stressData = (result?.stress_tests || [])
@@ -391,6 +393,31 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
                   </div>
                 ))}
               </div>
+
+              {/* Détail des coûts */}
+              {cb && Object.keys(cb).length > 0 && (
+                <div style={{ marginTop: '1rem', padding: '1rem', background: '#0d1528', borderRadius: 6, border: '1px solid #1a2035' }}>
+                  <div style={{ fontSize: '0.6rem', letterSpacing: '2px', color: '#555', marginBottom: '0.75rem' }}>DÉCOMPOSITION DES COÛTS</div>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Commissions', key: 'commission', color: '#b8962f' },
+                      { label: 'Slippage', key: 'slippage', color: '#5b8dee' },
+                      { label: 'Impact marché', key: 'market_impact', color: '#8a6f9c' },
+                      { label: 'Spread FX', key: 'fx_spread', color: '#1d9e75' },
+                      { label: 'TTF', key: 'ttf', color: '#f87171' },
+                      { label: 'Stamp Duty', key: 'stamp_duty', color: '#fb923c' },
+                    ].filter(item => (cb[item.key] || 0) > 0).map(item => (
+                      <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <div style={{ width: 8, height: 8, borderRadius: 2, background: item.color }} />
+                        <span style={{ fontSize: '0.72rem', color: '#666' }}>{item.label}</span>
+                        <span style={{ fontSize: '0.72rem', color: '#e8e8e8', fontFamily: '"JetBrains Mono", monospace' }}>
+                          {eur(cb[item.key])}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
