@@ -374,7 +374,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         return ParagraphStyle(name, parent=styles["Normal"], **kw)
 
     title_s = st(
-        "T", fontSize=24, textColor=colors.HexColor(NAVY), fontName="Helvetica-Bold", spaceAfter=8
+        "T", fontSize=20, textColor=colors.HexColor(NAVY), fontName="Helvetica-Bold", spaceAfter=8
     )
     subtitle_s = st(
         "S", fontSize=12, textColor=colors.HexColor(GOLD), fontName="Helvetica", spaceAfter=4
@@ -567,7 +567,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
                         f(s.get("sharpe")),
                     ]
                 )
-        t = Table(sd, colWidths=[3.5 * cm, 4.5 * cm, 2.5 * cm, 2.2 * cm, 2.5 * cm, 1.8 * cm])
+        t = Table(sd, colWidths=[5.5 * cm, 4.5 * cm, 2.0 * cm, 2.0 * cm, 2.0 * cm, 1.5 * cm])
         t.setStyle(tbl_style())
         S += [t]
     S += [PageBreak()]
