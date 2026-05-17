@@ -19,3 +19,5 @@ README.md.bak
 .DS_Store
 tsconfig.tsbuildinfo
 tsc
+tsconfig.tsbuildinfo
+tsc
