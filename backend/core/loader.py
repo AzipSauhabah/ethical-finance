@@ -159,6 +159,23 @@ CAC40_TICKERS = [
     "MT.AS",
 ]
 
+ETF_TICKERS = [
+    # ETF Broad Market
+    "IWDA.AS",
+    "VWRL.AS",
+    "CSPX.AS",
+    "EUNL.DE",
+    "VUSA.AS",
+    "SWRD.AS",
+    # ETF Precious Metals
+    "GLD",
+    "IAU",
+    "SLV",
+    "SGOL",
+    "PPLT",
+    "PALL",
+]
+
 MSCI_WORLD_EXTRA = [
     "NESN.SW",
     "ROG.SW",
@@ -198,7 +215,7 @@ MSCI_WORLD_EXTRA = [
     "^N225",
 ]
 
-ALL_TICKERS = list(set(SP500_TICKERS + CAC40_TICKERS + MSCI_WORLD_EXTRA))
+ALL_TICKERS = list(set(SP500_TICKERS + CAC40_TICKERS + MSCI_WORLD_EXTRA + ETF_TICKERS))
 
 
 # ── Chargement ────────────────────────────────────────────────────────────────
