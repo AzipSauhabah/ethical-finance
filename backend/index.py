@@ -465,7 +465,9 @@ async def run_backtest(payload: BacktestIn):
     bench_series = (
         prices_full[payload.benchmark] if payload.benchmark in prices_full.columns else None
     )
-    strat_prices = prices_full[[c for c in prices_full.columns if c not in INDICATOR_TICKERS and c != payload.benchmark]]
+    strat_prices = prices_full[
+        [c for c in prices_full.columns if c not in INDICATOR_TICKERS and c != payload.benchmark]
+    ]
 
     if prices_full.empty:
         raise HTTPException(400, "No price data")
