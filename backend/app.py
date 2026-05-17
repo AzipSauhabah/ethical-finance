@@ -93,8 +93,23 @@ async def _startup() -> None:
                 log.warning("PG backup error: %s", e)
 
         scheduler.add_job(pg_backup_job, "cron", hour=23, minute=0, timezone="UTC")
+
+        # FMP — mise à jour fondamentaux non-US à 22h30 UTC
+        async def fmp_fundamentals_job():
+            try:
+                from backend.core.loader import CAC40_TICKERS
+                from backend.core.fmp import upsert_fmp_fundamentals
+                from backend.core.twelve_data import ALL_EXTENDED_TICKERS
+                all_non_us = list(set(CAC40_TICKERS + ALL_EXTENDED_TICKERS[:50]))
+                log.info("FMP job started — %d tickers", len(all_non_us))
+                n = await upsert_fmp_fundamentals(all_non_us)
+                log.info("FMP job complete — %d tickers updated", n)
+            except Exception as e:
+                log.warning("FMP job error: %s", e)
+
+        scheduler.add_job(fmp_fundamentals_job, "cron", hour=22, minute=30, timezone="UTC")
         scheduler.start()
-        log.info("Scheduler started — OHLCV 21h, SEC 22h, Backup 23h UTC")
+        log.info("Scheduler started — OHLCV 21h, SEC 22h, FMP 22h30, Backup 23h UTC")
         asyncio.create_task(_init_and_load())
 
 
