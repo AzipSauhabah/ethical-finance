@@ -26,7 +26,8 @@ import numpy as np
 import pandas as pd
 
 from backend.strategies.base import Strategy, StrategyParams
-from backend.strategies.builtin.lstm_scorer import train_lstm, score_ticker as lstm_score_ticker
+from backend.strategies.builtin.lstm_scorer import score_ticker as lstm_score_ticker
+from backend.strategies.builtin.lstm_scorer import train_lstm
 from backend.strategies.registry import strategy_registry
 
 log = logging.getLogger(__name__)

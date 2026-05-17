@@ -23,11 +23,11 @@ import pandas as pd
 
 log = logging.getLogger(__name__)
 
-SEQ_LEN = 30          # jours de lookback pour la séquence LSTM
-FORECAST_DAYS = 5     # horizon de prédiction
-THRESHOLD = 0.02      # seuil rendement positif (+2%)
-MIN_SAMPLES = 200     # minimum d'exemples pour entraîner
-EPOCHS = 10           # epochs d'entraînement (rapide)
+SEQ_LEN = 30  # jours de lookback pour la séquence LSTM
+FORECAST_DAYS = 5  # horizon de prédiction
+THRESHOLD = 0.02  # seuil rendement positif (+2%)
+MIN_SAMPLES = 200  # minimum d'exemples pour entraîner
+EPOCHS = 10  # epochs d'entraînement (rapide)
 BATCH_SIZE = 32
 
 
@@ -44,8 +44,8 @@ def _build_feature_matrix(prices: pd.Series) -> np.ndarray | None:
         return None
 
     try:
-        ret_1  = p.pct_change(1)
-        ret_5  = p.pct_change(5)
+        ret_1 = p.pct_change(1)
+        ret_5 = p.pct_change(5)
         ret_20 = p.pct_change(20)
 
         # Volatilité réalisée rolling
@@ -54,9 +54,9 @@ def _build_feature_matrix(prices: pd.Series) -> np.ndarray | None:
 
         # RSI-14
         delta = ret_1
-        gain  = delta.clip(lower=0).rolling(14).mean()
-        loss  = (-delta.clip(upper=0)).rolling(14).mean()
-        rsi   = 100 - (100 / (1 + gain / (loss + 1e-9)))
+        gain = delta.clip(lower=0).rolling(14).mean()
+        loss = (-delta.clip(upper=0)).rolling(14).mean()
+        rsi = 100 - (100 / (1 + gain / (loss + 1e-9)))
         rsi_n = rsi / 100.0  # normalise [0,1]
 
         # EMA ratio (tendance)
@@ -67,8 +67,8 @@ def _build_feature_matrix(prices: pd.Series) -> np.ndarray | None:
         # MACD histogram normalisé
         ema12 = p.ewm(span=12).mean()
         ema26 = p.ewm(span=26).mean()
-        macd  = ema12 - ema26
-        signal= macd.ewm(span=9).mean()
+        macd = ema12 - ema26
+        signal = macd.ewm(span=9).mean()
         macd_hist = (macd - signal) / (p + 1e-9)
 
         # Bollinger position [0,1]
@@ -83,19 +83,21 @@ def _build_feature_matrix(prices: pd.Series) -> np.ndarray | None:
         mom_20 = ret_20
         mom_60 = p.pct_change(60)
 
-        feat = pd.DataFrame({
-            "ret_1":    ret_1,
-            "ret_5":    ret_5,
-            "ret_20":   ret_20,
-            "vol_10":   vol_10,
-            "vol_20":   vol_20,
-            "rsi":      rsi_n,
-            "ema_ratio":ema_ratio,
-            "macd_hist":macd_hist,
-            "bb_pos":   bb_pos,
-            "mom_20":   mom_20,
-            "mom_60":   mom_60,
-        }).dropna()
+        feat = pd.DataFrame(
+            {
+                "ret_1": ret_1,
+                "ret_5": ret_5,
+                "ret_20": ret_20,
+                "vol_10": vol_10,
+                "vol_20": vol_20,
+                "rsi": rsi_n,
+                "ema_ratio": ema_ratio,
+                "macd_hist": macd_hist,
+                "bb_pos": bb_pos,
+                "mom_20": mom_20,
+                "mom_60": mom_60,
+            }
+        ).dropna()
 
         return feat.values.astype(np.float32)
 
@@ -128,21 +130,21 @@ def _build_dataset(
         if feat_mat is None or len(feat_mat) < SEQ_LEN + FORECAST_DAYS:
             continue
 
-        prices_arr = series.dropna().values
+        series.dropna().values
         # Aligner prix avec feat_mat (dropna peut décaler)
         price_series = series.dropna()
-        feat_series  = pd.Series(range(len(feat_mat)))  # index proxy
+        pd.Series(range(len(feat_mat)))  # index proxy
 
         n = len(feat_mat)
         for i in range(SEQ_LEN, n - FORECAST_DAYS):
-            seq = feat_mat[i - SEQ_LEN: i]  # (SEQ_LEN, N_features)
+            seq = feat_mat[i - SEQ_LEN : i]  # (SEQ_LEN, N_features)
             # Prix correspondant dans la série originale
             price_idx = price_series.index[i] if i < len(price_series) else None
             if price_idx is None:
                 continue
             try:
-                cur_price  = float(price_series.iloc[i])
-                fut_price  = float(price_series.iloc[i + FORECAST_DAYS])
+                cur_price = float(price_series.iloc[i])
+                fut_price = float(price_series.iloc[i + FORECAST_DAYS])
                 future_ret = fut_price / cur_price - 1
                 label = 1 if future_ret > THRESHOLD else 0
                 all_X.append(seq)
@@ -154,13 +156,13 @@ def _build_dataset(
         log.info("LSTM: pas assez d'exemples (%d < %d)", len(all_X), MIN_SAMPLES)
         return None
 
-    X = np.array(all_X, dtype=np.float32)   # (N, SEQ_LEN, features)
+    X = np.array(all_X, dtype=np.float32)  # (N, SEQ_LEN, features)
     y = np.array(all_y, dtype=np.float32)
 
     # Normalisation sur l'axe temporel + features
     mean = X.mean(axis=(0, 1), keepdims=True)
-    std  = X.std(axis=(0, 1), keepdims=True)
-    X    = _normalize(X, mean, std)
+    std = X.std(axis=(0, 1), keepdims=True)
+    X = _normalize(X, mean, std)
 
     return X, y, mean.squeeze(), std.squeeze()
 
@@ -176,16 +178,18 @@ def _build_lstm_model(n_features: int):
 
         tf.get_logger().setLevel("ERROR")
 
-        model = models.Sequential([
-            layers.Input(shape=(SEQ_LEN, n_features)),
-            layers.LSTM(64, return_sequences=True),
-            layers.Dropout(0.2),
-            layers.LSTM(32, return_sequences=False),
-            layers.Dropout(0.2),
-            layers.Dense(16, activation="relu"),
-            layers.Dropout(0.3),
-            layers.Dense(1, activation="sigmoid"),
-        ])
+        model = models.Sequential(
+            [
+                layers.Input(shape=(SEQ_LEN, n_features)),
+                layers.LSTM(64, return_sequences=True),
+                layers.Dropout(0.2),
+                layers.LSTM(32, return_sequences=False),
+                layers.Dropout(0.2),
+                layers.Dense(16, activation="relu"),
+                layers.Dropout(0.3),
+                layers.Dense(1, activation="sigmoid"),
+            ]
+        )
 
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
@@ -211,6 +215,7 @@ def train_lstm(
     """
     try:
         import tensorflow as tf
+
         tf.get_logger().setLevel("ERROR")
     except ImportError:
         log.warning("TensorFlow non disponible — LSTM scorer désactivé")
@@ -233,7 +238,8 @@ def train_lstm(
         X, y = X[idx], y[idx]
 
         model.fit(
-            X, y,
+            X,
+            y,
             epochs=EPOCHS,
             batch_size=BATCH_SIZE,
             validation_split=0.15,
@@ -265,7 +271,7 @@ def score_ticker(
 
         seq = feat_mat[-SEQ_LEN:]  # dernière séquence
         mean = lstm_state["mean"]
-        std  = lstm_state["std"]
+        std = lstm_state["std"]
         seq_norm = _normalize(seq, mean, std)
 
         model = lstm_state["model"]
