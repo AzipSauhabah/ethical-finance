@@ -125,7 +125,14 @@ class Portfolio:
                 return None
             notional = shares * price_eur
             costs = total_trade_cost(
-                notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "buy", country
+                notional,
+                self.broker,
+                asset_type,
+                cap_size,
+                currency,
+                market_cap_eur,
+                "buy",
+                country,
             )
             if notional + costs["total"] > self.cash:
                 return None
