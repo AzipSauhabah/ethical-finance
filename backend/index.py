@@ -582,6 +582,7 @@ async def sentiment_analysis(payload: TickerListIn):
 async def admin_drive_sync():
     """Déclenche manuellement la synchronisation Google Drive → DB."""
     from backend.core.drive_sync import trigger_drive_sync
+
     return await trigger_drive_sync()
 
 

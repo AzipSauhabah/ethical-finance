@@ -96,6 +96,7 @@ async def _startup() -> None:
         async def drive_sync_job():
             try:
                 from backend.core.drive_sync import trigger_drive_sync
+
                 log.info("Drive sync job started")
                 result = await trigger_drive_sync()
                 log.info("Drive sync job complete: %s", result)

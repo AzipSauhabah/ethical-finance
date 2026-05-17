@@ -13,11 +13,9 @@ Schedule : déclenché par APScheduler après le notebook Colab (23h30 UTC).
 
 from __future__ import annotations
 
-import gzip
 import io
 import logging
 import os
-from pathlib import Path
 
 log = logging.getLogger(__name__)
 
@@ -56,10 +54,14 @@ def _find_file_id(service, filename: str, folder_name: str) -> str | None:
     """Trouve l'ID d'un fichier dans Google Drive par nom."""
     try:
         # Chercher le dossier
-        folder_result = service.files().list(
-            q=f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder'",
-            fields="files(id, name)",
-        ).execute()
+        folder_result = (
+            service.files()
+            .list(
+                q=f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder'",
+                fields="files(id, name)",
+            )
+            .execute()
+        )
 
         folders = folder_result.get("files", [])
         if not folders:
@@ -69,11 +71,15 @@ def _find_file_id(service, filename: str, folder_name: str) -> str | None:
         folder_id = folders[0]["id"]
 
         # Chercher le fichier dans le dossier
-        file_result = service.files().list(
-            q=f"name='{filename}' and '{folder_id}' in parents",
-            fields="files(id, name, modifiedTime, size)",
-            orderBy="modifiedTime desc",
-        ).execute()
+        file_result = (
+            service.files()
+            .list(
+                q=f"name='{filename}' and '{folder_id}' in parents",
+                fields="files(id, name, modifiedTime, size)",
+                orderBy="modifiedTime desc",
+            )
+            .execute()
+        )
 
         files = file_result.get("files", [])
         if not files:
@@ -133,7 +139,9 @@ async def import_ohlcv_from_drive() -> dict:
         dict avec stats : rows_downloaded, rows_inserted, rows_skipped
     """
     import asyncio
+
     import pandas as pd
+
     from backend.core.db import upsert_ohlcv
 
     log.info("Starting Drive → DB sync")
@@ -169,10 +177,16 @@ async def import_ohlcv_from_drive() -> dict:
     for ticker in tickers:
         ticker_df = df[df["ticker"] == ticker].copy()
         ticker_df = ticker_df.set_index("date")
-        ticker_df = ticker_df.rename(columns={
-            "open": "Open", "high": "High", "low": "Low",
-            "close": "Close", "adj_close": "Adj Close", "volume": "Volume",
-        })
+        ticker_df = ticker_df.rename(
+            columns={
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "adj_close": "Adj Close",
+                "volume": "Volume",
+            }
+        )
         try:
             n = await upsert_ohlcv(ticker_df, ticker)
             total_inserted += n
@@ -181,7 +195,9 @@ async def import_ohlcv_from_drive() -> dict:
 
     log.info(
         "Drive sync complete: %d rows downloaded, %d rows inserted, %d tickers",
-        len(df), total_inserted, len(tickers),
+        len(df),
+        total_inserted,
+        len(tickers),
     )
 
     return {
