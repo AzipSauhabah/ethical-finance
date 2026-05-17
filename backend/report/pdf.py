@@ -246,8 +246,6 @@ def _chart_stress(stress_data):
     return _bar_chart(list(labels), list(vals))
 
 
-
-
 # ─── Nouveaux graphiques institutionnels ──────────────────────────────────────
 
 
@@ -263,10 +261,8 @@ def _chart_rolling_sharpe(rolling_sharpe: list) -> object:
     ax.plot(dates, values, color=GOLD, linewidth=1.8)
     ax.axhline(0, color="#555", linewidth=0.8, linestyle="--")
     ax.axhline(1, color=GREEN, linewidth=0.6, linestyle=":", alpha=0.7)
-    ax.fill_between(dates, values, 0,
-                    where=[v >= 0 for v in values], color=GREEN, alpha=0.15)
-    ax.fill_between(dates, values, 0,
-                    where=[v < 0 for v in values], color=RED, alpha=0.15)
+    ax.fill_between(dates, values, 0, where=[v >= 0 for v in values], color=GREEN, alpha=0.15)
+    ax.fill_between(dates, values, 0, where=[v < 0 for v in values], color=RED, alpha=0.15)
     ax.set_title("Rolling Sharpe 252j", color="#aaa", fontsize=8, pad=4)
     ax.set_ylabel("Sharpe", fontsize=7)
     ax.spines[["top", "right"]].set_visible(False)
@@ -300,21 +296,33 @@ def _chart_monthly_heatmap(monthly_returns_list: list) -> object:
     _mpl_style()
 
     import pandas as pd
+
     df = pd.DataFrame(monthly_returns_list)
     df["date"] = pd.to_datetime(df["date"])
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     pivot = df.pivot(index="year", columns="month", values="return")
-    pivot.columns = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun",
-                     "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"][:len(pivot.columns)]
+    pivot.columns = [
+        "Jan",
+        "Fév",
+        "Mar",
+        "Avr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Aoû",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Déc",
+    ][: len(pivot.columns)]
 
     n_years = len(pivot)
     fig, ax = plt.subplots(figsize=(12, max(2.5, n_years * 0.5)), facecolor="#111827")
     ax.set_facecolor("#111827")
 
     vmax = max(abs(pivot.values[~np.isnan(pivot.values)]).max(), 5)
-    im = ax.imshow(pivot.values, cmap="RdYlGn", aspect="auto",
-                   vmin=-vmax, vmax=vmax)
+    im = ax.imshow(pivot.values, cmap="RdYlGn", aspect="auto", vmin=-vmax, vmax=vmax)
 
     ax.set_xticks(range(len(pivot.columns)))
     ax.set_xticklabels(pivot.columns, fontsize=7)
@@ -326,8 +334,16 @@ def _chart_monthly_heatmap(monthly_returns_list: list) -> object:
             val = pivot.values[i, j]
             if not np.isnan(val):
                 color = "white" if abs(val) > vmax * 0.6 else "#333"
-                ax.text(j, i, f"{val:+.1f}%", ha="center", va="center",
-                        fontsize=6, color=color, fontweight="bold")
+                ax.text(
+                    j,
+                    i,
+                    f"{val:+.1f}%",
+                    ha="center",
+                    va="center",
+                    fontsize=6,
+                    color=color,
+                    fontweight="bold",
+                )
 
     plt.colorbar(im, ax=ax, shrink=0.8, pad=0.02)
     ax.set_title("Rendements mensuels (%)", color="#aaa", fontsize=8, pad=4)
@@ -344,8 +360,16 @@ def _chart_return_distribution(return_distribution: list) -> object:
     ax.set_facecolor("#111827")
 
     data = np.array(return_distribution)
-    ax.hist(data, bins=80, color=NAVY, alpha=0.7, density=True,
-            edgecolor="#1e2d4a", linewidth=0.3, label="Rendements réels")
+    ax.hist(
+        data,
+        bins=80,
+        color=NAVY,
+        alpha=0.7,
+        density=True,
+        edgecolor="#1e2d4a",
+        linewidth=0.3,
+        label="Rendements réels",
+    )
 
     # Courbe gaussienne théorique
     mu, sigma = data.mean(), data.std()
@@ -354,8 +378,7 @@ def _chart_return_distribution(return_distribution: list) -> object:
     ax.plot(x, gaussian, color=GOLD, linewidth=1.8, linestyle="--", label="Gaussienne théorique")
 
     ax.axvline(0, color="#555", linewidth=0.8)
-    ax.axvline(np.percentile(data, 5), color=RED, linewidth=1.2,
-               linestyle=":", label="VaR 95%")
+    ax.axvline(np.percentile(data, 5), color=RED, linewidth=1.2, linestyle=":", label="VaR 95%")
 
     ax.set_title("Distribution des rendements journaliers", color="#aaa", fontsize=8, pad=4)
     ax.set_xlabel("Rendement journalier %", fontsize=7)
@@ -383,11 +406,14 @@ def _chart_underwater(dd_data: list) -> object:
     # Annoter le max drawdown
     min_dd = min(values)
     min_idx = values.index(min_dd)
-    ax.annotate(f"Max DD: {min_dd:.1f}%",
-                xy=(min_idx, min_dd),
-                xytext=(min_idx + len(dates) * 0.05, min_dd * 0.7),
-                color="#f87171", fontsize=7,
-                arrowprops=dict(arrowstyle="->", color="#f87171", lw=0.8))
+    ax.annotate(
+        f"Max DD: {min_dd:.1f}%",
+        xy=(min_idx, min_dd),
+        xytext=(min_idx + len(dates) * 0.05, min_dd * 0.7),
+        color="#f87171",
+        fontsize=7,
+        arrowprops=dict(arrowstyle="->", color="#f87171", lw=0.8),
+    )
 
     ax.set_title("Underwater Plot (Drawdown cumulatif)", color="#aaa", fontsize=8, pad=4)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:.1f}%"))
@@ -410,12 +436,24 @@ def _chart_rolling_beta(rolling_beta: list) -> object:
     ax.plot(dates, values, color="#8a6f9c", linewidth=1.8)
     ax.axhline(1.0, color=GOLD, linewidth=0.8, linestyle="--", label="Bêta marché = 1")
     ax.axhline(0.0, color="#555", linewidth=0.5)
-    ax.fill_between(dates, values, 1.0,
-                    where=[v > 1 for v in values], color=RED, alpha=0.15,
-                    label="Sur-exposition")
-    ax.fill_between(dates, values, 1.0,
-                    where=[v <= 1 for v in values], color=GREEN, alpha=0.15,
-                    label="Sous-exposition")
+    ax.fill_between(
+        dates,
+        values,
+        1.0,
+        where=[v > 1 for v in values],
+        color=RED,
+        alpha=0.15,
+        label="Sur-exposition",
+    )
+    ax.fill_between(
+        dates,
+        values,
+        1.0,
+        where=[v <= 1 for v in values],
+        color=GREEN,
+        alpha=0.15,
+        label="Sous-exposition",
+    )
 
     ax.set_title("Rolling Bêta 252j vs Benchmark", color="#aaa", fontsize=8, pad=4)
     ax.legend(fontsize=6)
@@ -438,15 +476,17 @@ def _chart_win_loss(win_loss_data: dict) -> object:
     hit_rate = win_loss_data.get("hit_rate", 50)
 
     if wins:
-        ax1.hist(wins, bins=50, color=GREEN, alpha=0.7, density=True,
-                 edgecolor="#0d1528", linewidth=0.3)
+        ax1.hist(
+            wins, bins=50, color=GREEN, alpha=0.7, density=True, edgecolor="#0d1528", linewidth=0.3
+        )
         ax1.set_title(f"Jours positifs ({hit_rate:.1f}%)", color="#aaa", fontsize=8, pad=4)
         ax1.set_xlabel("Rendement %", fontsize=7)
         ax1.spines[["top", "right"]].set_visible(False)
 
     if losses:
-        ax2.hist(losses, bins=50, color=RED, alpha=0.7, density=True,
-                 edgecolor="#0d1528", linewidth=0.3)
+        ax2.hist(
+            losses, bins=50, color=RED, alpha=0.7, density=True, edgecolor="#0d1528", linewidth=0.3
+        )
         ax2.set_title(f"Jours négatifs ({100-hit_rate:.1f}%)", color="#aaa", fontsize=8, pad=4)
         ax2.set_xlabel("Rendement %", fontsize=7)
         ax2.spines[["top", "right"]].set_visible(False)
@@ -454,6 +494,8 @@ def _chart_win_loss(win_loss_data: dict) -> object:
     fig.suptitle("Distribution Win/Loss", color="#aaa", fontsize=9, y=1.02)
     fig.tight_layout(pad=0.5)
     return fig
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Main PDF builder
 # ─────────────────────────────────────────────────────────────────────────────
@@ -697,7 +739,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
     if rolling_sharpe or rolling_vol:
         S += [
             Paragraph("Métriques glissantes — Sharpe et Volatilité", section_s),
-            hr(), Spacer(1, 0.3 * cm),
+            hr(),
+            Spacer(1, 0.3 * cm),
             Paragraph(
                 "Le Sharpe glissant (252j) mesure l'évolution de l'efficience de la stratégie "
                 "dans le temps. Un Sharpe > 1 de façon stable indique une génération d'alpha "
@@ -717,7 +760,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
     if monthly_returns_list:
         S += [
             Paragraph("Heatmap des rendements mensuels", section_s),
-            hr(), Spacer(1, 0.3 * cm),
+            hr(),
+            Spacer(1, 0.3 * cm),
             Paragraph(
                 "La heatmap affiche le rendement de chaque mois de l'année (rouge = perte, "
                 "vert = gain). Elle permet d'identifier les saisonnalités, les années "
@@ -735,7 +779,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
     if return_distribution:
         S += [
             Paragraph("Distribution des rendements journaliers", section_s),
-            hr(), Spacer(1, 0.3 * cm),
+            hr(),
+            Spacer(1, 0.3 * cm),
             Paragraph(
                 "L'histogramme compare la distribution réelle des rendements journaliers "
                 "à la distribution gaussienne théorique (pointillés dorés). "
@@ -753,7 +798,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
     # PAGE 6e — UNDERWATER + ROLLING BETA
     S += [
         Paragraph("Underwater Plot et Bêta glissant", section_s),
-        hr(), Spacer(1, 0.3 * cm),
+        hr(),
+        Spacer(1, 0.3 * cm),
         Paragraph(
             "L'Underwater Plot (ou 'drawdown cumulatif') montre les périodes pendant lesquelles "
             "le portefeuille est en dessous de son plus haut historique. La profondeur "
@@ -774,7 +820,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
     if win_loss_data:
         S += [
             Paragraph("Distribution Win / Loss", section_s),
-            hr(), Spacer(1, 0.3 * cm),
+            hr(),
+            Spacer(1, 0.3 * cm),
             Paragraph(
                 "La distribution des jours positifs (gauche) et négatifs (droite) permet "
                 "d'analyser l'asymétrie des rendements. Une stratégie idéale présente "
