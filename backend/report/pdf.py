@@ -28,6 +28,7 @@ from typing import Any
 
 from backend.config import COPYRIGHT, DISCLAIMER
 from backend.report.glossary import GLOSSARY
+from backend.report.narrative import generate_all_narratives
 
 NAVY = "#142340"
 GOLD = "#b8962f"
@@ -431,6 +432,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
     )
 
     meta = tearsheet["meta"]
+    narratives = generate_all_narratives(tearsheet)
     m = tearsheet["metrics"]
     sig = tearsheet.get("significance", {})
     st_ = tearsheet.get("stress_tests", [])
@@ -468,6 +470,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
     # PAGE 2 — EXECUTIVE SUMMARY
     S += [Paragraph("Résumé exécutif", section_s), hr(), Spacer(1, 0.3 * cm)]
+    S += [Paragraph(narratives["executive_summary"], body_s), Spacer(1, 0.4 * cm)]
     rows = [
         ["Métrique", "Valeur"],
         ["Rendement total", p(m.get("total_return"))],
@@ -496,7 +499,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Paragraph("Performance — NAV vs Benchmark", section_s),
         hr(),
         Spacer(1, 0.3 * cm),
-        Paragraph("Évolution de la NAV comparée au benchmark.", body_s),
+        Paragraph(narratives["performance"], body_s),
         Spacer(1, 0.3 * cm),
         chart(_chart_nav(nav, bnch), aspect=0.40),
         PageBreak(),
@@ -507,6 +510,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Paragraph("Analyse du drawdown", section_s),
         hr(),
         Spacer(1, 0.3 * cm),
+        Paragraph(narratives["drawdown"], body_s),
+        Spacer(1, 0.2 * cm),
         Paragraph(
             f"<b>Max DD :</b> {p(m.get('max_drawdown'))}  "
             f"<b>Avg DD :</b> {p(m.get('average_drawdown'))}  "
@@ -520,6 +525,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
     # PAGE 5 — RISK
     S += [Paragraph("Métriques de risque", section_s), hr(), Spacer(1, 0.3 * cm)]
+    S += [Paragraph(narratives["risk"], body_s), Spacer(1, 0.3 * cm)]
     risk = [
         ["Métrique", "Quotidien", "Annualisé (≈)"],
         ["VaR hist. 95%", p(m.get("var_95")), p((m.get("var_95") or 0) * (252**0.5))],
@@ -541,6 +547,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
     S += [
         Paragraph("Tests de résistance historiques", section_s),
         hr(),
+        Spacer(1, 0.3 * cm),
+        Paragraph(narratives["stress_tests"], body_s),
         Spacer(1, 0.3 * cm),
         chart(_chart_stress(st_), aspect=0.36),
         Spacer(1, 0.3 * cm),
@@ -571,6 +579,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
         Spacer(1, 0.3 * cm),
         chart(_chart_costs(cc), aspect=0.32),
         Spacer(1, 0.3 * cm),
+        Paragraph(narratives["costs"], body_s),
+        Spacer(1, 0.2 * cm),
         Paragraph(
             f"<b>Coûts :</b> {e(cs.get('total_costs_eur'))}  "
             f"<b>Taxes :</b> {e(cs.get('total_taxes_eur'))}  "
