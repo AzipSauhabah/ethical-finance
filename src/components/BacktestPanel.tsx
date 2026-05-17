@@ -129,10 +129,18 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
   const pct = (v?: number | null) => v == null ? 'N/A' : (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%';
   const eur = (v?: number | null) => v == null ? 'N/A' : v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
-  const navWithBench = (result?.nav_chart || []).map((d: any, i: number) => ({
+  const [navCcy, setNavCcy] = useState<string>('EUR');
+  const CCY_LABELS: Record<string, string> = {
+    EUR: 'EUR €', USD: 'USD $', GBP: 'GBP £', CHF: 'CHF', JPY: 'JPY ¥', XAU: 'Or (oz)',
+  };
+
+  const navMultiCcy = result?.nav_multiccy || {};
+  const activeNavData = navMultiCcy[navCcy] || result?.nav_chart || [];
+
+  const navWithBench = activeNavData.map((d: any, i: number) => ({
     date: d.date,
     NAV: d.nav,
-    Benchmark: result?.benchmark_chart?.[i]?.nav,
+    Benchmark: navCcy === 'EUR' ? result?.benchmark_chart?.[i]?.nav : undefined,
   }));
 
   const allocData = (result?.allocation_chart || []).map((d: any) => ({
@@ -264,6 +272,24 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
             <KpiCard label="CVAR 95%" value={((m.cvar_95 ?? 0) * 100).toFixed(2) + "%"} sub="Expected Shortfall" />
             <KpiCard label="HIT RATE" value={pct(m.hit_rate)} />
           </div>
+
+          {/* Sélecteur devise NAV */}
+          {Object.keys(navMultiCcy).length > 1 && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.7rem', color: '#555', alignSelf: 'center' }}>NAV en :</span>
+              {Object.keys(CCY_LABELS).filter(c => navMultiCcy[c] || c === 'EUR').map(ccy => (
+                <button key={ccy} onClick={() => setNavCcy(ccy)} style={{
+                  padding: '0.2rem 0.6rem',
+                  background: navCcy === ccy ? 'rgba(184,150,47,0.15)' : '#0d1528',
+                  border: `1px solid ${navCcy === ccy ? '#b8962f' : '#1e2d4a'}`,
+                  borderRadius: 4, color: navCcy === ccy ? '#b8962f' : '#555',
+                  fontSize: '0.72rem', cursor: 'pointer',
+                }}>
+                  {CCY_LABELS[ccy]}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* NAV Chart */}
           {navWithBench.length > 0 && (
