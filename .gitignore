@@ -17,3 +17,5 @@ env
 26.1.1
 README.md.bak
 .DS_Store
+tsconfig.tsbuildinfo
+tsc
