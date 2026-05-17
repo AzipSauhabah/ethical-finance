@@ -363,3 +363,70 @@ def total_transaction_cost(
         "total": round(total, 4),
         "total_bps": round(total / max(notional_eur, 1) * 10_000, 2),
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Utilitaire — déduire le pays depuis le ticker
+# ─────────────────────────────────────────────────────────────────────────────
+
+def country_from_ticker(ticker: str) -> str:
+    """
+    Déduit le pays de cotation depuis le suffixe du ticker.
+
+    Exemples :
+        AAPL      → US
+        MC.PA     → FR
+        HSBA.L    → UK
+        SAP.DE    → DE
+        ASML.AS   → NL
+        UCG.MI    → IT
+        AGS.BR    → BE
+        NESN.SW   → CH
+        7203.T    → JP
+        BHP.AX    → AU
+    """
+    ticker = ticker.upper()
+    if "." not in ticker:
+        return "US"  # ticker sans suffixe = US par défaut
+
+    suffix = ticker.rsplit(".", 1)[-1]
+    mapping = {
+        "PA": "FR", "CO": "FR",           # France
+        "L": "UK", "LON": "UK",           # UK
+        "DE": "DE", "XETRA": "DE",        # Allemagne
+        "AS": "NL", "AMS": "NL",          # Pays-Bas
+        "MI": "IT", "MIL": "IT",          # Italie
+        "BR": "BE",                         # Belgique
+        "SW": "CH", "VX": "CH",           # Suisse
+        "T": "JP", "TYO": "JP",           # Japon
+        "AX": "AU",                         # Australie
+        "TO": "CA",                         # Canada
+        "HK": "HK",                         # Hong Kong
+        "SS": "CN", "SZ": "CN",           # Chine
+        "KS": "KR",                         # Corée du Sud
+        "NS": "IN", "BO": "IN",           # Inde
+        "SA": "BR",                         # Brésil
+        "MX": "MX",                         # Mexique
+        "MC": "ES",                         # Espagne
+        "LS": "PT",                         # Portugal
+        "HE": "FI",                         # Finlande
+        "ST": "SE",                         # Suède
+        "OL": "NO",                         # Norvège
+        "CO2": "DK",                        # Danemark
+        "IS": "IE",                         # Irlande
+        "WA": "PL",                         # Pologne
+        "PR": "CZ",                         # Tchéquie
+    }
+    return mapping.get(suffix, "US")
+
+
+def cap_size_from_market_cap(market_cap_eur: float) -> str:
+    """Déduit la catégorie de capitalisation depuis la market cap en EUR."""
+    if market_cap_eur >= 10_000_000_000:    # > 10 Md€
+        return "large_cap"
+    elif market_cap_eur >= 1_000_000_000:   # 1-10 Md€
+        return "mid_cap"
+    elif market_cap_eur >= 100_000_000:     # 100M-1Md€
+        return "small_cap"
+    else:
+        return "micro_cap"
