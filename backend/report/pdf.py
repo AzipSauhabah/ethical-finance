@@ -231,7 +231,10 @@ def _chart_allocation(alloc_data):
 def _chart_breakdown(breakdown):
     labels = ["Commissions", "Slippage", "Spread FX", "TTF"]
     labels = ["Commissions", "Slippage", "Impact marché", "Spread FX", "TTF", "Stamp Duty"]
-    values = [breakdown.get(k, 0) for k in ["commission", "slippage", "market_impact", "fx_spread", "ttf", "stamp_duty"]]
+    values = [
+        breakdown.get(k, 0)
+        for k in ["commission", "slippage", "market_impact", "fx_spread", "ttf", "stamp_duty"]
+    ]
     # Filtrer les valeurs nulles
     non_zero = [(l, v) for l, v in zip(labels, values) if v > 0]
     if non_zero:
