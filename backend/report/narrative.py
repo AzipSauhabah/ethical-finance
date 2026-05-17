@@ -10,7 +10,6 @@ Aucun LLM requis — logique conditionnelle sur les chiffres réels.
 
 from __future__ import annotations
 
-
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
@@ -309,9 +308,7 @@ def narrative_stress_tests(stress_tests: list) -> str:
     parts = []
 
     if scenarios_passed:
-        labels = ", ".join(
-            f"{label} ({_pct(ret)})" for label, ret in scenarios_passed
-        )
+        labels = ", ".join(f"{label} ({_pct(ret)})" for label, ret in scenarios_passed)
         parts.append(
             f"La stratégie a démontré une résilience remarquable lors des crises suivantes, "
             f"enregistrant des performances positives : {labels}. "
@@ -320,9 +317,7 @@ def narrative_stress_tests(stress_tests: list) -> str:
         )
 
     if scenarios_failed:
-        labels = ", ".join(
-            f"{label} ({_pct(ret)})" for label, ret in scenarios_failed
-        )
+        labels = ", ".join(f"{label} ({_pct(ret)})" for label, ret in scenarios_failed)
         if len(scenarios_failed) <= 2:
             parts.append(
                 f"Des pertes ont été enregistrées lors des épisodes : {labels}. "
@@ -337,9 +332,7 @@ def narrative_stress_tests(stress_tests: list) -> str:
             )
 
     # Commentaire COVID spécifique
-    covid = next(
-        (s for s in stress_tests if "covid" in s.get("label", "").lower()), None
-    )
+    covid = next((s for s in stress_tests if "covid" in s.get("label", "").lower()), None)
     if covid:
         ret = covid.get("total_return", 0) or 0
         if ret > 0:
@@ -446,13 +439,9 @@ def narrative_ml_performance(ml_info: dict) -> str:
 
     # Feature importance
     if feature_importance:
-        top_features = sorted(
-            feature_importance.items(), key=lambda x: x[1], reverse=True
-        )[:3]
+        top_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
         if top_features:
-            feat_str = ", ".join(
-                f"{k} ({v*100:.1f}%)" for k, v in top_features
-            )
+            feat_str = ", ".join(f"{k} ({v*100:.1f}%)" for k, v in top_features)
             parts.append(
                 f"Les facteurs les plus contributifs au signal sont : {feat_str}. "
                 "Cette hiérarchie des features est cohérente avec la littérature académique "
