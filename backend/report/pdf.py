@@ -246,6 +246,214 @@ def _chart_stress(stress_data):
     return _bar_chart(list(labels), list(vals))
 
 
+
+
+# ─── Nouveaux graphiques institutionnels ──────────────────────────────────────
+
+
+def _chart_rolling_sharpe(rolling_sharpe: list) -> object:
+    """Rolling Sharpe 252j — style QuantConnect."""
+    if not rolling_sharpe:
+        return None
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
+    ax.set_facecolor("#111827")
+    dates = list(range(len(rolling_sharpe)))
+    values = [d["sharpe"] for d in rolling_sharpe]
+    ax.plot(dates, values, color=GOLD, linewidth=1.8)
+    ax.axhline(0, color="#555", linewidth=0.8, linestyle="--")
+    ax.axhline(1, color=GREEN, linewidth=0.6, linestyle=":", alpha=0.7)
+    ax.fill_between(dates, values, 0,
+                    where=[v >= 0 for v in values], color=GREEN, alpha=0.15)
+    ax.fill_between(dates, values, 0,
+                    where=[v < 0 for v in values], color=RED, alpha=0.15)
+    ax.set_title("Rolling Sharpe 252j", color="#aaa", fontsize=8, pad=4)
+    ax.set_ylabel("Sharpe", fontsize=7)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
+
+
+def _chart_rolling_vol(rolling_vol: list) -> object:
+    """Rolling Volatilité 63j annualisée."""
+    if not rolling_vol:
+        return None
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
+    ax.set_facecolor("#111827")
+    dates = list(range(len(rolling_vol)))
+    values = [d["vol"] for d in rolling_vol]
+    ax.plot(dates, values, color="#5b8dee", linewidth=1.8)
+    ax.fill_between(dates, values, alpha=0.2, color="#5b8dee")
+    ax.set_title("Rolling Volatilité 63j (annualisée)", color="#aaa", fontsize=8, pad=4)
+    ax.set_ylabel("Volatilité %", fontsize=7)
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:.1f}%"))
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
+
+
+def _chart_monthly_heatmap(monthly_returns_list: list) -> object:
+    """Monthly Returns Heatmap — style Quantopian."""
+    if not monthly_returns_list:
+        return None
+    _mpl_style()
+
+    import pandas as pd
+    df = pd.DataFrame(monthly_returns_list)
+    df["date"] = pd.to_datetime(df["date"])
+    df["year"] = df["date"].dt.year
+    df["month"] = df["date"].dt.month
+    pivot = df.pivot(index="year", columns="month", values="return")
+    pivot.columns = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun",
+                     "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"][:len(pivot.columns)]
+
+    n_years = len(pivot)
+    fig, ax = plt.subplots(figsize=(12, max(2.5, n_years * 0.5)), facecolor="#111827")
+    ax.set_facecolor("#111827")
+
+    vmax = max(abs(pivot.values[~np.isnan(pivot.values)]).max(), 5)
+    im = ax.imshow(pivot.values, cmap="RdYlGn", aspect="auto",
+                   vmin=-vmax, vmax=vmax)
+
+    ax.set_xticks(range(len(pivot.columns)))
+    ax.set_xticklabels(pivot.columns, fontsize=7)
+    ax.set_yticks(range(len(pivot.index)))
+    ax.set_yticklabels(pivot.index, fontsize=7)
+
+    for i in range(len(pivot.index)):
+        for j in range(len(pivot.columns)):
+            val = pivot.values[i, j]
+            if not np.isnan(val):
+                color = "white" if abs(val) > vmax * 0.6 else "#333"
+                ax.text(j, i, f"{val:+.1f}%", ha="center", va="center",
+                        fontsize=6, color=color, fontweight="bold")
+
+    plt.colorbar(im, ax=ax, shrink=0.8, pad=0.02)
+    ax.set_title("Rendements mensuels (%)", color="#aaa", fontsize=8, pad=4)
+    fig.tight_layout(pad=0.5)
+    return fig
+
+
+def _chart_return_distribution(return_distribution: list) -> object:
+    """Distribution des rendements journaliers + courbe gaussienne."""
+    if not return_distribution:
+        return None
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor="#111827")
+    ax.set_facecolor("#111827")
+
+    data = np.array(return_distribution)
+    ax.hist(data, bins=80, color=NAVY, alpha=0.7, density=True,
+            edgecolor="#1e2d4a", linewidth=0.3, label="Rendements réels")
+
+    # Courbe gaussienne théorique
+    mu, sigma = data.mean(), data.std()
+    x = np.linspace(data.min(), data.max(), 300)
+    gaussian = np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
+    ax.plot(x, gaussian, color=GOLD, linewidth=1.8, linestyle="--", label="Gaussienne théorique")
+
+    ax.axvline(0, color="#555", linewidth=0.8)
+    ax.axvline(np.percentile(data, 5), color=RED, linewidth=1.2,
+               linestyle=":", label="VaR 95%")
+
+    ax.set_title("Distribution des rendements journaliers", color="#aaa", fontsize=8, pad=4)
+    ax.set_xlabel("Rendement journalier %", fontsize=7)
+    ax.legend(fontsize=7)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
+
+
+def _chart_underwater(dd_data: list) -> object:
+    """Underwater plot — drawdown cumulatif style Zipline."""
+    if not dd_data:
+        return None
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
+    ax.set_facecolor("#111827")
+
+    dates = list(range(len(dd_data)))
+    values = [d["drawdown"] * 100 for d in dd_data]
+
+    ax.fill_between(dates, values, 0, color=RED, alpha=0.4)
+    ax.plot(dates, values, color=RED, linewidth=1.0, alpha=0.8)
+    ax.axhline(0, color="#555", linewidth=0.5)
+
+    # Annoter le max drawdown
+    min_dd = min(values)
+    min_idx = values.index(min_dd)
+    ax.annotate(f"Max DD: {min_dd:.1f}%",
+                xy=(min_idx, min_dd),
+                xytext=(min_idx + len(dates) * 0.05, min_dd * 0.7),
+                color="#f87171", fontsize=7,
+                arrowprops=dict(arrowstyle="->", color="#f87171", lw=0.8))
+
+    ax.set_title("Underwater Plot (Drawdown cumulatif)", color="#aaa", fontsize=8, pad=4)
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:.1f}%"))
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
+
+
+def _chart_rolling_beta(rolling_beta: list) -> object:
+    """Rolling Beta 252j vs benchmark."""
+    if not rolling_beta:
+        return None
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
+    ax.set_facecolor("#111827")
+
+    dates = list(range(len(rolling_beta)))
+    values = [d["beta"] for d in rolling_beta]
+
+    ax.plot(dates, values, color="#8a6f9c", linewidth=1.8)
+    ax.axhline(1.0, color=GOLD, linewidth=0.8, linestyle="--", label="Bêta marché = 1")
+    ax.axhline(0.0, color="#555", linewidth=0.5)
+    ax.fill_between(dates, values, 1.0,
+                    where=[v > 1 for v in values], color=RED, alpha=0.15,
+                    label="Sur-exposition")
+    ax.fill_between(dates, values, 1.0,
+                    where=[v <= 1 for v in values], color=GREEN, alpha=0.15,
+                    label="Sous-exposition")
+
+    ax.set_title("Rolling Bêta 252j vs Benchmark", color="#aaa", fontsize=8, pad=4)
+    ax.legend(fontsize=6)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
+
+
+def _chart_win_loss(win_loss_data: dict) -> object:
+    """Distribution Win vs Loss."""
+    if not win_loss_data:
+        return None
+    _mpl_style()
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.5), facecolor="#111827")
+    for ax in [ax1, ax2]:
+        ax.set_facecolor("#111827")
+
+    wins = win_loss_data.get("wins", [])
+    losses = win_loss_data.get("losses", [])
+    hit_rate = win_loss_data.get("hit_rate", 50)
+
+    if wins:
+        ax1.hist(wins, bins=50, color=GREEN, alpha=0.7, density=True,
+                 edgecolor="#0d1528", linewidth=0.3)
+        ax1.set_title(f"Jours positifs ({hit_rate:.1f}%)", color="#aaa", fontsize=8, pad=4)
+        ax1.set_xlabel("Rendement %", fontsize=7)
+        ax1.spines[["top", "right"]].set_visible(False)
+
+    if losses:
+        ax2.hist(losses, bins=50, color=RED, alpha=0.7, density=True,
+                 edgecolor="#0d1528", linewidth=0.3)
+        ax2.set_title(f"Jours négatifs ({100-hit_rate:.1f}%)", color="#aaa", fontsize=8, pad=4)
+        ax2.set_xlabel("Rendement %", fontsize=7)
+        ax2.spines[["top", "right"]].set_visible(False)
+
+    fig.suptitle("Distribution Win/Loss", color="#aaa", fontsize=9, y=1.02)
+    fig.tight_layout(pad=0.5)
+    return fig
 # ─────────────────────────────────────────────────────────────────────────────
 # Main PDF builder
 # ─────────────────────────────────────────────────────────────────────────────
@@ -476,6 +684,110 @@ def generate_pdf(tearsheet: dict) -> bytes:
         t.setStyle(tbl_style())
         S += [t]
     S += [PageBreak()]
+
+    # PAGE 6b — ROLLING SHARPE + VOL
+    rolling_sharpe = tearsheet.get("rolling_sharpe", [])
+    rolling_vol = tearsheet.get("rolling_vol", [])
+    rolling_beta = tearsheet.get("rolling_beta", [])
+    monthly_returns_list = tearsheet.get("monthly_returns_list", [])
+    return_distribution = tearsheet.get("return_distribution", [])
+    win_loss_data = tearsheet.get("win_loss_data", {})
+    dd_chart = tearsheet.get("drawdown_chart", [])
+
+    if rolling_sharpe or rolling_vol:
+        S += [
+            Paragraph("Métriques glissantes — Sharpe et Volatilité", section_s),
+            hr(), Spacer(1, 0.3 * cm),
+            Paragraph(
+                "Le Sharpe glissant (252j) mesure l'évolution de l'efficience de la stratégie "
+                "dans le temps. Un Sharpe > 1 de façon stable indique une génération d'alpha "
+                "robuste et non liée à un régime de marché particulier. "
+                "La volatilité glissante (63j) permet d'identifier les périodes de stress.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
+        ]
+        if rolling_sharpe:
+            S += [chart(_chart_rolling_sharpe(rolling_sharpe)), Spacer(1, 0.3 * cm)]
+        if rolling_vol:
+            S += [chart(_chart_rolling_vol(rolling_vol)), Spacer(1, 0.3 * cm)]
+        S += [PageBreak()]
+
+    # PAGE 6c — MONTHLY HEATMAP
+    if monthly_returns_list:
+        S += [
+            Paragraph("Heatmap des rendements mensuels", section_s),
+            hr(), Spacer(1, 0.3 * cm),
+            Paragraph(
+                "La heatmap affiche le rendement de chaque mois de l'année (rouge = perte, "
+                "vert = gain). Elle permet d'identifier les saisonnalités, les années "
+                "difficiles et la régularité de la stratégie dans le temps. "
+                "Une stratégie robuste présente une majorité de cellules vertes "
+                "sans concentration des pertes sur un seul mois ou une seule année.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
+            chart(_chart_monthly_heatmap(monthly_returns_list), width_cm=17.0),
+            PageBreak(),
+        ]
+
+    # PAGE 6d — RETURN DISTRIBUTION
+    if return_distribution:
+        S += [
+            Paragraph("Distribution des rendements journaliers", section_s),
+            hr(), Spacer(1, 0.3 * cm),
+            Paragraph(
+                "L'histogramme compare la distribution réelle des rendements journaliers "
+                "à la distribution gaussienne théorique (pointillés dorés). "
+                "Un excès de kurtosis positif (queues épaisses) signifie que les événements "
+                "extrêmes sont plus fréquents que prévu par la loi normale — "
+                "ce que les modèles VaR paramétriques sous-estiment systématiquement. "
+                "La ligne rouge indique la VaR historique à 95%.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
+            chart(_chart_return_distribution(return_distribution)),
+            PageBreak(),
+        ]
+
+    # PAGE 6e — UNDERWATER + ROLLING BETA
+    S += [
+        Paragraph("Underwater Plot et Bêta glissant", section_s),
+        hr(), Spacer(1, 0.3 * cm),
+        Paragraph(
+            "L'Underwater Plot (ou 'drawdown cumulatif') montre les périodes pendant lesquelles "
+            "le portefeuille est en dessous de son plus haut historique. La profondeur "
+            "indique l'ampleur de la perte latente, la largeur indique la durée de récupération. "
+            "Le Bêta glissant mesure l'exposition au risque systématique (marché) dans le temps. "
+            "Un Bêta > 1 indique une sur-exposition au marché, < 1 une sous-exposition.",
+            body_s,
+        ),
+        Spacer(1, 0.3 * cm),
+    ]
+    if dd_chart:
+        S += [chart(_chart_underwater(dd_chart)), Spacer(1, 0.3 * cm)]
+    if rolling_beta:
+        S += [chart(_chart_rolling_beta(rolling_beta))]
+    S += [PageBreak()]
+
+    # PAGE 6f — WIN/LOSS DISTRIBUTION
+    if win_loss_data:
+        S += [
+            Paragraph("Distribution Win / Loss", section_s),
+            hr(), Spacer(1, 0.3 * cm),
+            Paragraph(
+                "La distribution des jours positifs (gauche) et négatifs (droite) permet "
+                "d'analyser l'asymétrie des rendements. Une stratégie idéale présente "
+                "des gains plus grands que les pertes (profit factor > 1) même avec "
+                "un taux de réussite modéré. Le taux de réussite seul est insuffisant : "
+                "une stratégie avec 40% de gains peut être très profitable si les gains "
+                "sont en moyenne 2× plus grands que les pertes.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
+            chart(_chart_win_loss(win_loss_data)),
+            PageBreak(),
+        ]
 
     # PAGE 7 — COSTS
     S += [
