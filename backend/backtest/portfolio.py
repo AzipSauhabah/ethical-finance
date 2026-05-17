@@ -105,6 +105,7 @@ class Portfolio:
         currency: str = "USD",
         market_cap_eur: float = 2e9,
         cap_size: str = "mid_cap",
+        country: str = "US",
     ) -> Trade | None:
         if shares <= 0 or price_eur <= 0:
             return None
@@ -114,17 +115,17 @@ class Portfolio:
 
         notional = shares * price_eur
         costs = total_trade_cost(
-            notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "buy"
+            notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "buy", country
         )
         if notional + costs["total"] > self.cash:
             # Downsize to fit
-            est_unit_cost = price_eur * (1 + costs["cost_pct"])
+            est_unit_cost = price_eur * (1 + costs["cost_pct"] / 100)
             shares = int((self.cash * 0.995) // est_unit_cost)
             if shares <= 0:
                 return None
             notional = shares * price_eur
             costs = total_trade_cost(
-                notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "buy"
+                notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "buy", country
             )
             if notional + costs["total"] > self.cash:
                 return None
@@ -151,6 +152,7 @@ class Portfolio:
         currency: str = "USD",
         market_cap_eur: float = 2e9,
         cap_size: str = "mid_cap",
+        country: str = "US",
         pea_years: int = 0,
     ) -> Trade | None:
         pos = self._positions.get(ticker)
@@ -165,7 +167,7 @@ class Portfolio:
         )
         notional = shares * price_eur
         costs = total_trade_cost(
-            notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "sell"
+            notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "sell", country
         )
 
         cost_basis = pos.avg_cost_eur * shares
