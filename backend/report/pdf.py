@@ -26,6 +26,12 @@ Charts are rendered with matplotlib → PNG → embedded in ReportLab.
 import io
 from typing import Any
 
+import matplotlib
+matplotlib.use("Agg")  # backend non-interactif — thread safe
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+
 from backend.config import COPYRIGHT, DISCLAIMER
 from backend.report.glossary import GLOSSARY
 from backend.report.narrative import generate_all_narratives
@@ -39,8 +45,47 @@ GREY = "#666666"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Drawing helpers — ReportLab Graphics (pas de PIL, pas de kaleido, pas de cairo)
+# Drawing helpers — Matplotlib (HD, antialiasing, style institutionnel)
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _mpl_style():
+    """Style matplotlib Goldman Sachs dark."""
+    plt.rcParams.update({
+        "figure.facecolor": "#111827",
+        "axes.facecolor": "#111827",
+        "axes.edgecolor": "#1e2d4a",
+        "axes.labelcolor": "#888888",
+        "axes.grid": True,
+        "grid.color": "#1e2d4a",
+        "grid.linewidth": 0.5,
+        "grid.alpha": 0.8,
+        "xtick.color": "#666666",
+        "ytick.color": "#666666",
+        "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "legend.facecolor": "#0d1528",
+        "legend.edgecolor": "#1e2d4a",
+        "legend.fontsize": 7,
+        "font.family": "DejaVu Sans",
+        "text.color": "#888888",
+        "lines.linewidth": 1.8,
+    })
+
+
+def _fig_to_image_flowable(fig, width_cm: float = 17.0):
+    """Convertit une figure matplotlib en ImageFlowable ReportLab."""
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Image as RLImage
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
+                facecolor=fig.get_facecolor())
+    buf.seek(0)
+    plt.close(fig)
+
+    img = RLImage(buf, width=width_cm * cm)
+    img.hAlign = "LEFT"
+    return img
 
 
 def _line_chart(
@@ -49,65 +94,23 @@ def _line_chart(
     height: float = 180,
     y_fmt=None,
 ):
-    from reportlab.graphics.shapes import Drawing, Line, PolyLine, String
-    from reportlab.lib import colors as C
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor="#111827")
+    ax.set_facecolor("#111827")
 
-    d = Drawing(width, height)
-    PL, PR, PT, PB = 55, 20, 15, 30
-    W, H = width - PL - PR, height - PT - PB
+    dashes = [None, (6, 2), (2, 2), (4, 2, 1, 2)]
+    for i, (label, color, vals) in enumerate(series):
+        x = list(range(len(vals)))
+        ls = "--" if dashes[i % len(dashes)] else "-"
+        ax.plot(x, vals, color=color, linewidth=1.8, label=label,
+                linestyle=ls, alpha=0.95)
 
-    all_v = [v for _, _, vs in series for v in vs if v is not None]
-    if not all_v:
-        d.add(
-            String(
-                width / 2,
-                height / 2,
-                "Pas de données",
-                fontSize=8,
-                textAnchor="middle",
-                fillColor=C.HexColor(GREY),
-            )
-        )
-        return d
-
-    lo, hi = min(all_v), max(all_v)
-    rng = hi - lo or 1
-
-    def sx(i, n):
-        return PL + W * i / max(n - 1, 1)
-
-    def sy(v):
-        return PB + H * (v - lo) / rng
-
-    # Grille
-    for k in range(5):
-        y = PB + H * k / 4
-        val = lo + rng * k / 4
-        d.add(Line(PL, y, PL + W, y, strokeColor=C.HexColor("#eeeeee"), strokeWidth=0.4))
-        lbl = y_fmt(val) if y_fmt else f"{val:.0f}"
-        d.add(String(PL - 3, y - 3, lbl, fontSize=6, textAnchor="end", fillColor=C.HexColor(GREY)))
-
-    # Axes
-    d.add(Line(PL, PB, PL, PB + H, strokeColor=C.HexColor("#cccccc"), strokeWidth=0.5))
-    d.add(Line(PL, PB, PL + W, PB, strokeColor=C.HexColor("#cccccc"), strokeWidth=0.5))
-
-    dashes = [None, [4, 2], [2, 2], [6, 2]]
-    for si, (label, color, vals) in enumerate(series):
-        pts = []
-        for i, v in enumerate(vals):
-            if v is not None:
-                pts += [sx(i, len(vals)), sy(v)]
-        if len(pts) >= 4:
-            kw = dict(strokeColor=C.HexColor(color), strokeWidth=1.5, fillColor=None)
-            if dashes[si % len(dashes)]:
-                kw["strokeDashArray"] = dashes[si % len(dashes)]
-            d.add(PolyLine(pts, **kw))
-        lx = PL + si * 110
-        ly = height - 10
-        d.add(Line(lx, ly, lx + 18, ly, strokeColor=C.HexColor(color), strokeWidth=1.5))
-        d.add(String(lx + 22, ly - 3, label, fontSize=7, fillColor=C.HexColor("#444")))
-
-    return d
+    if y_fmt:
+        ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: y_fmt(v)))
+    ax.legend(loc="upper left", framealpha=0.8)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
 
 
 def _area_chart(
@@ -117,58 +120,20 @@ def _area_chart(
     height: float = 150,
     y_fmt=None,
 ):
-    from reportlab.graphics.shapes import Drawing, Line, Polygon, PolyLine, String
-    from reportlab.lib import colors as C
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
+    ax.set_facecolor("#111827")
 
-    d = Drawing(width, height)
-    PL, PR, PT, PB = 55, 20, 15, 30
-    W, H = width - PL - PR, height - PT - PB
+    x = list(range(len(values)))
+    ax.plot(x, values, color=color, linewidth=1.8)
+    ax.fill_between(x, values, 0, color=color, alpha=0.25)
+    ax.axhline(0, color="#555", linewidth=0.8)
 
-    vals = [v for v in values if v is not None]
-    if not vals:
-        return d
-
-    lo, hi = min(vals), max(vals)
-    if lo >= 0:
-        lo = 0
-    rng = hi - lo or 1
-
-    def sx(i, n):
-        return PL + W * i / max(n - 1, 1)
-
-    def sy(v):
-        return PB + H * (v - lo) / rng
-
-    zero_y = sy(0)
-
-    for k in range(5):
-        y = PB + H * k / 4
-        val = lo + rng * k / 4
-        d.add(Line(PL, y, PL + W, y, strokeColor=C.HexColor("#eeeeee"), strokeWidth=0.4))
-        lbl = y_fmt(val) if y_fmt else f"{val:.1f}"
-        d.add(String(PL - 3, y - 3, lbl, fontSize=6, textAnchor="end", fillColor=C.HexColor(GREY)))
-
-    d.add(Line(PL, PB, PL, PB + H, strokeColor=C.HexColor("#cccccc"), strokeWidth=0.5))
-    d.add(Line(PL, zero_y, PL + W, zero_y, strokeColor=C.HexColor("#999"), strokeWidth=0.5))
-
-    n = len(values)
-    poly = [PL, zero_y]
-    line = []
-    for i, v in enumerate(values):
-        if v is not None:
-            x, y = sx(i, n), sy(v)
-            poly += [x, y]
-            line += [x, y]
-    poly += [sx(n - 1, n), zero_y]
-
-    c = C.HexColor(color)
-    fill = C.Color(c.red, c.green, c.blue, 0.3)
-    if len(poly) >= 6:
-        d.add(Polygon(poly, fillColor=fill, strokeColor=None))
-    if len(line) >= 4:
-        d.add(PolyLine(line, strokeColor=c, strokeWidth=1.5, fillColor=None))
-
-    return d
+    if y_fmt:
+        ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: y_fmt(v)))
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
 
 
 def _bar_chart(
@@ -177,53 +142,25 @@ def _bar_chart(
     width: float = 500,
     height: float = 180,
 ):
-    from reportlab.graphics.shapes import Drawing, Line, Rect, String
-    from reportlab.lib import colors as C
+    _mpl_style()
+    fig, ax = plt.subplots(figsize=(10, max(3.5, len(labels) * 0.5)), facecolor="#111827")
+    ax.set_facecolor("#111827")
 
-    d = Drawing(width, height)
-    if not labels or not values:
-        return d
+    colors_bar = [GREEN if v >= 0 else RED for v in values]
+    y_pos = range(len(labels))
+    ax.barh(list(y_pos), values, color=colors_bar, height=0.6, alpha=0.85)
+    ax.set_yticks(list(y_pos))
+    ax.set_yticklabels(labels, fontsize=7)
+    ax.axvline(0, color="#555", linewidth=0.8)
 
-    PL, PR, PT, PB = 120, 20, 15, 30
-    W, H = width - PL - PR, height - PT - PB
-    n = len(labels)
-    bar_h = min(H / n * 0.7, 20)
-    gap = H / n
+    for i, v in enumerate(values):
+        ax.text(v + (0.3 if v >= 0 else -0.3), i, f"{v:+.1f}%",
+                va="center", ha="left" if v >= 0 else "right",
+                fontsize=7, color="#aaa")
 
-    mx = max(abs(v) for v in values) or 1
-    rng = mx * 2
-    zero_x = PL + W * mx / rng
-
-    d.add(Line(zero_x, PB, zero_x, PB + H, strokeColor=C.HexColor("#999"), strokeWidth=0.5))
-
-    for i, (label, val) in enumerate(zip(labels, values)):
-        y = PB + H - (i + 0.5) * gap
-        bw = W * abs(val) / rng
-        col = C.HexColor(GREEN if val >= 0 else RED)
-        x = zero_x if val >= 0 else zero_x - bw
-        d.add(Rect(x, y - bar_h / 2, bw, bar_h, fillColor=col, strokeColor=None))
-        d.add(
-            String(
-                PL - 3,
-                y - 3,
-                label[:22],
-                fontSize=6,
-                textAnchor="end",
-                fillColor=C.HexColor("#444"),
-            )
-        )
-        tx = zero_x + (bw + 3 if val >= 0 else -bw - 3)
-        d.add(
-            String(
-                tx,
-                y - 3,
-                f"{val:+.1f}%",
-                fontSize=6,
-                textAnchor=("start" if val >= 0 else "end"),
-                fillColor=C.HexColor("#444"),
-            )
-        )
-    return d
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout(pad=0.5)
+    return fig
 
 
 def _pie_chart(
@@ -232,42 +169,23 @@ def _pie_chart(
     width: float = 280,
     height: float = 180,
 ):
-    import math
-
-    from reportlab.graphics.shapes import Drawing, String, Wedge
-    from reportlab.lib import colors as C
-
-    d = Drawing(width, height)
-    cx, cy = width / 2, height / 2
-    r = min(width, height) / 2 - 25
-    total = sum(values) or 1
+    _mpl_style()
     pie_colors = [NAVY, GOLD, "#8a6f9c", "#3e8260"]
-    angle = 90.0
+    fig, ax = plt.subplots(figsize=(5, 3.5), facecolor="#111827")
+    ax.set_facecolor("#111827")
 
-    for i, (label, val) in enumerate(zip(labels, values)):
-        sweep = 360 * val / total
-        col = C.HexColor(pie_colors[i % len(pie_colors)])
-        d.add(
-            Wedge(
-                cx, cy, r, angle, angle - sweep, fillColor=col, strokeColor=C.white, strokeWidth=1
-            )
-        )
-        mid = math.radians(angle - sweep / 2)
-        lx = cx + (r + 14) * math.cos(mid)
-        ly = cy + (r + 14) * math.sin(mid)
-        d.add(
-            String(
-                lx,
-                ly,
-                f"{val/total*100:.0f}%",
-                fontSize=7,
-                textAnchor="middle",
-                fillColor=C.HexColor("#444"),
-            )
-        )
-        angle -= sweep
+    wedges, texts, autotexts = ax.pie(
+        values, labels=labels, colors=pie_colors[:len(values)],
+        autopct="%1.0f%%", startangle=90,
+        textprops={"fontsize": 7, "color": "#aaa"},
+        wedgeprops={"linewidth": 1, "edgecolor": "#111827"},
+    )
+    for at in autotexts:
+        at.set_color("#e8e8e8")
+        at.set_fontsize(7)
 
-    return d
+    fig.tight_layout(pad=0.3)
+    return fig
 
 
 # ─── Chart facade functions ────────────────────────────────────────────────
@@ -277,12 +195,12 @@ def _chart_nav(nav_data, bench_data):
     series = [("Stratégie", NAVY, [p["nav"] for p in nav_data])]
     if bench_data:
         series.append(("Benchmark", GOLD, [p["nav"] for p in bench_data]))
-    return _line_chart(series, 500, 200)
+    return _line_chart(series, y_fmt=lambda v: f"{v:.0f}")
 
 
 def _chart_drawdown(dd_data):
     return _area_chart(
-        [p["drawdown"] * 100 for p in dd_data], RED, 500, 150, y_fmt=lambda v: f"{v:.1f}%"
+        [p["drawdown"] * 100 for p in dd_data], RED, y_fmt=lambda v: f"{v:.1f}%"
     )
 
 
@@ -291,7 +209,7 @@ def _chart_costs(cost_data):
         ("Commissions", NAVY, [p["costs"] for p in cost_data]),
         ("Total", GOLD, [p["total"] for p in cost_data]),
     ]
-    return _line_chart(series, 500, 160, y_fmt=lambda v: f"{v:.0f}€")
+    return _line_chart(series, y_fmt=lambda v: f"{v:.0f}€")
 
 
 def _chart_allocation(alloc_data):
@@ -299,13 +217,13 @@ def _chart_allocation(alloc_data):
         ("Investi", NAVY, [p["invested"] for p in alloc_data]),
         ("Cash", GOLD, [p["cash"] for p in alloc_data]),
     ]
-    return _line_chart(series, 500, 160, y_fmt=lambda v: f"{v:.0f}€")
+    return _line_chart(series, y_fmt=lambda v: f"{v:.0f}€")
 
 
 def _chart_breakdown(breakdown):
     labels = ["Commissions", "Slippage", "Spread FX", "TTF"]
     values = [breakdown.get(k, 0) for k in ["commission", "slippage", "fx_spread", "ttf"]]
-    return _pie_chart(labels, values, 280, 180)
+    return _pie_chart(labels, values)
 
 
 def _chart_stress(stress_data):
@@ -315,11 +233,9 @@ def _chart_stress(stress_data):
         if s.get("total_return") is not None
     ]
     if not items:
-        from reportlab.graphics.shapes import Drawing
-
-        return Drawing(500, 150)
+        return None
     labels, vals = zip(*items)
-    return _bar_chart(list(labels), list(vals), 500, 180)
+    return _bar_chart(list(labels), list(vals))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -328,8 +244,6 @@ def _chart_stress(stress_data):
 
 
 def generate_pdf(tearsheet: dict) -> bytes:
-    from reportlab.graphics import renderPDF as _rl
-    from reportlab.graphics.shapes import Drawing
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -345,27 +259,11 @@ def generate_pdf(tearsheet: dict) -> bytes:
         TableStyle,
     )
 
-    class DrawFlowable(Flowable):
-        """Intègre un Drawing ReportLab directement dans le PDF — zéro dépendance externe."""
-
-        def __init__(self, drawing: Drawing, width_cm: float, aspect: float):
-            Flowable.__init__(self)
-            self._d = drawing
-            self.width = width_cm * cm
-            self.height = width_cm * cm * aspect
-
-        def draw(self):
-            sx = self.width / self._d.width if self._d.width else 1
-            sy = self.height / self._d.height if self._d.height else 1
-            self.canv.saveState()
-            self.canv.scale(sx, sy)
-            _rl.draw(self._d, self.canv, 0, 0)
-            self.canv.restoreState()
-
-    def chart(drawing: Drawing, width_cm: float = 17.0, aspect: float = 0.40):
-        if drawing is None:
+    def chart(fig, width_cm: float = 17.0, aspect: float = 0.40):
+        """Convertit une figure matplotlib en Flowable ReportLab."""
+        if fig is None:
             return Spacer(1, 0.1 * cm)
-        return DrawFlowable(drawing, width_cm, aspect)
+        return _fig_to_image_flowable(fig, width_cm)
 
     buf = io.BytesIO()
     styles = getSampleStyleSheet()
