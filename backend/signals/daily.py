@@ -54,16 +54,15 @@ async def compute_daily_signals(
     if include_sentiment:
         try:
             import asyncio
+
             from backend.quant.sentiment import analyze_portfolio_sentiment
+
             loop = asyncio.get_event_loop()
             sentiment_data = await loop.run_in_executor(
                 None,
                 lambda: analyze_portfolio_sentiment(tickers[:20], delay=0.2),
             )
-            sentiment_scores = {
-                t: d.get("score", 0.0)
-                for t, d in sentiment_data.items()
-            }
+            sentiment_scores = {t: d.get("score", 0.0) for t, d in sentiment_data.items()}
         except Exception as e:
             log.warning("Sentiment fetch error: %s", e)
 
@@ -115,7 +114,9 @@ async def compute_daily_signals(
                 },
                 "sentiment": {
                     "score": round(sent_score, 3),
-                    "signal": "bullish" if sent_sig == 1 else ("bearish" if sent_sig == -1 else "neutral"),
+                    "signal": (
+                        "bullish" if sent_sig == 1 else ("bearish" if sent_sig == -1 else "neutral")
+                    ),
                 },
                 "date": str(end),
             }
