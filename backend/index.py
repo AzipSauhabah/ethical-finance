@@ -590,8 +590,9 @@ async def admin_drive_sync():
 async def platform_stats():
     """Statistiques temps réel de la plateforme."""
     import asyncio
-    import sqlalchemy as sa
     import os
+
+    import sqlalchemy as sa
 
     loop = asyncio.get_event_loop()
 
@@ -600,8 +601,12 @@ async def platform_stats():
         sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
         engine = sa.create_engine(sync_url, pool_pre_ping=True)
         with engine.connect() as conn:
-            ohlcv = conn.execute(sa.text("SELECT COUNT(*), COUNT(DISTINCT ticker) FROM ohlcv")).fetchone()
-            fundamentals = conn.execute(sa.text("SELECT COUNT(*) FROM ticker_fundamentals")).fetchone()
+            ohlcv = conn.execute(
+                sa.text("SELECT COUNT(*), COUNT(DISTINCT ticker) FROM ohlcv")
+            ).fetchone()
+            fundamentals = conn.execute(
+                sa.text("SELECT COUNT(*) FROM ticker_fundamentals")
+            ).fetchone()
             last_date = conn.execute(sa.text("SELECT MAX(date) FROM ohlcv")).fetchone()
         return {
             "ohlcv_rows": ohlcv[0],
