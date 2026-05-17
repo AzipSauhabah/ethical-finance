@@ -805,12 +805,32 @@ def generate_pdf(tearsheet: dict) -> bytes:
         hr(),
         Spacer(1, 0.3 * cm),
         Paragraph(
-            "Cette strategie utilise des modeles d apprentissage automatique supervise "
-            "pour generer des signaux directionnels (achat/vente/neutre) sur chaque titre. "
-            "Les modeles sont entrained sur 70% de l historique et testes sur les 30% restants "
-            "(approche walk-forward stricte sans re-entrainement pour eviter le look-ahead bias).",
+            "EPR5 utilise deux modeles d apprentissage automatique complementaires pour generer "
+            "des signaux directionnels sur chaque titre. Les deux modeles sont entraines en "
+            "walk-forward strict : uniquement sur les donnees passees, reentraine tous les 60 jours. "
+            "Le score final combine 60% RandomForest + 40% LSTM TensorFlow.",
             body_s,
         ),
+        Spacer(1, 0.2 * cm),
+        Paragraph("<b>Modele 1 — RandomForest (scikit-learn)</b>", body_s),
+        Paragraph(
+            "50 arbres, profondeur max 4, class_weight=balanced. "
+            "Features statiques : rendements 1j/5j/20j/60j, volatilite, RSI, position MM20/50/200, momentum. "
+            "Label : rendement a 20j > +5%. Score = probabilite classe positive.",
+            body_s,
+        ),
+        Spacer(1, 0.2 * cm),
+        Paragraph("<b>Modele 2 — LSTM TensorFlow (nouveau)</b>", body_s),
+        Paragraph(
+            "Reseau recurrent a memoire longue : Input(30j x 11 features) → LSTM(64) → Dropout → "
+            "LSTM(32) → Dropout → Dense(16, ReLU) → Dense(1, sigmoid). "
+            "Horizon de prediction : 5 jours. Seuil positif : rendement > +2%. "
+            "Le LSTM capte les dependances temporelles (momentum, regimes de volatilite) "
+            "que le RandomForest ignore car il traite les features de facon statique.",
+            body_s,
+        ),
+        Spacer(1, 0.2 * cm),
+        Paragraph("<b>Score combine</b> : score_final = 0.6 x RF + 0.4 x LSTM", body_s),
         Spacer(1, 0.3 * cm),
         Paragraph("<b>Features utilisees (indicateurs techniques)</b>", body_s),
     ]
