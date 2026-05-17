@@ -34,7 +34,7 @@ import matplotlib.ticker as mticker
 
 from backend.config import COPYRIGHT, DISCLAIMER
 from backend.report.glossary import GLOSSARY
-from backend.report.narrative import generate_all_narratives
+from backend.report.narrative import generate_all_narratives, generate_metric_interpretations
 
 NAVY = "#142340"
 GOLD = "#b8962f"
@@ -588,6 +588,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
     meta = tearsheet["meta"]
     narratives = generate_all_narratives(tearsheet)
+    interpretations = generate_metric_interpretations(m)
     m = tearsheet["metrics"]
     sig = tearsheet.get("significance", {})
     st_ = tearsheet.get("stress_tests", [])
@@ -627,25 +628,25 @@ def generate_pdf(tearsheet: dict) -> bytes:
     S += [Paragraph("Résumé exécutif", section_s), hr(), Spacer(1, 0.3 * cm)]
     S += [Paragraph(narratives["executive_summary"], body_s), Spacer(1, 0.4 * cm)]
     rows = [
-        ["Métrique", "Valeur"],
-        ["Rendement total", p(m.get("total_return"))],
-        ["CAGR", p(m.get("cagr"))],
-        ["Volatilité annualisée", p(m.get("annualised_volatility"))],
-        ["Sharpe", f(m.get("sharpe_ratio"))],
-        ["Sortino", f(m.get("sortino_ratio"))],
-        ["Calmar", f(m.get("calmar_ratio"))],
-        ["Omega", f(m.get("omega_ratio"))],
-        ["Max Drawdown", p(m.get("max_drawdown"))],
-        ["Average Drawdown", p(m.get("average_drawdown"))],
-        ["Recovery Factor", f(m.get("recovery_factor"))],
+        ["Métrique", "Valeur", "Interprétation"],
+        ["Rendement total", p(m.get("total_return")), interpretations.get("cagr", "")[:90]],
+        ["CAGR", p(m.get("cagr")), interpretations.get("cagr", "")[:90]],
+        ["Volatilité annualisée", p(m.get("annualised_volatility")), interpretations.get("annualised_volatility", "")[:90]],
+        ["Sharpe", f(m.get("sharpe_ratio")), interpretations.get("sharpe_ratio", "")[:90]],
+        ["Sortino", f(m.get("sortino_ratio")), interpretations.get("sortino_ratio", "")[:90]],
+        ["Calmar", f(m.get("calmar_ratio")), interpretations.get("calmar_ratio", "")[:90]],
+        ["Omega", f(m.get("omega_ratio")), "Omega > 1 : les gains dominent les pertes."],
+        ["Max Drawdown", p(m.get("max_drawdown")), interpretations.get("max_drawdown", "")[:90]],
+        ["Average Drawdown", p(m.get("average_drawdown")), "Niveau de stress habituel du portefeuille."],
+        ["Recovery Factor", f(m.get("recovery_factor")), "RF > 3 : stratégie robuste. RF > 1 : viable."],
     ]
     if "beta" in m:
         rows += [
-            ["Bêta", f(m["beta"])],
-            ["Alpha Jensen", p(m.get("alpha_jensen"))],
-            ["Information Ratio", f(m.get("information_ratio"))],
+            ["Bêta", f(m["beta"]), interpretations.get("beta", "")[:90]],
+            ["Alpha Jensen", p(m.get("alpha_jensen")), interpretations.get("alpha_jensen", "")[:90]],
+            ["Information Ratio", f(m.get("information_ratio")), "IR > 0.5 : surperformance régulière."],
         ]
-    t = Table(rows, colWidths=[10 * cm, 7 * cm])
+    t = Table(rows, colWidths=[5 * cm, 3 * cm, 9 * cm])
     t.setStyle(tbl_style())
     S += [t, PageBreak()]
 

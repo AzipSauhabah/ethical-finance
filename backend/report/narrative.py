@@ -478,3 +478,124 @@ def generate_all_narratives(tearsheet: dict) -> dict:
         "costs": narrative_costs(cost_summary, cost_breakdown),
         "ml": narrative_ml_performance(ml_info),
     }
+
+
+# ─── Interprétation dynamique des métriques ──────────────────────────────────
+
+
+def interpret_metric(name: str, value: float | None) -> str:
+    """
+    Retourne une interprétation contextuelle d'une métrique selon sa valeur.
+    Utilisé dans le PDF pour enrichir le glossaire avec les données réelles.
+    """
+    if value is None:
+        return "Donnée non disponible sur la période."
+
+    interpretations = {
+        "sharpe_ratio": lambda v: (
+            f"Sharpe de {v:.2f} — " + (
+                "Exceptionnel. Top 5% des stratégies quantitatives documentées." if v >= 2.0 else
+                "Excellent. Comparable aux meilleurs fonds systématiques." if v >= 1.5 else
+                "Bon. Rendement ajusté au risque positif et exploitable." if v >= 1.0 else
+                "Acceptable. Amélioration possible du ratio rendement/risque." if v >= 0.5 else
+                "Insuffisant. Le risque pris n'est pas suffisamment rémunéré."
+            )
+        ),
+        "sortino_ratio": lambda v: (
+            f"Sortino de {v:.2f} — " + (
+                "Protection excellente contre les baisses." if v >= 2.0 else
+                "Bonne asymétrie positive des rendements." if v >= 1.5 else
+                "Sortino proche du Sharpe : distribution relativement symétrique." if v >= 1.0 else
+                "Exposition significative aux pertes extrêmes."
+            )
+        ),
+        "calmar_ratio": lambda v: (
+            f"Calmar de {v:.2f} — " + (
+                "Excellent : le rendement annuel couvre largement le risque de drawdown." if v >= 1.0 else
+                "Acceptable : le rendement compense partiellement le drawdown maximal." if v >= 0.5 else
+                "Insuffisant : le drawdown maximal dépasse le rendement annualisé."
+            )
+        ),
+        "max_drawdown": lambda v: (
+            f"Max DD de {v*100:.1f}% — " + (
+                "Drawdown minimal. Protection du capital remarquable." if abs(v) <= 0.10 else
+                "Drawdown modéré. Acceptable pour une stratégie long-only." if abs(v) <= 0.20 else
+                "Drawdown significatif. Exige une forte tolérance psychologique." if abs(v) <= 0.35 else
+                "Drawdown sévère. Risque élevé de rupture de stratégie par l'investisseur."
+            )
+        ),
+        "annualised_volatility": lambda v: (
+            f"Volatilité de {v*100:.1f}%/an — " + (
+                "Très faible volatilité. Profil obligataire." if v <= 0.08 else
+                "Faible volatilité. Profil conservateur." if v <= 0.12 else
+                "Volatilité modérée. Profil équilibré." if v <= 0.18 else
+                "Volatilité élevée. Profil dynamique." if v <= 0.25 else
+                "Volatilité très élevée. Profil spéculatif."
+            )
+        ),
+        "var_95": lambda v: (
+            f"VaR 95% de {v*100:.2f}%/jour — " + (
+                "Risque quotidien très faible." if abs(v) <= 0.01 else
+                "Risque quotidien modéré." if abs(v) <= 0.02 else
+                "Risque quotidien significatif. En cas de perte extrême, "
+                f"l'impact annualisé serait de ~{abs(v)*100*np.sqrt(252):.1f}%." if abs(v) <= 0.03 else
+                "Risque quotidien élevé. Surveiller la CVaR."
+            )
+        ),
+        "cagr": lambda v: (
+            f"CAGR de {v*100:.1f}%/an — " + (
+                "Croissance exponentielle du capital. Doublé tous les "
+                f"{70/max(v*100,0.1):.0f} ans (règle des 70)." if v >= 0.15 else
+                f"Croissance solide. Capital doublé en ~{70/max(v*100,0.1):.0f} ans." if v >= 0.08 else
+                "Croissance modeste. Au-dessus de l'inflation historique." if v >= 0.03 else
+                "CAGR faible ou négatif. Réviser la stratégie."
+            )
+        ),
+        "hit_rate": lambda v: (
+            f"Hit Rate de {v*100:.1f}% — " + (
+                "Majorité de jours positifs. Confort psychologique élevé." if v >= 0.55 else
+                "Hit rate équilibré. La performance dépend de l'amplitude des gains." if v >= 0.48 else
+                "Majorité de jours négatifs. Nécessite un profit factor > 1.5 pour être viable."
+            )
+        ),
+        "profit_factor": lambda v: (
+            f"Profit Factor de {v:.2f} — " + (
+                "Excellent : chaque euro perdu génère plus de 2€ de gains." if v >= 2.0 else
+                "Bon : stratégie profitable malgré un hit rate potentiellement bas." if v >= 1.3 else
+                "Limite de viabilité. Améliorer le ratio gain/perte moyen." if v >= 1.0 else
+                "Profit factor < 1 : stratégie non viable en l'état."
+            )
+        ),
+        "beta": lambda v: (
+            f"Bêta de {v:.2f} — " + (
+                "Stratégie défensive. Amplifie moins les mouvements du marché." if v < 0.8 else
+                "Exposition marché quasi-neutre. Bêta proche de 1." if v <= 1.2 else
+                "Stratégie agressive. Amplifie les hausses ET les baisses du marché."
+            )
+        ),
+        "alpha_jensen": lambda v: (
+            f"Alpha Jensen de {v*100:.2f}%/an — " + (
+                "Alpha positif significatif. La stratégie génère de la valeur au-delà de l'exposition marché." if v > 0.02 else
+                "Alpha légèrement positif. Valeur ajoutée modeste." if v > 0 else
+                "Alpha négatif. La stratégie détruit de la valeur nette du risque systématique."
+            )
+        ),
+    }
+
+    fn = interpretations.get(name)
+    if fn:
+        try:
+            return fn(value)
+        except Exception:
+            return f"Valeur : {value:.4f}"
+    return f"Valeur : {value:.4f}"
+
+
+def generate_metric_interpretations(m: dict) -> dict:
+    """Génère les interprétations pour toutes les métriques du tearsheet."""
+    keys = [
+        "sharpe_ratio", "sortino_ratio", "calmar_ratio", "max_drawdown",
+        "annualised_volatility", "var_95", "cagr", "hit_rate",
+        "profit_factor", "beta", "alpha_jensen",
+    ]
+    return {k: interpret_metric(k, m.get(k)) for k in keys}
