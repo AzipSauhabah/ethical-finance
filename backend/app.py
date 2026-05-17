@@ -47,8 +47,21 @@ async def _startup() -> None:
         from backend.core.loader import daily_update
 
         scheduler.add_job(daily_update, "cron", hour=21, minute=0, timezone="UTC")
+
+        # SEC EDGAR — mise à jour fondamentaux SP500 à 22h00 UTC
+        async def sec_fundamentals_job():
+            try:
+                from backend.core.loader import SP500_TICKERS
+                from backend.core.sec_edgar import upsert_sec_fundamentals
+                log.info("SEC EDGAR job started — %d tickers", len(SP500_TICKERS))
+                n = await upsert_sec_fundamentals(SP500_TICKERS[:100])
+                log.info("SEC EDGAR job complete — %d tickers updated", n)
+            except Exception as e:
+                log.warning("SEC EDGAR job error: %s", e)
+
+        scheduler.add_job(sec_fundamentals_job, "cron", hour=22, minute=0, timezone="UTC")
         scheduler.start()
-        log.info("Scheduler started — daily update at 21:00 UTC")
+        log.info("Scheduler started — OHLCV at 21:00 UTC, SEC at 22:00 UTC")
         asyncio.create_task(_init_and_load())
 
 

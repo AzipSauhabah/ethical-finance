@@ -38,9 +38,11 @@ log = logging.getLogger(__name__)
 
 
 def _get_fundamentals_bulk(tickers: list[str]) -> dict[str, dict]:
-    """Fetch fundamentals from local PostgreSQL ticker_fundamentals table."""
+    """
+    Fetch fundamentals — SEC EDGAR en priorité, fallback PostgreSQL local.
+    SEC EDGAR fournit les vraies données GAAP (EBIT, invested capital, EV).
+    """
     import os
-
     import sqlalchemy as sa
 
     empty = lambda: {  # noqa: E731
@@ -50,50 +52,100 @@ def _get_fundamentals_bulk(tickers: list[str]) -> dict[str, dict]:
         "roic_5y_avg": 0.0,
         "market_cap": 0,
         "beta": 1.0,
+        "pe_ratio": None,
+        "ev_ebitda": None,
+        "net_margin": None,
+        "fcf_yield": None,
+        "debt_equity": None,
+        "current_ratio": None,
     }
 
     result = {t: empty() for t in tickers}
 
+    # 1. Charger market_cap et beta depuis PostgreSQL
     database_url = os.environ.get("DATABASE_URL", "")
-    if not database_url:
-        return result
+    market_caps = {}
+    betas = {}
+    if database_url:
+        try:
+            sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+            engine = sa.create_engine(sync_url, pool_pre_ping=True)
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    sa.text("SELECT ticker, market_cap, beta FROM ticker_fundamentals WHERE ticker = ANY(:t)"),
+                    {"t": tickers},
+                ).fetchall()
+            for row in rows:
+                market_caps[row[0]] = float(row[1] or 0)
+                betas[row[0]] = float(row[2] or 1.0)
+        except Exception as e:
+            log.warning("EPR5 DB fetch error: %s", e)
 
+    # 2. SEC EDGAR pour les vraies données GAAP
     try:
-        sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
-        engine = sa.create_engine(sync_url, pool_pre_ping=True)
+        from backend.core.sec_edgar import fetch_fundamentals_sec
+        for ticker in tickers:
+            if ticker.startswith("^"):
+                continue
+            mc = market_caps.get(ticker, 0)
+            beta = betas.get(ticker, 1.0)
+            try:
+                sec = fetch_fundamentals_sec(ticker, market_cap=mc)
+                if sec and sec.get("ratios"):
+                    r = sec["ratios"]
+                    result[ticker] = {
+                        "earning_yield": r.get("earning_yield_sec", 0.0) or 0.0,
+                        "roic": r.get("roic_sec", 0.0) or 0.0,
+                        "pb_ratio": r.get("pb_ratio", 1.0) or 1.0,
+                        "roic_5y_avg": r.get("roic_sec", 0.0) or 0.0,
+                        "market_cap": mc,
+                        "beta": beta,
+                        "pe_ratio": r.get("pe_ratio"),
+                        "ev_ebitda": r.get("ev_ebitda"),
+                        "net_margin": r.get("net_margin"),
+                        "fcf_yield": r.get("fcf_yield"),
+                        "debt_equity": r.get("debt_equity"),
+                        "current_ratio": r.get("current_ratio"),
+                    }
+                    continue
+            except Exception as e:
+                log.debug("SEC fetch failed for %s: %s", ticker, e)
 
-        with engine.connect() as conn:
-            rows = conn.execute(
-                sa.text("""
-                    SELECT ticker, market_cap, total_debt, total_revenue, beta
-                    FROM ticker_fundamentals
-                    WHERE ticker = ANY(:tickers)
-                """),
-                {"tickers": tickers},
-            ).fetchall()
+            # Fallback PostgreSQL avec proxy EBIT
+            mc = market_caps.get(ticker, 0)
+            beta = betas.get(ticker, 1.0)
+            if mc > 0:
+                try:
+                    with engine.connect() as conn:
+                        row = conn.execute(
+                            sa.text("SELECT total_debt, total_revenue FROM ticker_fundamentals WHERE ticker = :t"),
+                            {"t": ticker},
+                        ).fetchone()
+                    if row:
+                        total_debt = float(row[0] or 0)
+                        total_revenue = float(row[1] or 0)
+                        ev = mc + total_debt
+                        ebit = total_revenue * 0.15
+                        net_assets = max(mc * 0.5, 1)
+                        result[ticker] = {
+                            "earning_yield": (ebit / ev) if ev > 0 else 0.0,
+                            "roic": (ebit / net_assets) if net_assets > 0 else 0.0,
+                            "pb_ratio": 1.0,
+                            "roic_5y_avg": (ebit / net_assets) if net_assets > 0 else 0.0,
+                            "market_cap": mc,
+                            "beta": beta,
+                            "pe_ratio": None,
+                            "ev_ebitda": None,
+                            "net_margin": None,
+                            "fcf_yield": None,
+                            "debt_equity": None,
+                            "current_ratio": None,
+                        }
+                except Exception as e:
+                    log.debug("Fallback DB error for %s: %s", ticker, e)
 
-        for row in rows:
-            ticker = row[0]
-            market_cap = float(row[1] or 0)
-            total_debt = float(row[2] or 0)
-            total_revenue = float(row[3] or 0)
-            beta = float(row[4] or 1.0)
-
-            ev = market_cap + total_debt
-            ebit = total_revenue * 0.15  # proxy marge EBIT ~15%
-            net_assets = max(market_cap * 0.5, 1)
-
-            result[ticker] = {
-                "earning_yield": (ebit / ev) if ev > 0 else 0.0,
-                "roic": (ebit / net_assets) if net_assets > 0 else 0.0,
-                "pb_ratio": 1.0,
-                "roic_5y_avg": (ebit / net_assets) if net_assets > 0 else 0.0,
-                "market_cap": market_cap,
-                "beta": beta,
-            }
-
-    except Exception as exc:
-        log.warning("EPR5 fundamentals fetch error: %s", exc)
+    except ImportError:
+        log.warning("sec_edgar module not available — using DB fallback only")
 
     return result
 
