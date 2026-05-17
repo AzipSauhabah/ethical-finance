@@ -1,85 +1,81 @@
-name: Daily Price Update
-
-on:
+name: Daily OHLCV Update via Drive
+'on':
   schedule:
-    - cron: '0 21 * * 1-5'  # 21h UTC du lundi au vendredi
-  workflow_dispatch:  # permet de lancer manuellement
-
+  - cron: 0 20 * * 1-5
+  workflow_dispatch: null
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: |
-          pip install yfinance pandas psycopg2-binary sqlalchemy==2.0.36
-
-      - name: Run daily update
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          python - << 'PYEOF'
-          import os
-          import yfinance as yf
-          import pandas as pd
-          from datetime import date, timedelta
-          import sqlalchemy as sa
-          from sqlalchemy.orm import Session
-
-          DATABASE_URL = os.environ["DATABASE_URL"]
-          SYNC_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://").replace("postgresql://", "postgresql+psycopg2://")
-          engine = sa.create_engine(SYNC_URL)
-
-          # Récupère les tickers en DB
-          with Session(engine) as session:
-              result = session.execute(sa.text("SELECT DISTINCT ticker FROM ohlcv"))
-              tickers = [r[0] for r in result.all()]
-
-          print(f"Updating {len(tickers)} tickers...")
-          start = (date.today() - timedelta(days=5)).isoformat()
-          end = date.today().isoformat()
-
-          rows = []
-          for ticker in tickers:
-              try:
-                  df = yf.download(ticker, start=start, end=end, auto_adjust=False, progress=False)
-                  if df.empty:
-                      continue
-                  if isinstance(df.columns, pd.MultiIndex):
-                      df.columns = [col[0] for col in df.columns]
-                  for idx, row in df.iterrows():
-                      rows.append({
-                          "ticker": ticker,
-                          "date": idx.date().isoformat(),
-                          "open": float(row.get("Open", 0) or 0),
-                          "high": float(row.get("High", 0) or 0),
-                          "low": float(row.get("Low", 0) or 0),
-                          "close": float(row.get("Close", 0) or 0),
-                          "adj_close": float(row.get("Adj Close", row.get("Close", 0)) or 0),
-                          "volume": int(row.get("Volume", 0) or 0),
-                      })
-              except Exception as e:
-                  print(f"Error {ticker}: {e}")
-
-          if rows:
-              df_out = pd.DataFrame(rows)
-              with engine.connect() as conn:
-                  for _, row in df_out.iterrows():
-                      conn.execute(sa.text("""
-                          INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
-                          VALUES (:ticker, :date, :open, :high, :low, :close, :adj_close, :volume)
-                          ON CONFLICT (ticker, date) DO UPDATE SET
-                              close = EXCLUDED.close,
-                              adj_close = EXCLUDED.adj_close,
-                              volume = EXCLUDED.volume
-                      """), row.to_dict())
-                  conn.commit()
-              print(f"Updated {len(rows)} rows")
-          PYEOF
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+    - name: Install dependencies
+      run: pip install yfinance pandas google-api-python-client google-auth
+    - name: Download OHLCV and upload to Drive
+      env:
+        GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+      run: "python - << 'PYEOF'\nimport os, json, io, gzip, time\nimport yfinance\
+        \ as yf\nimport pandas as pd\nfrom datetime import date, timedelta\nfrom google.oauth2\
+        \ import service_account\nfrom googleapiclient.discovery import build\nfrom\
+        \ googleapiclient.http import MediaIoBaseUpload\n\n# Auth Google Drive\nsa_info\
+        \ = json.loads(os.environ['GOOGLE_SERVICE_ACCOUNT_JSON'])\ncreds = service_account.Credentials.from_service_account_info(\n\
+        \    sa_info, scopes=['https://www.googleapis.com/auth/drive']\n)\ndrive =\
+        \ build('drive', 'v3', credentials=creds)\n\n# Trouver le dossier Drive\n\
+        folders = drive.files().list(\n    q=\"name='ethical-finance-data' and mimeType='application/vnd.google-apps.folder'\"\
+        ,\n    fields=\"files(id)\"\n).execute().get('files', [])\nfolder_id = folders[0]['id']\
+        \ if folders else None\nif not folder_id:\n    print(\"ERROR: Drive folder\
+        \ not found\")\n    exit(1)\n\n# Télécharger les 7 derniers jours\nstart =\
+        \ (date.today() - timedelta(days=7)).isoformat()\nend = date.today().isoformat()\n\
+        \n# Lire les tickers depuis un fichier statique ou utiliser l'univers complet\n\
+        TICKERS = []\n# SP500\nTICKERS += [\"AAPL\",\"MSFT\",\"NVDA\",\"AMZN\",\"\
+        GOOGL\",\"META\",\"TSLA\",\"BRK-B\",\"JPM\",\"UNH\",\n    \"V\",\"XOM\",\"\
+        JNJ\",\"WMT\",\"MA\",\"PG\",\"LLY\",\"CVX\",\"HD\",\"MRK\",\"ABBV\",\"PEP\"\
+        ,\"KO\",\"COST\",\n    \"AVGO\",\"MCD\",\"TMO\",\"ACN\",\"BAC\",\"CRM\",\"\
+        ABT\",\"NKE\",\"DIS\",\"TXN\",\"NEE\",\"PM\",\"ORCL\",\n    \"DHR\",\"LIN\"\
+        ,\"AMGN\",\"IBM\",\"QCOM\",\"RTX\",\"HON\",\"UPS\",\"SBUX\",\"GS\",\"CAT\"\
+        ,\"INTU\",\"SPGI\",\n    \"AMD\",\"ELV\",\"AXP\",\"ISRG\",\"BLK\",\"DE\",\"\
+        SYK\",\"T\",\"GILD\",\"ADI\",\"MDLZ\",\"REGN\",\"PLD\",\n    \"CI\",\"VRTX\"\
+        ,\"ADP\",\"MO\",\"ZTS\",\"MMC\",\"TJX\",\"C\",\"ETN\",\"BSX\",\"NOC\",\"SO\"\
+        ,\"DUK\",\"AON\",\n    \"CME\",\"ITW\",\"PNC\",\"USB\",\"EMR\",\"WM\",\"MCO\"\
+        ,\"F\",\"GM\",\"FDX\",\"NSC\",\"ECL\",\"APD\",\"HCA\",\n    \"ICE\",\"SHW\"\
+        ,\"GD\",\"EW\",\"MSI\",\"CL\",\"OXY\",\"PSA\",\"D\"]\n# CAC40\nTICKERS +=\
+        \ [\"MC.PA\",\"TTE.PA\",\"SAN.PA\",\"OR.PA\",\"AIR.PA\",\"BNP.PA\",\"AXA.PA\"\
+        ,\"SU.PA\",\n    \"DG.PA\",\"RI.PA\",\"KER.PA\",\"CAP.PA\",\"BN.PA\",\"VIE.PA\"\
+        ,\"SGO.PA\",\"ORA.PA\",\"GLE.PA\",\n    \"DSY.PA\",\"HO.PA\",\"STM.PA\",\"\
+        EL.PA\",\"RMS.PA\",\"URW.PA\",\"ML.PA\",\"ACA.PA\",\"LR.PA\",\n    \"PUB.PA\"\
+        ,\"TEP.PA\",\"WLN.PA\",\"EN.PA\",\"ATO.PA\",\"CS.PA\",\"SAF.PA\",\"FP.PA\"\
+        ,\"VK.PA\",\n    \"BOL.PA\",\"AI.PA\",\"SW.PA\",\"RNO.PA\",\"MT.AS\"]\n# MSCI\
+        \ World\nTICKERS += [\"NESN.SW\",\"ROG.SW\",\"NOVN.SW\",\"ASML.AS\",\"SAP.DE\"\
+        ,\"SIE.DE\",\"ALV.DE\",\n    \"HSBA.L\",\"BP.L\",\"GSK.L\",\"AZN.L\",\"ULVR.L\"\
+        ,\"RIO.L\",\"BHP.L\",\"SHEL.L\",\n    \"7203.T\",\"6758.T\",\"9984.T\",\"\
+        8306.T\",\"BHP.AX\",\"CBA.AX\",\"CSL.AX\",\"NAB.AX\",\n    \"NOVO-B.CO\",\"\
+        EQNR.OL\",\"VOLV-B.ST\",\"NPN.JO\"]\n# ETF + FX + Indices\nTICKERS += [\"\
+        IWDA.AS\",\"VWRL.AS\",\"GLD\",\"IAU\",\"SLV\",\n    \"EURUSD=X\",\"EURGBP=X\"\
+        ,\"EURCHF=X\",\"EURJPY=X\",\n    \"^GSPC\",\"^FCHI\",\"^GDAXI\",\"^VIX\",\"\
+        ^N225\"]\nTICKERS = list(set(TICKERS))\n\nprint(f\"Downloading {len(TICKERS)}\
+        \ tickers from {start} to {end}...\")\nall_dfs = []\nfor ticker in TICKERS:\n\
+        \    try:\n        df = yf.download(ticker, start=start, end=end, auto_adjust=False,\
+        \ progress=False)\n        if isinstance(df.columns, pd.MultiIndex):\n   \
+        \         df.columns = [col[0] for col in df.columns]\n        if not df.empty:\n\
+        \            df = df.reset_index()\n            df[\"ticker\"] = ticker\n\
+        \            df = df.rename(columns={\"Date\":\"date\",\"Open\":\"open\",\"\
+        High\":\"high\",\n                \"Low\":\"low\",\"Close\":\"close\",\"Adj\
+        \ Close\":\"adj_close\",\"Volume\":\"volume\"})\n            all_dfs.append(df[[\"\
+        ticker\",\"date\",\"open\",\"high\",\"low\",\"close\",\"adj_close\",\"volume\"\
+        ]])\n    except Exception as e:\n        print(f\"  ERROR {ticker}: {e}\"\
+        )\n    time.sleep(0.05)\n\nif not all_dfs:\n    print(\"No data downloaded\"\
+        )\n    exit(0)\n\ncombined = pd.concat(all_dfs, ignore_index=True)\nprint(f\"\
+        Downloaded {len(combined)} rows, {combined['ticker'].nunique()} tickers\"\
+        )\n\n# Upload vers Drive\nbuf = io.BytesIO()\nwith gzip.GzipFile(fileobj=buf,\
+        \ mode='wb') as gz:\n    combined.to_csv(gz, index=False)\nbuf.seek(0)\n\n\
+        # Supprimer l'ancien fichier latest\nold_files = drive.files().list(\n   \
+        \ q=f\"name='ohlcv_latest.csv.gz' and '{folder_id}' in parents\",\n    fields=\"\
+        files(id)\"\n).execute().get('files', [])\nfor f in old_files:\n    drive.files().delete(fileId=f['id']).execute()\n\
+        \n# Upload nouveau fichier\nmedia = MediaIoBaseUpload(buf, mimetype='application/gzip',\
+        \ resumable=True)\ndrive.files().create(\n    body={'name': 'ohlcv_latest.csv.gz',\
+        \ 'parents': [folder_id]},\n    media_body=media\n).execute()\nprint(f\"Uploaded\
+        \ ohlcv_latest.csv.gz to Drive\")\nPYEOF"
