@@ -43,6 +43,7 @@ def _get_fundamentals_bulk(tickers: list[str]) -> dict[str, dict]:
     SEC EDGAR fournit les vraies données GAAP (EBIT, invested capital, EV).
     """
     import os
+
     import sqlalchemy as sa
 
     empty = lambda: {  # noqa: E731
@@ -72,7 +73,9 @@ def _get_fundamentals_bulk(tickers: list[str]) -> dict[str, dict]:
             engine = sa.create_engine(sync_url, pool_pre_ping=True)
             with engine.connect() as conn:
                 rows = conn.execute(
-                    sa.text("SELECT ticker, market_cap, beta FROM ticker_fundamentals WHERE ticker = ANY(:t)"),
+                    sa.text(
+                        "SELECT ticker, market_cap, beta FROM ticker_fundamentals WHERE ticker = ANY(:t)"
+                    ),
                     {"t": tickers},
                 ).fetchall()
             for row in rows:
@@ -84,6 +87,7 @@ def _get_fundamentals_bulk(tickers: list[str]) -> dict[str, dict]:
     # 2. SEC EDGAR pour les vraies données GAAP
     try:
         from backend.core.sec_edgar import fetch_fundamentals_sec
+
         for ticker in tickers:
             if ticker.startswith("^"):
                 continue
@@ -118,7 +122,9 @@ def _get_fundamentals_bulk(tickers: list[str]) -> dict[str, dict]:
                 try:
                     with engine.connect() as conn:
                         row = conn.execute(
-                            sa.text("SELECT total_debt, total_revenue FROM ticker_fundamentals WHERE ticker = :t"),
+                            sa.text(
+                                "SELECT total_debt, total_revenue FROM ticker_fundamentals WHERE ticker = :t"
+                            ),
                             {"t": ticker},
                         ).fetchone()
                     if row:

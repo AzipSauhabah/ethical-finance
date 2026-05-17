@@ -53,6 +53,7 @@ async def _startup() -> None:
             try:
                 from backend.core.loader import SP500_TICKERS
                 from backend.core.sec_edgar import upsert_sec_fundamentals
+
                 log.info("SEC EDGAR job started — %d tickers", len(SP500_TICKERS))
                 n = await upsert_sec_fundamentals(SP500_TICKERS[:100])
                 log.info("SEC EDGAR job complete — %d tickers updated", n)

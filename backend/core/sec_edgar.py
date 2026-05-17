@@ -28,7 +28,6 @@ from __future__ import annotations
 import logging
 import time
 from functools import lru_cache
-from typing import Any
 
 import requests
 
@@ -202,9 +201,9 @@ def _extract_latest_annual(facts: dict, concept_names: list[str]) -> float | Non
             entries = units[unit_key]
             # Filtrer les 10-K annuels uniquement
             annual = [
-                e for e in entries
-                if e.get("form") in ("10-K", "10-K/A")
-                and e.get("val") is not None
+                e
+                for e in entries
+                if e.get("form") in ("10-K", "10-K/A") and e.get("val") is not None
             ]
             if not annual:
                 continue
@@ -235,8 +234,8 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
     operating_cf = raw.get("operating_cashflow")
     capex = raw.get("capex", 0) or 0
     depreciation = raw.get("depreciation", 0) or 0
-    shares = raw.get("shares_outstanding")
-    eps = raw.get("eps_basic")
+    raw.get("shares_outstanding")
+    raw.get("eps_basic")
 
     total_debt = long_term_debt + short_term_debt
     ev = market_cap + total_debt - cash if market_cap > 0 else 0
@@ -291,7 +290,9 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
         net_fixed_assets = (total_assets or 0) - (current_assets or 0)
         invested_capital = net_working_capital + net_fixed_assets
         ratios["earning_yield_sec"] = round(ebit / ev, 4) if ev > 0 else 0
-        ratios["roic_sec"] = round(ebit / max(invested_capital, 1), 4) if invested_capital > 0 else 0
+        ratios["roic_sec"] = (
+            round(ebit / max(invested_capital, 1), 4) if invested_capital > 0 else 0
+        )
 
     # FCF yield
     if market_cap > 0 and fcf > 0:
