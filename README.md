@@ -47,7 +47,8 @@
 - **Signaux quotidiens** — vote multi-indicateurs (SMA, RSI, MACD, momentum).
 - **Recommandations de rééquilibrage** intégrant les coûts réels.
 - **Quotes temps réel** via Server-Sent Events (thread background, refresh 60 s).
-- **Rapport PDF 12 pages style Goldman Sachs** avec charts matplotlib intégrés.
+- **Rapport PDF 15+ pages style Goldman Sachs** — 8 graphiques matplotlib HD : heatmap mensuelle, rolling Sharpe/Vol/Beta, underwater plot, distribution des rendements, win/loss distribution.
+- **Fondamentaux SEC EDGAR officiels** — 30+ métriques US GAAP (PE, EV/EBITDA, ROE, ROIC, FCF yield, dette nette) pour tout le SP500. Mis à jour quotidiennement à 22h UTC.
 - **Backend auto-hébergé** sur NAS Synology DS925+ via Cloudflare Tunnel — aucun port ouvert, HTTPS automatique.
 
 ---

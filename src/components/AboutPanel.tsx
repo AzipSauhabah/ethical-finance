@@ -29,6 +29,8 @@ export default function AboutPanel() {
               { n: '11', l: 'Stratégies quantitatives' },
               { n: '25+', l: 'Métriques de risque' },
               { n: '2.5M', l: 'Barres OHLCV' },
+              { n: 'SEC', l: 'Fondamentaux officiels US GAAP' },
+              { n: '8', l: 'Graphiques institutionnels PDF' },
             ].map(s => (
               <div key={s.n} style={{ padding: '1rem 1.5rem', background: 'rgba(184,150,47,0.05)', border: '1px solid rgba(184,150,47,0.2)', borderRadius: 6 }}>
                 <div style={{ fontSize: '1.8rem', fontWeight: 700, color: GOLD, fontFamily: '"JetBrains Mono", monospace' }}>{s.n}</div>
@@ -46,10 +48,12 @@ export default function AboutPanel() {
           {[
             { icon: '◉', title: 'Backtest événementiel', desc: 'Moteur event-driven date par date. FX EUR/USD historique. Frais réels par courtier. Taxes françaises (PFU, TTF, PEA).' },
             { icon: '◈', title: 'Rapport institutionnel PDF', desc: 'Format Goldman Sachs : 15 pages avec charts matplotlib. Stress tests historiques. VaR/CVaR par position. Tests de Jobson-Korkie.' },
-            { icon: '◆', title: 'Machine Learning avancé', desc: 'TensorFlow, scikit-learn, LightGBM. Random Forest + Gradient Boosting. Walk-forward strict sans look-ahead bias. Features techniques (RSI, MACD, Bollinger).' },
+            { icon: '◆', title: 'Machine Learning avancé', desc: 'TensorFlow LSTM + RandomForest scikit-learn. Score combiné 60% RF + 40% LSTM. Walk-forward strict. Features techniques (RSI, MACD, Bollinger, EMA ratio).' },
             { icon: '◎', title: 'Screening éthique & Sharia', desc: 'Exclusion armement, tabac, jeux, énergies fossiles. Filtre islamique AAOIFI sur ratio dette/capital et revenus d\'intérêts.' },
             { icon: '▣', title: 'Stratégies quantitatives', desc: 'Buy & Hold, SMA Crossover, RSI Mean Reversion, Momentum, Magic Formula (EPR5), Risk Parity, Min Variance, ML Ensemble…' },
             { icon: '▤', title: 'Infrastructure auto-hébergée', desc: 'NAS Synology DS925+. PostgreSQL local. 2.5M barres SP500 + CAC40 (2006–2026). Cloudflare Tunnel. Zéro dépendance cloud externe.' },
+            { icon: '◇', title: 'Fondamentaux SEC EDGAR', desc: 'Données officielles US GAAP depuis SEC.gov. 30+ métriques : PE, EV/EBITDA, ROE, ROIC, FCF yield, dette nette. Mis à jour quotidiennement par le scheduler.' },
+            { icon: '◈', title: 'Rapport PDF institutionnel', desc: '15+ pages style Goldman Sachs. 8 graphiques matplotlib HD : heatmap mensuelle, rolling Sharpe, underwater plot, distribution des rendements, win/loss.' },
           ].map(f => (
             <div key={f.title} style={{ padding: '1.5rem', background: '#111827', border: '1px solid #1e2d4a', borderRadius: 8, transition: 'border-color 0.2s' }}>
               <div style={{ fontSize: '1.5rem', color: GOLD, marginBottom: '0.75rem' }}>{f.icon}</div>
