@@ -94,6 +94,58 @@ export default function AboutPanel() {
           </div>
         </div>
 
+        {/* Méthodologie EPR5 + LSTM */}
+        <div style={{ marginTop: '3rem' }}>
+          <div style={{ fontSize: '0.65rem', letterSpacing: '3px', color: GOLD, marginBottom: '1.5rem' }}>MÉTHODOLOGIE — EPR5 + IA HYBRIDE</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            {[
+              {
+                icon: '◆', title: 'Magic Formula (Greenblatt)',
+                desc: 'Sélection par Earning Yield (EBIT/EV) et ROIC. Top quintile de l'univers rankés par somme des rangs. Filtre de régime : SPX > MM200. Filtre VIX : VIX < MM10.',
+                color: '#b8962f',
+              },
+              {
+                icon: '◉', title: 'RandomForest scikit-learn',
+                desc: '50 arbres, profondeur 4, walk-forward 60j. Features : rendements 1/5/20/60j, volatilité, RSI, MM20/50/200, momentum. Label : rendement à 20j > +5%.',
+                color: '#5b8dee',
+              },
+              {
+                icon: '▣', title: 'LSTM TensorFlow (nouveau)',
+                desc: 'Réseau récurrent : Input(30j×11) → LSTM(64) → LSTM(32) → Dense(16) → sigmoid. Capte les dépendances temporelles ignorées par le RF. Horizon 5j, seuil +2%.',
+                color: '#1d9e75',
+              },
+              {
+                icon: '◎', title: 'Score combiné + Sizing MC',
+                desc: 'Score final = 0.6×RF + 0.4×LSTM. Sizing dynamique : base 10% NAV × multiplicateur Monte Carlo (Sharpe glissant 60j, clip 0.5×–1.5×). Stop ATR + profit target.',
+                color: '#8a6f9c',
+              },
+            ].map(f => (
+              <div key={f.title} style={{ padding: '1.25rem', background: '#111827', border: `1px solid ${f.color}22`, borderRadius: 8, borderLeft: `3px solid ${f.color}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{ color: f.color, fontSize: '1rem' }}>{f.icon}</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#e8e8e8' }}>{f.title}</span>
+                </div>
+                <div style={{ fontSize: '0.74rem', color: '#666', lineHeight: 1.6 }}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Hypothèses clés */}
+          <div style={{ padding: '1.25rem', background: 'rgba(184,150,47,0.03)', border: '1px solid rgba(184,150,47,0.15)', borderRadius: 8 }}>
+            <div style={{ fontSize: '0.6rem', letterSpacing: '2px', color: GOLD, marginBottom: '0.75rem' }}>HYPOTHÈSES & LIMITES</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              {[
+                '⚠ Les patterns historiques peuvent ne pas se répéter (rupture de régime)',
+                '⚠ LSTM : faible signal/bruit sur horizon court (5j) — précision hors-échantillon ~55-62%',
+                '⚠ Backtest walk-forward strict : aucune donnée future ne fuite dans les décisions',
+                '⚠ Performances passées ne préjugent pas des performances futures',
+              ].map(h => (
+                <div key={h} style={{ fontSize: '0.72rem', color: '#555', lineHeight: 1.5 }}>{h}</div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Architecture diagram link */}
         <div style={{ marginTop: '1.5rem', padding: '1rem 2rem', background: 'rgba(184,150,47,0.03)', border: '1px solid rgba(184,150,47,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
