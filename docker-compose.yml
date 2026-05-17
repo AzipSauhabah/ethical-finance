@@ -31,6 +31,8 @@ services:
       APP_ENV: production
       KV_REST_API_URL: ${KV_REST_API_URL:-}
       KV_REST_API_TOKEN: ${KV_REST_API_TOKEN:-}
+      TWELVE_DATA_API_KEY: ${TWELVE_DATA_API_KEY:-}
+      FMP_API_KEY: ${FMP_API_KEY:-}
     volumes:
       - /volume1/docker/ethical-finance/data:/app/data
       - /volume1/docker/ethical-finance/backups:/data/backups
