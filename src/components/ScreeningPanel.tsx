@@ -48,6 +48,7 @@ export default function ScreeningPanel({
   onSelectTickers?: (tickers: string[], method: string) => void;
 }) {
   const [method, setMethod] = useState("magic_formula");
+  const [universe, setUniverse] = useState("sp500");
   const [topN, setTopN] = useState(20);
   const [requireEthical, setRequireEthical] = useState(false);
   const [requireSharia, setRequireSharia] = useState(false);
@@ -67,6 +68,7 @@ export default function ScreeningPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           method,
+          universe,
           top_n: topN,
           require_ethical: requireEthical,
           require_sharia: requireSharia,
@@ -117,6 +119,35 @@ export default function ScreeningPanel({
         <p style={{ color: "#666", fontSize: "0.85rem", margin: "0 0 2rem" }}>
           Rankez 500+ titres SP500 / CAC40 par méthode quantitative ou IA. Exportez la sélection vers le backtest.
         </p>
+
+        {/* Universe selector */}
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+          {[
+            { id: "sp500", label: "S&P 500", desc: "483 titres US" },
+            { id: "cac40", label: "CAC 40", desc: "34 titres FR" },
+            { id: "etf_broad", label: "ETF World", desc: "MSCI World · Vanguard · iShares" },
+            { id: "etf_precious_metals", label: "ETF Métaux", desc: "Or · Argent · Platine" },
+            { id: "all", label: "Tous", desc: "Univers complet" },
+          ].map((u) => (
+            <button
+              key={u.id}
+              onClick={() => setUniverse(u.id)}
+              style={{
+                padding: "0.5rem 1rem",
+                background: universe === u.id ? "rgba(184,150,47,0.15)" : "#0d1528",
+                border: `1px solid ${universe === u.id ? GOLD : "#1e2d4a"}`,
+                borderRadius: 6,
+                color: universe === u.id ? GOLD : "#555",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontSize: "0.82rem", fontWeight: 600 }}>{u.label}</div>
+              <div style={{ fontSize: "0.68rem", color: universe === u.id ? "#b8962f99" : "#333", marginTop: "0.15rem" }}>{u.desc}</div>
+            </button>
+          ))}
+        </div>
 
         {/* Method selector */}
         <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
