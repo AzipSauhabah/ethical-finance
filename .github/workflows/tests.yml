@@ -1,0 +1,46 @@
+name: tests
+
+on:
+  push:
+    branches: [main, v2-upload, v2-1-patch]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run pytest (unit tests only — no network)
+        run: |
+          pytest tests/ -v -m "not integration" --tb=short
+
+      - name: Run pytest with coverage
+        run: |
+          pytest tests/ -m "not integration" \
+            --cov=backend \
+            --cov-report=term-missing \
+            --cov-report=xml
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
