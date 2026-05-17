@@ -21,3 +21,5 @@ tsconfig.tsbuildinfo
 tsc
 tsconfig.tsbuildinfo
 tsc
+dist/
+package-lock.json
