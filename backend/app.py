@@ -67,6 +67,7 @@ async def _startup() -> None:
             import asyncio
             import os
             from datetime import datetime
+
             try:
                 backup_dir = "/data/backups"
                 os.makedirs(backup_dir, exist_ok=True)
@@ -74,11 +75,15 @@ async def _startup() -> None:
                 backup_file = f"{backup_dir}/ethical_finance_{date_str}.sql.gz"
                 proc = await asyncio.create_subprocess_shell(
                     f"pg_dump -U sauhabah -d ethical_finance | gzip > {backup_file}",
-                    env={**os.environ, "PGPASSWORD": os.environ.get("POSTGRES_PASSWORD", "sauhabah")},
+                    env={
+                        **os.environ,
+                        "PGPASSWORD": os.environ.get("POSTGRES_PASSWORD", "sauhabah"),
+                    },
                 )
                 await proc.wait()
                 # Garder seulement les 7 derniers backups
                 import glob
+
                 backups = sorted(glob.glob(f"{backup_dir}/ethical_finance_*.sql.gz"))
                 for old_backup in backups[:-7]:
                     os.remove(old_backup)
