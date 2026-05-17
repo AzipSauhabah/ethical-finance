@@ -27,10 +27,10 @@ import io
 from typing import Any
 
 import matplotlib
+
 matplotlib.use("Agg")  # backend non-interactif — thread safe
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-import numpy as np
 
 from backend.config import COPYRIGHT, DISCLAIMER
 from backend.report.glossary import GLOSSARY
@@ -48,28 +48,31 @@ GREY = "#666666"
 # Drawing helpers — Matplotlib (HD, antialiasing, style institutionnel)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _mpl_style():
     """Style matplotlib Goldman Sachs dark."""
-    plt.rcParams.update({
-        "figure.facecolor": "#111827",
-        "axes.facecolor": "#111827",
-        "axes.edgecolor": "#1e2d4a",
-        "axes.labelcolor": "#888888",
-        "axes.grid": True,
-        "grid.color": "#1e2d4a",
-        "grid.linewidth": 0.5,
-        "grid.alpha": 0.8,
-        "xtick.color": "#666666",
-        "ytick.color": "#666666",
-        "xtick.labelsize": 7,
-        "ytick.labelsize": 7,
-        "legend.facecolor": "#0d1528",
-        "legend.edgecolor": "#1e2d4a",
-        "legend.fontsize": 7,
-        "font.family": "DejaVu Sans",
-        "text.color": "#888888",
-        "lines.linewidth": 1.8,
-    })
+    plt.rcParams.update(
+        {
+            "figure.facecolor": "#111827",
+            "axes.facecolor": "#111827",
+            "axes.edgecolor": "#1e2d4a",
+            "axes.labelcolor": "#888888",
+            "axes.grid": True,
+            "grid.color": "#1e2d4a",
+            "grid.linewidth": 0.5,
+            "grid.alpha": 0.8,
+            "xtick.color": "#666666",
+            "ytick.color": "#666666",
+            "xtick.labelsize": 7,
+            "ytick.labelsize": 7,
+            "legend.facecolor": "#0d1528",
+            "legend.edgecolor": "#1e2d4a",
+            "legend.fontsize": 7,
+            "font.family": "DejaVu Sans",
+            "text.color": "#888888",
+            "lines.linewidth": 1.8,
+        }
+    )
 
 
 def _fig_to_image_flowable(fig, width_cm: float = 17.0):
@@ -78,8 +81,7 @@ def _fig_to_image_flowable(fig, width_cm: float = 17.0):
     from reportlab.platypus import Image as RLImage
 
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight",
-                facecolor=fig.get_facecolor())
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
     buf.seek(0)
     plt.close(fig)
 
@@ -102,8 +104,7 @@ def _line_chart(
     for i, (label, color, vals) in enumerate(series):
         x = list(range(len(vals)))
         ls = "--" if dashes[i % len(dashes)] else "-"
-        ax.plot(x, vals, color=color, linewidth=1.8, label=label,
-                linestyle=ls, alpha=0.95)
+        ax.plot(x, vals, color=color, linewidth=1.8, label=label, linestyle=ls, alpha=0.95)
 
     if y_fmt:
         ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: y_fmt(v)))
@@ -154,9 +155,15 @@ def _bar_chart(
     ax.axvline(0, color="#555", linewidth=0.8)
 
     for i, v in enumerate(values):
-        ax.text(v + (0.3 if v >= 0 else -0.3), i, f"{v:+.1f}%",
-                va="center", ha="left" if v >= 0 else "right",
-                fontsize=7, color="#aaa")
+        ax.text(
+            v + (0.3 if v >= 0 else -0.3),
+            i,
+            f"{v:+.1f}%",
+            va="center",
+            ha="left" if v >= 0 else "right",
+            fontsize=7,
+            color="#aaa",
+        )
 
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout(pad=0.5)
@@ -175,8 +182,11 @@ def _pie_chart(
     ax.set_facecolor("#111827")
 
     wedges, texts, autotexts = ax.pie(
-        values, labels=labels, colors=pie_colors[:len(values)],
-        autopct="%1.0f%%", startangle=90,
+        values,
+        labels=labels,
+        colors=pie_colors[: len(values)],
+        autopct="%1.0f%%",
+        startangle=90,
         textprops={"fontsize": 7, "color": "#aaa"},
         wedgeprops={"linewidth": 1, "edgecolor": "#111827"},
     )
@@ -199,9 +209,7 @@ def _chart_nav(nav_data, bench_data):
 
 
 def _chart_drawdown(dd_data):
-    return _area_chart(
-        [p["drawdown"] * 100 for p in dd_data], RED, y_fmt=lambda v: f"{v:.1f}%"
-    )
+    return _area_chart([p["drawdown"] * 100 for p in dd_data], RED, y_fmt=lambda v: f"{v:.1f}%")
 
 
 def _chart_costs(cost_data):
@@ -249,7 +257,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
     from reportlab.platypus import (
-        Flowable,
         HRFlowable,
         PageBreak,
         Paragraph,
