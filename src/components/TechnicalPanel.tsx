@@ -245,7 +245,16 @@ function RiskViz() {
 export default function TechnicalPanel() {
   const [section, setSection] = useState("pipeline");
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  const [stats, setStats] = useState({ ohlcv_rows: 2753640, tickers: 573, fundamentals: 615 });
+  const API = import.meta.env.VITE_API_URL ?? "";
+
+  useEffect(() => {
+    setMounted(true);
+    fetch(`${API}/api/stats`)
+      .then(r => r.json())
+      .then(d => setStats(d))
+      .catch(() => {});
+  }, []);
 
   const sections = [
     { id: "pipeline", label: "Pipeline données", icon: "◉" },
@@ -399,8 +408,8 @@ export default function TechnicalPanel() {
           {/* Stats animées */}
           <div style={{ display: "flex", gap: "1.5rem", marginTop: "2rem", flexWrap: "wrap" }}>
             {[
-              { value: 2753640, suffix: "", label: "Barres OHLCV", decimals: 0 },
-              { value: 573, suffix: "", label: "Tickers", decimals: 0 },
+              { value: stats.ohlcv_rows, suffix: "", label: "Barres OHLCV", decimals: 0 },
+              { value: stats.tickers, suffix: "", label: "Tickers", decimals: 0 },
               { value: 20, suffix: " ans", label: "Historique", decimals: 0 },
               { value: 25, suffix: "+", label: "Métriques risque", decimals: 0 },
               { value: 100, suffix: "%", label: "Automatisé", decimals: 0 },

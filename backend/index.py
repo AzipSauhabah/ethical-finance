@@ -586,6 +586,34 @@ async def admin_drive_sync():
     return await trigger_drive_sync()
 
 
+@app.get("/api/stats")
+async def platform_stats():
+    """Statistiques temps réel de la plateforme."""
+    import asyncio
+    import sqlalchemy as sa
+    import os
+
+    loop = asyncio.get_event_loop()
+
+    def _get_stats():
+        database_url = os.environ.get("DATABASE_URL", "")
+        sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+        engine = sa.create_engine(sync_url, pool_pre_ping=True)
+        with engine.connect() as conn:
+            ohlcv = conn.execute(sa.text("SELECT COUNT(*), COUNT(DISTINCT ticker) FROM ohlcv")).fetchone()
+            fundamentals = conn.execute(sa.text("SELECT COUNT(*) FROM ticker_fundamentals")).fetchone()
+            last_date = conn.execute(sa.text("SELECT MAX(date) FROM ohlcv")).fetchone()
+        return {
+            "ohlcv_rows": ohlcv[0],
+            "tickers": ohlcv[1],
+            "fundamentals": fundamentals[0],
+            "last_update": str(last_date[0]) if last_date[0] else None,
+        }
+
+    stats = await loop.run_in_executor(None, _get_stats)
+    return stats
+
+
 @app.get("/api/sentiment/market")
 async def market_sentiment():
     """Sentiment global du marché (SP500 + Nasdaq)."""
