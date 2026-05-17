@@ -294,23 +294,201 @@ docker-compose restart api
 
 ---
 
-## 📊 Stratégies disponibles
 
-| Nom | Type | Description | Look-back |
-|-----|------|-------------|-----------|
-| `buy_hold` | Passive | Achète et conserve à pondération égale | 1 j |
-| `equal_weight` | Passive | Rééquilibrage périodique | 1 j |
-| `momentum` | Trend | Momentum 12-1 mois, long top 30 % | 252 j |
-| `mean_reversion` | Reversal | Z-score 20 j, long si Z < -1.5σ | 25 j |
-| `sma_crossover` | Trend | Long si SMA 50 > SMA 200 | 200 j |
-| `risk_parity` | Risk | Pondération inverse vol 20 j | 25 j |
-| `min_variance` | Optim | Markowitz min variance, refit 60 j | 60 j |
-| `dual_momentum` | Trend | Antonacci : meilleur actif si abs mom > 0 | 252 j |
-| `adaptive_trend` | Trend | EMA 12 vs EMA 26 | 100 j |
-| `ml_ensemble` | ML | RF + Gradient Boosting walk-forward | 252 j |
-| **`epr5`** | **Value+Regime** | **Magic Formula + SPX/VIX + MC sizing** | **252 j** |
+## 🧠 Stratégies disponibles
+
+| Stratégie | Description | Benchmark |
+|-----------|-------------|-----------|
+| Buy & Hold | Allocation statique équipondérée | ^GSPC |
+| Equal-Weight | Rééquilibrage mensuel équipondéré | ^GSPC |
+| Momentum | Rendement 12-1 mois, top quintile | ^GSPC |
+| Mean Reversion | Z-score 20j, contre-tendance | ^GSPC |
+| SMA Crossover | Croisement 50/200 jours | ^GSPC |
+| Risk Parity | Pondération inverse de la volatilité | ^GSPC |
+| Min Variance | Optimisation Markowitz variance minimale | ^GSPC |
+| Dual Momentum | Momentum absolu + relatif (Antonacci) | ^GSPC |
+| Adaptive Trend | Filtre de tendance adaptatif multi-timeframe | ^GSPC |
+| ML Ensemble | RandomForest + GBM walk-forward | ^GSPC |
+| **EPR5** | Magic Formula + SPX/VIX + RF + **LSTM TensorFlow** | ^GSPC |
 
 ---
+
+## 🔬 Méthodologie quantitative
+
+### Backtest event-driven strict
+
+Le moteur de backtest simule le passage du temps jour par jour. À chaque date `t`, la stratégie ne voit que les données disponibles jusqu'à `t-1`. Aucune donnée future ne peut fuiter dans les décisions de trading — c'est la garantie fondamentale de validité des résultats.
+
+**Frais réels intégrés :**
+- Commissions broker : grille tarifaire réelle (Fortuneo, Degiro, Bourse Direct, IBKR)
+- Slippage : modèle linéaire calibré sur la liquidité du titre
+- Spread FX EUR/USD : taux réel de la date d'exécution
+- TTF (Taxe sur les Transactions Financières) : 0.1% sur actions françaises
+- PFU 30% (Flat Tax) ou exonération PEA après 5 ans
+
+### Métriques de risque
+
+- **Sharpe** : `(CAGR - Rf) / Vol_annualisée` avec Rf = 0%
+- **Sortino** : pénalise uniquement la volatilité négative (downside deviation)
+- **Calmar** : `CAGR / |Max Drawdown|` — horizon long terme
+- **VaR/CVaR historique** à 95% et 99% — simulation historique pure, sans hypothèse gaussienne
+- **Omega** : ratio probabilité de gain / probabilité de perte au-delà d'un seuil
+- **Tail Ratio** : `CVaR_gain / CVaR_perte` — asymétrie des queues de distribution
+
+### Tests statistiques
+
+- **Jobson-Korkie** : test de significativité de la différence de Sharpe entre stratégie et benchmark
+- **Bootstrap IC 95%** sur le Sharpe : 10 000 rééchantillonnages par blocs (Stationary Bootstrap)
+- **t-test Jensen alpha** : H0 = alpha = 0, p-value bilatérale
+
+---
+
+## 🤖 EPR5 — Magic Formula + IA Hybride
+
+EPR5 est la stratégie phare de la plateforme. Elle combine :
+
+### 1. Sélection fondamentale — Magic Formula (Greenblatt)
+
+**Earning Yield** = `EBIT / Enterprise Value`
+**ROIC** = `EBIT / Net Assets`
+
+Les titres sont rankés par la somme des rangs (EY + ROIC). Le top quintile (paramètre `top_quintile_pct`, défaut 20%) est sélectionné.
+
+> **Hypothèse** : les titres sous-évalués avec un fort retour sur capital tendent à surperformer à moyen terme (12-18 mois). Cette hypothèse est validée empiriquement sur le marché US sur la période 1988-2004 (Greenblatt, 2005).
+
+### 2. Filtre de régime de marché
+
+**Condition** : S&P 500 > sa moyenne mobile à `ma_window` jours (défaut : 200j)
+
+> **Hypothèse** : un marché en tendance haussière (SPX au-dessus de sa MM200) favorise les stratégies long-only. En bear market, la stratégie est mise en veille pour protéger le capital.
+
+### 3. Timing VIX
+
+**Condition** : VIX < sa moyenne mobile à `vix_ma_window` jours (défaut : 10j)
+
+> **Hypothèse** : la volatilité implicite (VIX) est un proxy de la peur des marchés. Entrer en position quand le VIX repasse sous sa moyenne mobile indique une détente des conditions de marché — contexte favorable aux positions acheteuses.
+
+### 4. ML Score — RandomForest (scikit-learn)
+
+**Features** (11 indicateurs techniques) :
+- Rendements : 1j, 5j, 20j, 60j
+- Volatilité réalisée : 20j, 60j
+- Position relative aux MM20, MM50, MM200 (0/1)
+- RSI-14 normalisé [0,1]
+- Momentum 12 mois
+
+**Architecture** :
+- RandomForestClassifier : 50 arbres, profondeur max 4, class_weight="balanced"
+- Labels : 1 si rendement à 20j > +5%, 0 sinon
+- Walk-forward : réentraîné tous les `walkforward_refit_days` jours (défaut 60j) sur les données passées uniquement
+
+> **Hypothèse** : les patterns techniques historiques contiennent de l'information prédictive sur le rendement à court terme. Le RF capture les interactions non-linéaires entre indicateurs que les modèles linéaires manquent.
+
+### 5. ML Score — LSTM TensorFlow *(nouveau)*
+
+**Architecture du réseau** :
+```
+Input (30j × 11 features)
+    → LSTM(64 units, return_sequences=True)
+    → Dropout(0.2)
+    → LSTM(32 units)
+    → Dropout(0.2)
+    → Dense(16, ReLU)
+    → Dropout(0.3)
+    → Dense(1, sigmoid)
+```
+
+**Features temporelles** (séquence de 30 jours) :
+- Rendements : 1j, 5j, 20j
+- Volatilité réalisée : 10j, 20j
+- RSI-14 normalisé
+- EMA20/EMA50 ratio (tendance)
+- MACD histogram normalisé
+- Position dans les bandes de Bollinger [0,1]
+- Momentum : 20j, 60j
+
+**Entraînement** :
+- Horizon de prédiction : 5 jours
+- Seuil positif : rendement > +2%
+- Walk-forward : réentraîné en même temps que le RF (tous les 60j)
+- Epochs : 10, batch_size : 32, validation_split : 15%
+- Optimiseur : Adam (lr=1e-3), loss : binary_crossentropy
+
+**Score final combiné** :
+```
+score_final = 0.6 × RF_score + 0.4 × LSTM_score
+```
+
+> **Hypothèse LSTM** : les dépendances temporelles dans les séries de prix (momentum, mean-reversion, régimes de volatilité) contiennent de l'information que le RF ne capte pas car il ignore l'ordre des observations. Le LSTM, par sa mémoire à long terme sélective (portes input/forget/output), est architecturalement adapté à la prédiction de séries financières non-stationnaires.
+
+> **Limites** : le LSTM suppose que les patterns temporels passés se répètent. Cette hypothèse est fragile en période de rupture de régime. Le modèle ne tient pas compte des données fondamentales ou macroéconomiques. Sur des horizons très courts (1-5j), le rapport signal/bruit est faible et la précision hors-échantillon est modeste (55-62% en conditions normales).
+
+### 6. Sizing dynamique — Monte Carlo
+
+**Taille de base** : 10% de la NAV par titre
+
+**Multiplicateur MC** : calculé sur le Sharpe glissant des 60 derniers trades
+```
+mult = clip(1.0 + Sharpe_proxy × 5, 0.5, 1.5)
+```
+- Stratégie récemment performante → augmente légèrement les positions (max 1.5×)
+- Stratégie en difficulté → réduit les positions (min 0.5×)
+
+### 7. Sorties de position
+
+- **Profit target** : `+profit_target`% (défaut 20%, paramétrable 10-25%)
+- **Stop ATR** : `max(-1 000€ absolu, -atr_stop_mult × ATR14)` (défaut mult=2.0)
+
+> Le stop combiné (dollar absolu + ATR) protège contre les gaps violents tout en laissant respirer les positions en conditions normales de volatilité.
+
+### Paramètres configurables EPR5
+
+| Paramètre | Défaut | Plage | Description |
+|-----------|--------|-------|-------------|
+| `profit_target` | 0.20 | 0.10–0.25 | Objectif de gain par position |
+| `atr_stop_mult` | 2.0 | 1.5–3.0 | Multiplicateur ATR pour le stop |
+| `top_quintile_pct` | 0.20 | 0.10–0.30 | % de l'univers sélectionné |
+| `ma_window` | 200 | 150–250 | Fenêtre MM filtre de tendance |
+| `vix_ma_window` | 10 | 5–15 | Fenêtre MM du VIX |
+| `ml_min_score` | 0.50 | 0.45–0.70 | Score ML minimum pour entrer |
+
+---
+
+## 📄 Rapport PDF institutionnel
+
+Le rapport généré comprend 15 pages :
+
+1. **Cover** — identité de la stratégie et date
+2. **Résumé exécutif** — narrative contextuelle (générée automatiquement selon les métriques)
+3. **Performance NAV vs Benchmark** — graphique évolution + commentaire analytique
+4. **Analyse du drawdown** — graphique + récupération
+5. **Métriques de risque** — VaR/CVaR quotidien et annualisé
+6. **Stress tests** — 5 crises historiques avec graphique
+7. **Évolution des coûts** — commissions cumulées
+8. **Décomposition des coûts** — pie chart + tableau
+9. **Allocation Cash vs Investi** — évolution temporelle
+10. **Significativité statistique** — Jobson-Korkie, bootstrap, t-test alpha
+11. **Positions finales** — tableau détaillé
+12. **Journal des trades** — jusqu'à 300 trades
+13. **Risque par position** — VaR individuelle + contribution au risque
+14. **Intelligence artificielle** — description des modèles ML/LSTM utilisés
+15. **Méthodologie, limites, glossaire** — hypothèses et avertissements réglementaires
+
+> Les narratives analytiques de chaque section sont générées dynamiquement selon les valeurs réelles des métriques (Sharpe, drawdown, alpha, stress tests). Le ton et le contenu s'adaptent automatiquement : une stratégie avec Sharpe > 2 reçoit un commentaire différent d'une stratégie avec Sharpe < 0.5.
+
+---
+
+## 🌍 Univers d'investissement
+
+| Univers | Tickers | Description |
+|---------|---------|-------------|
+| `sp500` | 483 | Actions S&P 500 — grandes capitalisations US |
+| `cac40` | 34 | Actions CAC 40 — grandes capitalisations françaises |
+| `etf_broad` | 6 | ETF indiciels mondiaux (MSCI World, S&P 500 UCITS) |
+| `etf_precious_metals` | 6 | ETF métaux précieux (GLD, IAU, SLV, SGOL, PPLT, PALL) |
+
+Les données OHLCV couvrent la période 2006–2026 (20 ans) et sont mises à jour quotidiennement via un scheduler APScheduler à 21h.
+
 
 ## 🛡️ Filtres Ethical & Sharia
 
