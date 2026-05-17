@@ -84,10 +84,66 @@ TAX_RATES: Final[dict] = {
 # Slippage model (basis points)
 # ─────────────────────────────────────────────────────────────────────────────
 SLIPPAGE_BPS: Final[dict[str, float]] = {
-    "large_cap": 2.0,
-    "mid_cap": 5.0,
-    "small_cap": 15.0,
-    "etf": 1.0,
+    "large_cap": 2.0,    # >10Md€ — Apple, LVMH
+    "mid_cap": 8.0,      # 1-10Md€
+    "small_cap": 20.0,   # 100M-1Md€
+    "micro_cap": 50.0,   # <100M€ — très illiquide
+    "etf": 1.0,          # ETF très liquides
+}
+
+# ─── Impact marché (modèle linéaire) ─────────────────────────────────────────
+# Impact = MARKET_IMPACT_BPS × (notional / ADV) × prix
+# ADV = Average Daily Volume estimé selon la cap
+MARKET_IMPACT_BPS: Final[dict[str, float]] = {
+    "large_cap": 5.0,
+    "mid_cap": 15.0,
+    "small_cap": 40.0,
+    "micro_cap": 100.0,
+    "etf": 2.0,
+}
+
+# ADV typique par catégorie (en EUR) — utilisé pour l'impact marché
+TYPICAL_ADV_EUR: Final[dict[str, float]] = {
+    "large_cap": 200_000_000.0,
+    "mid_cap": 20_000_000.0,
+    "small_cap": 2_000_000.0,
+    "micro_cap": 200_000.0,
+    "etf": 100_000_000.0,
+}
+
+# ─── Withholding tax sur dividendes ──────────────────────────────────────────
+# Retenue à la source sur dividendes selon pays d'origine → investisseur FR
+WITHHOLDING_TAX: Final[dict[str, float]] = {
+    "US": 0.15,    # Convention fiscale FR-US : 15% (au lieu de 30%)
+    "DE": 0.265,   # Allemagne : 26.375% (Abgeltungsteuer + solidarity)
+    "UK": 0.00,    # UK : pas de retenue sur dividendes
+    "CH": 0.35,    # Suisse : 35% (récupérable partiellement)
+    "NL": 0.15,    # Pays-Bas : 15%
+    "BE": 0.30,    # Belgique : 30%
+    "IT": 0.26,    # Italie : 26%
+    "ES": 0.19,    # Espagne : 19%
+    "JP": 0.15,    # Japon : 15% (convention)
+    "FR": 0.128,   # France : 12.8% PFU (hors prélèvements sociaux)
+    "IE": 0.20,    # Irlande : 20% (ETF UCITS domiciliés IE)
+    "default": 0.15,
+}
+
+# ─── Stamp duty / PTT par pays ────────────────────────────────────────────────
+STAMP_DUTY: Final[dict[str, float]] = {
+    "UK": 0.005,   # Stamp Duty Reserve Tax 0.5% sur actions UK
+    "BE": 0.0035,  # Taxe boursière belge 0.35%
+    "IT": 0.002,   # Tobin Tax italienne 0.2% (>500M€ cap)
+    "FR": 0.003,   # TTF française 0.3% (déjà dans TTF rates)
+    "default": 0.0,
+}
+
+# ─── Frais de garde (custody fees annuels) ───────────────────────────────────
+CUSTODY_FEES_ANNUAL_BPS: Final[dict[str, float]] = {
+    "degiro": 0.0,           # Degiro : pas de frais de garde
+    "fortuneo": 0.0,         # Fortuneo : pas de frais de garde
+    "bourse_direct": 0.0,    # Bourse Direct : pas de frais de garde
+    "interactive_brokers": 0.0,  # IBKR : pas de frais si >100k$
+    "default": 10.0,         # 10 bps/an par défaut
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

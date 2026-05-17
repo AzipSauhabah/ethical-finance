@@ -14,8 +14,13 @@ from typing import Literal
 
 from backend.config import (
     BROKER_FEES,
+    CUSTODY_FEES_ANNUAL_BPS,
+    MARKET_IMPACT_BPS,
     SLIPPAGE_BPS,
+    STAMP_DUTY,
     TAX_RATES,
+    TYPICAL_ADV_EUR,
+    WITHHOLDING_TAX,
 )
 
 
@@ -169,4 +174,176 @@ def total_trade_cost(
         "total": total,
         "notional": notional_eur,
         "cost_pct": total / notional_eur if notional_eur > 0 else 0.0,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Impact marché (modèle linéaire)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def market_impact_cost(
+    notional_eur: float,
+    cap_size: str = "mid_cap",
+    participation_rate: float = 0.05,
+) -> float:
+    """
+    Coût d'impact marché — modèle linéaire.
+
+    Impact = impact_bps × sqrt(notional / ADV)
+    Plus l'ordre est grand par rapport au volume journalier,
+    plus le prix se dégrade.
+
+    Args:
+        notional_eur: taille de l'ordre en EUR
+        cap_size: catégorie de capitalisation
+        participation_rate: fraction du volume journalier (défaut 5%)
+
+    Returns:
+        coût en EUR
+    """
+    impact_bps = MARKET_IMPACT_BPS.get(cap_size, MARKET_IMPACT_BPS["mid_cap"])
+    adv = TYPICAL_ADV_EUR.get(cap_size, TYPICAL_ADV_EUR["mid_cap"])
+
+    # Impact proportionnel à la racine carrée de la participation
+    participation = min(notional_eur / max(adv, 1), 1.0)
+    impact = notional_eur * impact_bps / 10_000.0 * (participation ** 0.5)
+    return impact
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Withholding tax sur dividendes
+# ─────────────────────────────────────────────────────────────────────────────
+
+def withholding_tax_cost(
+    dividend_eur: float,
+    country: str = "US",
+    account_type: str = "CTO",
+) -> float:
+    """
+    Retenue à la source sur dividendes.
+
+    Sur un CTO français, la retenue à la source est prélevée à la source
+    et partiellement récupérable via la déclaration fiscale (crédit d'impôt).
+    Sur un PEA, les dividendes de sociétés hors UE ne sont pas éligibles.
+
+    Args:
+        dividend_eur: montant brut du dividende en EUR
+        country: pays d'origine de la société
+        account_type: "CTO", "PEA", "PEA_PME"
+
+    Returns:
+        montant de la retenue en EUR (coût net pour l'investisseur)
+    """
+    if account_type.upper() == "PEA":
+        # PEA : pas de withholding (sociétés UE uniquement)
+        return 0.0
+
+    rate = WITHHOLDING_TAX.get(country.upper(), WITHHOLDING_TAX["default"])
+    # Crédit d'impôt partiel récupérable (convention fiscale FR)
+    # On applique seulement la part non récupérable (~50% en moyenne)
+    net_rate = rate * 0.5  # approximation crédit d'impôt
+    return dividend_eur * net_rate
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stamp duty / PTT
+# ─────────────────────────────────────────────────────────────────────────────
+
+def stamp_duty_cost(
+    notional_eur: float,
+    country: str = "US",
+    market_cap_eur: float = 0.0,
+) -> float:
+    """
+    Taxe boursière selon le pays de cotation.
+
+    Args:
+        notional_eur: montant de la transaction en EUR
+        country: pays de cotation (UK, BE, IT, FR, etc.)
+        market_cap_eur: capitalisation boursière (pour TTF italienne)
+
+    Returns:
+        montant de la taxe en EUR
+    """
+    country = country.upper()
+
+    # Italie : Tobin Tax uniquement si cap > 500M€
+    if country == "IT" and market_cap_eur < 500_000_000:
+        return 0.0
+
+    rate = STAMP_DUTY.get(country, STAMP_DUTY["default"])
+    return notional_eur * rate
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Frais de garde (custody fees)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def custody_fee_daily(
+    portfolio_value_eur: float,
+    broker: str = "default",
+) -> float:
+    """
+    Frais de garde journaliers (fraction des frais annuels).
+
+    Args:
+        portfolio_value_eur: valeur du portefeuille en EUR
+        broker: courtier
+
+    Returns:
+        frais de garde pour la journée en EUR
+    """
+    annual_bps = CUSTODY_FEES_ANNUAL_BPS.get(
+        broker.lower(),
+        CUSTODY_FEES_ANNUAL_BPS["default"]
+    )
+    annual_fee = portfolio_value_eur * annual_bps / 10_000.0
+    return annual_fee / 252.0  # fraction journalière
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Coût total réaliste d'une transaction
+# ─────────────────────────────────────────────────────────────────────────────
+
+def total_transaction_cost(
+    notional_eur: float,
+    broker: str = "default",
+    asset_type: str = "stock_eu",
+    cap_size: str = "mid_cap",
+    country: str = "US",
+    market_cap_eur: float = 0.0,
+    is_french: bool = False,
+) -> dict[str, float]:
+    """
+    Calcule le coût total réaliste d'une transaction.
+
+    Inclut :
+    - Commission broker
+    - Slippage bid-ask
+    - Impact marché
+    - Spread FX (si non-EUR)
+    - TTF (si action française > 1Md€)
+    - Stamp duty (si UK, BE, IT)
+
+    Returns:
+        dict avec le détail de chaque composante et le total
+    """
+    commission = broker_commission(notional_eur, broker, asset_type)
+    slippage = slippage_cost(notional_eur, cap_size)
+    impact = market_impact_cost(notional_eur, cap_size)
+    fx = fx_spread_cost(notional_eur, "USD" if country != "FR" else "EUR")
+    ttf = french_ttf(notional_eur, market_cap_eur) if is_french else 0.0
+    stamp = stamp_duty_cost(notional_eur, country, market_cap_eur)
+
+    total = commission + slippage + impact + fx + ttf + stamp
+
+    return {
+        "commission": round(commission, 4),
+        "slippage": round(slippage, 4),
+        "market_impact": round(impact, 4),
+        "fx_spread": round(fx, 4),
+        "ttf": round(ttf, 4),
+        "stamp_duty": round(stamp, 4),
+        "total": round(total, 4),
+        "total_bps": round(total / max(notional_eur, 1) * 10_000, 2),
     }
