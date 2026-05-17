@@ -212,7 +212,9 @@ class PositionManager:
         Version standalone si on ne veut que le trailing sans stop fixe.
         """
         weights, _ = self.apply_stops(
-            weights, past_prices, state,
+            weights,
+            past_prices,
+            state,
             stop_loss_pct=999.0,  # désactive le stop fixe
             use_trailing=True,
             trailing_pct=trailing_pct,

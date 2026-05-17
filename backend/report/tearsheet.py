@@ -55,62 +55,57 @@ def build_tearsheet(
 
     # Monthly returns (pour heatmap)
     monthly_rets = result.returns_series.resample("ME").apply(lambda x: (1 + x).prod() - 1)
-    monthly_returns_data = {
-        str(idx.year): {str(idx.month): round(float(v) * 100, 2)
-        for idx, v in monthly_rets.items()}
+    {
+        str(idx.year): {str(idx.month): round(float(v) * 100, 2) for idx, v in monthly_rets.items()}
         for idx in monthly_rets.index
     }
     # Format list pour sérialisation
-    monthly_returns_list = [
+    [
         {"date": str(idx.date()), "return": round(float(v) * 100, 2)}
         for idx, v in monthly_rets.items()
     ]
 
     # Rolling Sharpe 252j
-    rolling_sharpe = []
     r_series = result.returns_series
     if len(r_series) >= 252:
-        rs = r_series.rolling(252).apply(
-            lambda x: float(np.mean(x) / (np.std(x, ddof=1) + 1e-9) * np.sqrt(252))
-        ).dropna()
+        rs = (
+            r_series.rolling(252)
+            .apply(lambda x: float(np.mean(x) / (np.std(x, ddof=1) + 1e-9) * np.sqrt(252)))
+            .dropna()
+        )
         rs_monthly = rs.resample("ME").last()
-        rolling_sharpe = [
-            {"date": str(idx.date()), "sharpe": round(float(v), 3)}
-            for idx, v in rs_monthly.items()
-        ]
+        [{"date": str(idx.date()), "sharpe": round(float(v), 3)} for idx, v in rs_monthly.items()]
 
     # Rolling Volatility 63j
-    rolling_vol = []
     if len(r_series) >= 63:
         rv = r_series.rolling(63).std() * np.sqrt(252) * 100
         rv_monthly = rv.resample("ME").last().dropna()
-        rolling_vol = [
-            {"date": str(idx.date()), "vol": round(float(v), 2)}
-            for idx, v in rv_monthly.items()
-        ]
+        [{"date": str(idx.date()), "vol": round(float(v), 2)} for idx, v in rv_monthly.items()]
 
     # Rolling Beta 252j
     rolling_beta = []
     if benchmark_returns is not None and len(r_series) >= 252:
         bench_aligned = benchmark_returns.reindex(r_series.index).fillna(0)
+
         def _rolling_beta(window_r, window_b):
             cov = np.cov(window_r, window_b)
             var_b = np.var(window_b, ddof=1)
             return cov[0, 1] / (var_b + 1e-9) if var_b > 0 else 1.0
+
         for i in range(252, len(r_series), 21):
-            window_r = r_series.iloc[i-252:i].values
-            window_b = bench_aligned.iloc[i-252:i].values
+            window_r = r_series.iloc[i - 252 : i].values
+            window_b = bench_aligned.iloc[i - 252 : i].values
             dt = r_series.index[i]
             beta_val = _rolling_beta(window_r, window_b)
             rolling_beta.append({"date": str(dt.date()), "beta": round(float(beta_val), 3)})
 
     # Return distribution (daily returns en %)
-    return_distribution = [round(float(v) * 100, 4) for v in r_series.values if not np.isnan(v)]
+    [round(float(v) * 100, 4) for v in r_series.values if not np.isnan(v)]
 
     # Win/Loss distribution
     wins = [v * 100 for v in r_series.values if v > 0]
     losses = [v * 100 for v in r_series.values if v < 0]
-    win_loss_data = {
+    {
         "wins": [round(v, 4) for v in wins],
         "losses": [round(v, 4) for v in losses],
         "hit_rate": round(len(wins) / max(len(r_series), 1) * 100, 2),

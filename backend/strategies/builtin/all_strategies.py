@@ -135,7 +135,9 @@ class MomentumStrategy(Strategy):
 
         # Stops par position avec trailing
         weights, _ = self.apply_stops(
-            weights, past_prices, state,
+            weights,
+            past_prices,
+            state,
             stop_loss_pct=stop_loss,
             profit_target_pct=profit_target,
             use_trailing=True,
@@ -198,7 +200,9 @@ class MeanReversionStrategy(Strategy):
 
         # Stops par position — mean reversion sort vite (objectif bas)
         weights, _ = self.apply_stops(
-            weights, past_prices, state,
+            weights,
+            past_prices,
+            state,
             stop_loss_pct=stop_loss,
             profit_target_pct=profit_target,
         )
@@ -253,7 +257,9 @@ class SMACrossoverStrategy(Strategy):
 
         # Trailing stop — trend following sort sur retournement
         weights, _ = self.apply_stops(
-            weights, past_prices, state,
+            weights,
+            past_prices,
+            state,
             stop_loss_pct=stop_loss,
             use_trailing=True,
             trailing_pct=0.10,
@@ -391,7 +397,9 @@ class DualMomentumStrategy(Strategy):
 
         # Trailing stop sur position concentrée
         weights, _ = self.apply_stops(
-            weights, past_prices, state,
+            weights,
+            past_prices,
+            state,
             stop_loss_pct=stop_loss,
             use_trailing=True,
             trailing_pct=0.12,
@@ -448,7 +456,9 @@ class AdaptiveTrendStrategy(Strategy):
 
         # Trailing stop — trend following
         weights, _ = self.apply_stops(
-            weights, past_prices, state,
+            weights,
+            past_prices,
+            state,
             stop_loss_pct=stop_loss,
             use_trailing=True,
             trailing_pct=0.10,
