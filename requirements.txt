@@ -17,3 +17,7 @@ apscheduler==3.10.4
 sqlalchemy==2.0.36
 tensorflow-cpu>=2.15.0
 matplotlib>=3.8.0
+vaderSentiment>=3.3.2
+feedparser>=6.0.0
+vaderSentiment>=3.3.2
+feedparser>=6.0.0

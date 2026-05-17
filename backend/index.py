@@ -560,6 +560,34 @@ async def daily_signals(payload: TickerListIn):
     return {"signals": await compute_daily_signals(payload.tickers)}
 
 
+@app.post("/api/sentiment")
+async def sentiment_analysis(payload: TickerListIn):
+    """Analyse de sentiment RSS Yahoo Finance + VADER pour une liste de tickers."""
+    import asyncio
+    from backend.quant.sentiment import analyze_portfolio_sentiment, analyze_market_sentiment
+
+    loop = asyncio.get_event_loop()
+
+    def _run():
+        market = analyze_market_sentiment()
+        portfolio = analyze_portfolio_sentiment(payload.tickers[:10], delay=0.3)
+        return {"market": market, "tickers": portfolio}
+
+    result = await loop.run_in_executor(None, _run)
+    return result
+
+
+@app.get("/api/sentiment/market")
+async def market_sentiment():
+    """Sentiment global du marché (SP500 + Nasdaq)."""
+    import asyncio
+    from backend.quant.sentiment import analyze_market_sentiment
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, analyze_market_sentiment)
+    return result
+
+
 @app.post("/api/signals/rebalance")
 async def rebalance(payload: RebalanceIn):
     all_tickers = sorted(set(payload.positions) | set(payload.target_weights))
