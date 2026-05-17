@@ -115,6 +115,39 @@ def build_tearsheet(
     nav_monthly = nav.resample("ME").last()
     nav_chart = [{"date": str(idx.date()), "nav": float(v)} for idx, v in nav_monthly.items()]
 
+    # NAV multi-devises — conversion via paires FX historiques
+    nav_multiccy = {"EUR": nav_chart}
+    fx_pairs = {
+        "USD": "EURUSD=X",
+        "GBP": "EURGBP=X",
+        "CHF": "EURCHF=X",
+        "JPY": "EURJPY=X",
+    }
+    for ccy, fx_ticker in fx_pairs.items():
+        if prices is not None and fx_ticker in prices.columns:
+            fx = prices[fx_ticker].dropna().reindex(nav.index, method="ffill")
+            nav_ccy = nav * fx
+            nav_ccy_monthly = nav_ccy.resample("ME").last()
+            nav_multiccy[ccy] = [
+                {"date": str(idx.date()), "nav": round(float(v), 2)}
+                for idx, v in nav_ccy_monthly.items()
+                if not np.isnan(v)
+            ]
+
+    # NAV en équivalent OR
+    if prices is not None and "GLD" in prices.columns:
+        gld = prices["GLD"].dropna().reindex(nav.index, method="ffill")
+        eurusd = prices.get("EURUSD=X", pd.Series(dtype=float)).dropna().reindex(nav.index, method="ffill")
+        if not eurusd.empty:
+            nav_usd = nav * eurusd
+            nav_gold_oz = nav_usd / gld  # NAV en onces d'or
+            nav_gold_monthly = nav_gold_oz.resample("ME").last()
+            nav_multiccy["XAU"] = [
+                {"date": str(idx.date()), "nav": round(float(v), 4)}
+                for idx, v in nav_gold_monthly.items()
+                if not np.isnan(v)
+            ]
+
     # Benchmark NAV chart
     benchmark_chart = []
     if result.benchmark_nav is not None and not result.benchmark_nav.empty:
@@ -229,6 +262,7 @@ def build_tearsheet(
             },
             "nav_chart": nav_chart,
             "benchmark_chart": benchmark_chart,
+            "nav_multiccy": nav_multiccy,
             "drawdown_chart": dd_chart,
             "cost_chart": cost_chart,
             "allocation_chart": allocation_chart,
