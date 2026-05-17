@@ -61,8 +61,35 @@ async def _startup() -> None:
                 log.warning("SEC EDGAR job error: %s", e)
 
         scheduler.add_job(sec_fundamentals_job, "cron", hour=22, minute=0, timezone="UTC")
+
+        # Backup PostgreSQL quotidien à 23h00 UTC
+        async def pg_backup_job():
+            import asyncio
+            import os
+            from datetime import datetime
+            try:
+                backup_dir = "/data/backups"
+                os.makedirs(backup_dir, exist_ok=True)
+                date_str = datetime.now().strftime("%Y%m%d_%H%M")
+                backup_file = f"{backup_dir}/ethical_finance_{date_str}.sql.gz"
+                proc = await asyncio.create_subprocess_shell(
+                    f"pg_dump -U sauhabah -d ethical_finance | gzip > {backup_file}",
+                    env={**os.environ, "PGPASSWORD": os.environ.get("POSTGRES_PASSWORD", "sauhabah")},
+                )
+                await proc.wait()
+                # Garder seulement les 7 derniers backups
+                import glob
+                backups = sorted(glob.glob(f"{backup_dir}/ethical_finance_*.sql.gz"))
+                for old_backup in backups[:-7]:
+                    os.remove(old_backup)
+                    log.info("Deleted old backup: %s", old_backup)
+                log.info("PG backup complete: %s", backup_file)
+            except Exception as e:
+                log.warning("PG backup error: %s", e)
+
+        scheduler.add_job(pg_backup_job, "cron", hour=23, minute=0, timezone="UTC")
         scheduler.start()
-        log.info("Scheduler started — OHLCV at 21:00 UTC, SEC at 22:00 UTC")
+        log.info("Scheduler started — OHLCV 21h, SEC 22h, Backup 23h UTC")
         asyncio.create_task(_init_and_load())
 
 
