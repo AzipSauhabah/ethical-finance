@@ -43,6 +43,20 @@ services:
       timeout: 10s
       retries: 3
 
+  # ─── pgAdmin ──────────────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ethical-finance-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@sauhabah.eu
+      PGADMIN_DEFAULT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
 networks:
   default:
     name: ethical-finance-network
