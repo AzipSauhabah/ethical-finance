@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 
 from backend.strategies.base import Strategy, StrategyParams
+from backend.strategies.builtin.lstm_scorer import train_lstm, score_ticker as lstm_score_ticker
 from backend.strategies.registry import strategy_registry
 
 log = logging.getLogger(__name__)
@@ -315,6 +316,8 @@ class EPR5Strategy(Strategy):
             clf, scaler = _train_ml_model(state, past_prices)
             state["ml_model"] = clf
             state["ml_scaler"] = scaler
+            # LSTM — entraîné en parallèle, walk-forward safe
+            state["lstm"] = train_lstm(past_prices)
 
         clf = state.get("ml_model")
         scaler = state.get("ml_scaler")
@@ -384,8 +387,16 @@ class EPR5Strategy(Strategy):
                     except Exception:
                         ml_score = 0.5
 
-            if ml_score < ml_min_score:
+            # Score LSTM
+            lstm_state = state.get("lstm")
+            lstm_score = lstm_score_ticker(lstm_state, past_prices[ticker])
+
+            # Score combiné : 60% RF + 40% LSTM
+            combined_score = 0.6 * ml_score + 0.4 * lstm_score
+
+            if combined_score < ml_min_score:
                 continue
+            ml_score = combined_score  # utilise le score combiné pour le ranking
 
             candidates.append((ticker, ey, roic, ml_score))
 
