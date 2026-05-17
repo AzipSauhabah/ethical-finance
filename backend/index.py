@@ -231,15 +231,26 @@ async def screener(payload: ScreenerIn):
 
         # 1. Load fundamentals
         with engine.connect() as conn:
+            if payload.universe == "all":
+                universe_filter = ""
+                params = {"min_cap": payload.min_market_cap}
+            elif payload.universe in ("etf_broad", "etf_precious_metals"):
+                universe_filter = "AND universe = :universe"
+                params = {"min_cap": 0, "universe": payload.universe}
+            else:
+                universe_filter = "AND universe = :universe"
+                params = {"min_cap": payload.min_market_cap, "universe": payload.universe}
+
             rows = conn.execute(
-                sa.text("""
+                sa.text(f"""
                     SELECT ticker, name, sector, industry, market_cap,
                            total_debt, total_revenue, beta, dividend_yield
                     FROM ticker_fundamentals
                     WHERE market_cap >= :min_cap
+                    {universe_filter}
                     ORDER BY market_cap DESC
                 """),
-                {"min_cap": payload.min_market_cap},
+                params,
             ).fetchall()
 
         if not rows:
