@@ -97,9 +97,10 @@ async def _startup() -> None:
         # FMP — mise à jour fondamentaux non-US à 22h30 UTC
         async def fmp_fundamentals_job():
             try:
-                from backend.core.loader import CAC40_TICKERS
                 from backend.core.fmp import upsert_fmp_fundamentals
+                from backend.core.loader import CAC40_TICKERS
                 from backend.core.twelve_data import ALL_EXTENDED_TICKERS
+
                 all_non_us = list(set(CAC40_TICKERS + ALL_EXTENDED_TICKERS[:50]))
                 log.info("FMP job started — %d tickers", len(all_non_us))
                 n = await upsert_fmp_fundamentals(all_non_us)
