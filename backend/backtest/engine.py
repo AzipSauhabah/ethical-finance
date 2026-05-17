@@ -33,6 +33,8 @@ from datetime import date
 import pandas as pd
 
 from backend.backtest.portfolio import Portfolio
+from backend.backtest.costs import country_from_ticker, cap_size_from_market_cap
+from backend.backtest.costs import country_from_ticker, cap_size_from_market_cap
 from backend.quant.metrics import all_metrics, drawdown_series
 from backend.strategies.base import Strategy, StrategyParams
 
@@ -253,7 +255,10 @@ class BacktestEngine:
                 shares_to_sell = int(excess_v // price)
                 if shares_to_sell > 0:
                     portfolio.sell(
-                        dt, ticker, shares_to_sell, price, self.currencies.get(ticker, "USD")
+                        dt, ticker, shares_to_sell, price,
+                        self.currencies.get(ticker, "USD"),
+                        cap_size=cap_size_from_market_cap(self.params.custom.get("market_caps", {}).get(ticker, 2_000_000_000)),
+                        country=country_from_ticker(ticker),
                     )
 
         # 2) BUY under-weighted tickers
@@ -284,7 +289,12 @@ class BacktestEngine:
             )
             diff = target_shares - cur_shares
             if diff > 0:
-                portfolio.buy(dt, ticker, diff, price, self.currencies.get(ticker, "USD"))
+                _country = country_from_ticker(ticker)
+                _cap = cap_size_from_market_cap(
+                    self.params.custom.get("market_caps", {}).get(ticker, 2_000_000_000)
+                )
+                portfolio.buy(dt, ticker, diff, price, self.currencies.get(ticker, "USD"),
+                              cap_size=_cap, country=_country)
 
     def _apply_stop_loss(
         self,
@@ -298,4 +308,9 @@ class BacktestEngine:
                 continue
             current = prices_eur.get(ticker, pos.avg_cost_eur)
             if current < pos.avg_cost_eur * (1 - stop_pct):
-                portfolio.sell(dt, ticker, pos.shares, current, self.currencies.get(ticker, "USD"))
+                portfolio.sell(
+                        dt, ticker, pos.shares, current,
+                        self.currencies.get(ticker, "USD"),
+                        cap_size=cap_size_from_market_cap(2_000_000_000),
+                        country=country_from_ticker(ticker),
+                    )
