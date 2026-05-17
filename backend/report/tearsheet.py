@@ -137,7 +137,11 @@ def build_tearsheet(
     # NAV en équivalent OR
     if prices is not None and "GLD" in prices.columns:
         gld = prices["GLD"].dropna().reindex(nav.index, method="ffill")
-        eurusd = prices.get("EURUSD=X", pd.Series(dtype=float)).dropna().reindex(nav.index, method="ffill")
+        eurusd = (
+            prices.get("EURUSD=X", pd.Series(dtype=float))
+            .dropna()
+            .reindex(nav.index, method="ffill")
+        )
         if not eurusd.empty:
             nav_usd = nav * eurusd
             nav_gold_oz = nav_usd / gld  # NAV en onces d'or
