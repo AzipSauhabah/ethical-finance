@@ -125,18 +125,43 @@ class MomentumStrategy(Strategy):
     def on_bar(self, dt, past_prices, params, state):
         lb = int(params.custom.get("lookback_days", 231))
         top = float(params.custom.get("top_pct", 0.30))
+        stop_loss = float(params.custom.get("stop_loss_pct", 0.10))
+        profit_target = float(params.custom.get("profit_target", 0.25))
+
         if len(past_prices) < lb + 21:
             return {}
+
+        weights = dict(state.get("weights", {}))
+
+        # Stops par position avec trailing
+        weights, _ = self.apply_stops(
+            weights, past_prices, state,
+            stop_loss_pct=stop_loss,
+            profit_target_pct=profit_target,
+            use_trailing=True,
+            trailing_pct=0.12,
+        )
+
         # 12-1 momentum: total return from t-lb-21 to t-21 (skip last month)
         recent = past_prices.iloc[-21]
         past = past_prices.iloc[-(lb + 21)]
         mom = (recent / past - 1).dropna()
+        mom = mom[~mom.index.str.startswith("^")]
         if mom.empty:
-            return {}
+            state["weights"] = weights
+            return weights
+
         n_top = max(1, int(len(mom) * top))
-        winners = mom.nlargest(n_top).index
-        w = 1.0 / n_top
-        return {t: w for t in winners}
+        winners = mom.nlargest(n_top).index.tolist()
+
+        # ATR sizing pour les nouvelles entrées
+        for ticker in winners:
+            if ticker not in weights:
+                w = self.size_by_atr(ticker, past_prices, risk_pct=0.01, stop_atr_mult=2.0)
+                weights[ticker] = max(w, 1.0 / n_top)
+
+        state["weights"] = weights
+        return weights
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -163,17 +188,36 @@ class MeanReversionStrategy(Strategy):
     def on_bar(self, dt, past_prices, params, state):
         w = int(params.custom.get("window", 20))
         thr = float(params.custom.get("z_threshold", 1.5))
+        stop_loss = float(params.custom.get("stop_loss_pct", 0.08))
+        profit_target = float(params.custom.get("profit_target", 0.15))
+
         if len(past_prices) < w + 1:
             return {}
+
+        weights = dict(state.get("weights", {}))
+
+        # Stops par position — mean reversion sort vite (objectif bas)
+        weights, _ = self.apply_stops(
+            weights, past_prices, state,
+            stop_loss_pct=stop_loss,
+            profit_target_pct=profit_target,
+        )
+
         recent = past_prices.iloc[-w:]
         mu = recent.mean()
         sd = recent.std(ddof=1).replace(0, np.nan)
         z = (past_prices.iloc[-1] - mu) / sd
         oversold = z[z < -thr].dropna().index
-        if len(oversold) == 0:
-            return {}
-        w_each = 1.0 / len(oversold)
-        return {t: w_each for t in oversold}
+        oversold = [t for t in oversold if not t.startswith("^")]
+
+        # ATR sizing pour les nouvelles entrées
+        for ticker in oversold:
+            if ticker not in weights:
+                w_size = self.size_by_atr(ticker, past_prices, risk_pct=0.01)
+                weights[ticker] = w_size
+
+        state["weights"] = weights
+        return weights
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -200,15 +244,40 @@ class SMACrossoverStrategy(Strategy):
     def on_bar(self, dt, past_prices, params, state):
         fast = int(params.custom.get("fast", 50))
         slow = int(params.custom.get("slow", 200))
+        stop_loss = float(params.custom.get("stop_loss_pct", 0.10))
+
         if len(past_prices) < slow:
             return {}
+
+        weights = dict(state.get("weights", {}))
+
+        # Trailing stop — trend following sort sur retournement
+        weights, _ = self.apply_stops(
+            weights, past_prices, state,
+            stop_loss_pct=stop_loss,
+            use_trailing=True,
+            trailing_pct=0.10,
+            stop_atr_mult=2.5,
+        )
+
         ma_f = past_prices.iloc[-fast:].mean()
         ma_s = past_prices.iloc[-slow:].mean()
-        longs = ma_f[ma_f > ma_s].index
-        if len(longs) == 0:
-            return {}
-        w = 1.0 / len(longs)
-        return {t: w for t in longs}
+        longs = [t for t in ma_f[ma_f > ma_s].index if not t.startswith("^")]
+
+        # ATR sizing pour les nouvelles entrées
+        for ticker in longs:
+            if ticker not in weights:
+                w = self.size_by_atr(ticker, past_prices, risk_pct=0.01, stop_atr_mult=2.5)
+                weights[ticker] = w
+
+        # Fermer les positions dont le signal est passé négatif
+        for ticker in list(weights.keys()):
+            if ticker not in longs:
+                weights.pop(ticker, None)
+                state.get("entry_prices", {}).pop(ticker, None)
+
+        state["weights"] = weights
+        return weights
 
 
 # ─────────────────────────────────────────────────────────────────────────────
