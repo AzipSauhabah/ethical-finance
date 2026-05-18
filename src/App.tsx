@@ -23,15 +23,15 @@ const METHOD_LABELS: Record<string, { label: string; strategy: string }> = {
 };
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'about',    label: 'Vue d\'ensemble', icon: '◈' },
-  { key: 'tickers',  label: 'Portefeuille',    icon: '◎' },
-  { key: 'screener', label: 'Screener',         icon: '▣' },
-  { key: 'backtest', label: 'Analyse',          icon: '◉' },
-  { key: 'signals',  label: 'Signaux',          icon: '◆' },
-  { key: 'sentiment', label: 'Sentiment',        icon: '◉' },
-  { key: 'technical', label: 'Technical',        icon: '◇' },
-  { key: 'indicators', label: 'Indicateurs',      icon: '◈' },
-  { key: 'live',       label: 'Live',             icon: '⬤' },
+  { key: 'about',      label: 'Accueil',    icon: '◈' },
+  { key: 'tickers',    label: 'Portfolio',  icon: '◎' },
+  { key: 'screener',   label: 'Screener',   icon: '▣' },
+  { key: 'backtest',   label: 'Backtest',   icon: '◉' },
+  { key: 'signals',    label: 'Signaux',    icon: '◆' },
+  { key: 'sentiment',  label: 'Sentiment',  icon: '◉' },
+  { key: 'technical',  label: 'Technical',  icon: '◇' },
+  { key: 'indicators', label: 'Indicateurs',icon: '◈' },
+  { key: 'live',       label: 'Live',       icon: '⬤' },
 ];
 
 export default function App() {
