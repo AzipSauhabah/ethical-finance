@@ -192,6 +192,318 @@ function Slider({ label, value, min, max, step = 1, onChange }: any) {
   );
 }
 
+
+// ─── Elliott Wave ─────────────────────────────────────────────────────────────
+
+interface Pivot {
+  index: number;
+  price: number;
+  type: "high" | "low";
+  date: string;
+}
+
+interface Wave {
+  number: string;  // "1","2","3","4","5","A","B","C"
+  startIdx: number;
+  endIdx: number;
+  startPrice: number;
+  endPrice: number;
+  type: "impulse" | "corrective";
+  valid: boolean;
+  invalidReason?: string;
+}
+
+interface ElliottResult {
+  pivots: Pivot[];
+  waves: Wave[];
+  currentWave: string | null;
+  trend: "bullish" | "bearish" | "neutral";
+  confidence: number;  // 0-1
+  note: string;
+}
+
+function calcZigZag(closes: number[], dates: string[], threshold: number = 0.05): Pivot[] {
+  // Détecte les pivots significatifs (swing highs/lows)
+  // threshold = variation minimale pour considérer un pivot (5% par défaut)
+  if (closes.length < 10) return [];
+
+  const pivots: Pivot[] = [];
+  let lastPivotType: "high" | "low" | null = null;
+  let lastPivotPrice = closes[0];
+  let lastPivotIdx = 0;
+
+  for (let i = 1; i < closes.length; i++) {
+    const change = (closes[i] - lastPivotPrice) / lastPivotPrice;
+
+    if (lastPivotType !== "high" && change >= threshold) {
+      // Potentiel swing high — cherche le max local
+      if (lastPivotType === "low" || lastPivotType === null) {
+        // Confirme le pivot bas précédent
+        if (lastPivotType === "low" || pivots.length === 0) {
+          pivots.push({ index: lastPivotIdx, price: lastPivotPrice, type: "low", date: dates[lastPivotIdx] });
+        }
+        lastPivotType = "high";
+        lastPivotPrice = closes[i];
+        lastPivotIdx = i;
+      } else if (closes[i] > lastPivotPrice) {
+        lastPivotPrice = closes[i];
+        lastPivotIdx = i;
+      }
+    } else if (lastPivotType !== "low" && change <= -threshold) {
+      // Potentiel swing low
+      if (lastPivotType === "high" || lastPivotType === null) {
+        if (lastPivotType === "high") {
+          pivots.push({ index: lastPivotIdx, price: lastPivotPrice, type: "high", date: dates[lastPivotIdx] });
+        }
+        lastPivotType = "low";
+        lastPivotPrice = closes[i];
+        lastPivotIdx = i;
+      } else if (closes[i] < lastPivotPrice) {
+        lastPivotPrice = closes[i];
+        lastPivotIdx = i;
+      }
+    }
+  }
+
+  // Ajouter le dernier pivot
+  if (lastPivotType) {
+    pivots.push({ index: lastPivotIdx, price: lastPivotPrice, type: lastPivotType, date: dates[lastPivotIdx] });
+  }
+
+  return pivots.slice(-12); // Garder les 12 derniers pivots
+}
+
+function identifyElliottWaves(pivots: Pivot[]): ElliottResult {
+  if (pivots.length < 6) {
+    return { pivots, waves: [], currentWave: null, trend: "neutral", confidence: 0, note: "Pas assez de pivots détectés (minimum 6)" };
+  }
+
+  const waves: Wave[] = [];
+  let confidence = 0;
+  let note = "";
+  let currentWave: string | null = null;
+
+  // Prend les 6 derniers pivots pour identifier 5 vagues impulsives
+  const pts = pivots.slice(-6);
+  const [p0, p1, p2, p3, p4, p5] = pts;
+
+  // Détermine la tendance principale
+  const trend = p5.price > p0.price ? "bullish" : "bearish";
+  const dir = trend === "bullish" ? 1 : -1;
+
+  // Calcule les longueurs des vagues
+  const w1 = Math.abs(p1.price - p0.price);
+  const w2 = Math.abs(p2.price - p1.price);
+  const w3 = Math.abs(p3.price - p2.price);
+  const w4 = Math.abs(p4.price - p3.price);
+  const w5 = Math.abs(p5.price - p4.price);
+
+  // Règles Elliott
+  const rule1 = w2 / w1 < 1.0;           // Wave 2 < Wave 1
+  const rule2 = w3 > w1 && w3 > w5;       // Wave 3 la plus longue (ou au moins pas la plus courte)
+  const rule3 = w4 / w3 < 0.9;            // Wave 4 < Wave 3
+  const rule4 = trend === "bullish"        // Wave 4 ne chevauche pas Wave 1
+    ? p4.price > p1.price
+    : p4.price < p1.price;
+  const fibo2 = w2 / w1;                  // Idéalement 0.382, 0.5 ou 0.618
+  const fiboValid2 = fibo2 >= 0.3 && fibo2 <= 0.7;
+  const fibo4 = w4 / w3;
+  const fiboValid4 = fibo4 >= 0.2 && fibo4 <= 0.5;
+
+  const validCount = [rule1, rule2, rule3, rule4, fiboValid2, fiboValid4].filter(Boolean).length;
+  confidence = validCount / 6;
+
+  // Crée les objets Wave
+  const waveLabels = trend === "bullish"
+    ? ["1","2","3","4","5"]
+    : ["1","2","3","4","5"];
+
+  const pairings = [[p0,p1],[p1,p2],[p2,p3],[p3,p4],[p4,p5]];
+  pairings.forEach(([start, end], i) => {
+    const isValid = i === 0 ? rule1 : i === 1 ? rule2 : i === 2 ? rule3 : i === 3 ? rule4 : true;
+    waves.push({
+      number: waveLabels[i],
+      startIdx: start.index,
+      endIdx: end.index,
+      startPrice: start.price,
+      endPrice: end.price,
+      type: i % 2 === 0 ? "impulse" : "corrective",
+      valid: isValid,
+      invalidReason: !isValid ? getRuleViolation(i, rule1, rule2, rule3, rule4) : undefined,
+    });
+  });
+
+  // Détermine la vague courante
+  if (confidence > 0.5) {
+    // Si les 5 vagues sont complètes, on est en correction ABC
+    currentWave = confidence > 0.7 ? "5 (complète) → correction ABC attendue" : "5";
+  } else if (confidence > 0.3) {
+    currentWave = "3 ou 4";
+  } else {
+    currentWave = "Indéterminée";
+  }
+
+  // Note explicative
+  if (confidence >= 0.8) note = "Pattern Elliott clair — fort niveau de confiance";
+  else if (confidence >= 0.5) note = "Pattern probable — quelques règles non respectées";
+  else note = "Pattern incertain sur données daily — signal indicatif uniquement";
+
+  if (!rule4) note += " · ⚠ Wave 4 chevauche Wave 1 (règle violée)";
+  if (!rule2) note += " · ⚠ Wave 3 n'est pas la plus longue";
+
+  return { pivots, waves, currentWave, trend, confidence, note };
+}
+
+function getRuleViolation(waveIdx: number, r1: boolean, r2: boolean, r3: boolean, r4: boolean): string {
+  if (waveIdx === 0 && !r1) return "Wave 2 > Wave 1";
+  if (waveIdx === 1 && !r2) return "Wave 3 n'est pas la plus longue";
+  if (waveIdx === 2 && !r3) return "Wave 4 > 90% de Wave 3";
+  if (waveIdx === 3 && !r4) return "Wave 4 chevauche Wave 1";
+  return "";
+}
+
+function ElliottChart({ closes, dates, threshold }: { closes: number[]; dates: string[]; threshold: number }) {
+  const pivots = calcZigZag(closes, dates, threshold);
+  const result = identifyElliottWaves(pivots);
+  const { waves, trend, confidence, note, currentWave } = result;
+
+  const W = 600, H = 200;
+  const allPrices = [...closes, ...pivots.map(p => p.price)];
+  const min = Math.min(...allPrices) * 0.99;
+  const max = Math.max(...allPrices) * 1.01;
+  const range = max - min || 1;
+
+  const xScale = (idx: number) => (idx / (closes.length - 1)) * W;
+  const yScale = (price: number) => H - ((price - min) / range) * H;
+
+  const waveColors: Record<string, string> = {
+    "1": "#22c55e", "2": "#ef4444", "3": "#22c55e", "4": "#ef4444", "5": "#22c55e",
+    "A": "#f97316", "B": "#6366f1", "C": "#f97316",
+  };
+
+  return (
+    <div>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 16px", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <p style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", margin: "0 0 4px", textTransform: "uppercase" }}>Tendance</p>
+          <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: trend === "bullish" ? "#22c55e" : "#ef4444", fontFamily: "monospace" }}>
+            {trend === "bullish" ? "↑ HAUSSIÈRE" : "↓ BAISSIÈRE"}
+          </p>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 16px", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <p style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", margin: "0 0 4px", textTransform: "uppercase" }}>Vague probable</p>
+          <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "#ec4899", fontFamily: "monospace" }}>{currentWave || "—"}</p>
+        </div>
+        <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 16px", border: "1px solid rgba(255,255,255,0.08)", flex: 1 }}>
+          <p style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", margin: "0 0 4px", textTransform: "uppercase" }}>Confiance</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.08)" }}>
+              <div style={{ width: `${confidence * 100}%`, height: "100%", borderRadius: 3, background: confidence > 0.7 ? "#22c55e" : confidence > 0.4 ? "#EF9F27" : "#ef4444", transition: "width 0.4s" }}/>
+            </div>
+            <span style={{ fontSize: 12, fontFamily: "monospace", color: "#e8e8e8" }}>{(confidence * 100).toFixed(0)}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* SVG Chart */}
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", marginBottom: 12 }}>
+        {/* Prix en fond */}
+        <polyline
+          points={closes.map((c, i) => `${xScale(i)},${yScale(c)}`).join(" ")}
+          fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1"
+        />
+
+        {/* Lignes ZigZag entre pivots */}
+        {pivots.length > 1 && pivots.slice(0, -1).map((p, i) => {
+          const next = pivots[i + 1];
+          const wave = waves[i];
+          const color = wave ? waveColors[wave.number] || "#6b7280" : "#6b7280";
+          return (
+            <line key={i}
+              x1={xScale(p.index)} y1={yScale(p.price)}
+              x2={xScale(next.index)} y2={yScale(next.price)}
+              stroke={color} strokeWidth="2" strokeDasharray={wave?.valid ? "none" : "4 2"} opacity="0.8"
+            />
+          );
+        })}
+
+        {/* Labels des vagues */}
+        {waves.map((w, i) => {
+          const midX = (xScale(w.startIdx) + xScale(w.endIdx)) / 2;
+          const midY = (yScale(w.startPrice) + yScale(w.endPrice)) / 2;
+          const color = waveColors[w.number] || "#6b7280";
+          return (
+            <g key={i}>
+              <circle cx={midX} cy={midY} r="10" fill={`${color}22`} stroke={color} strokeWidth="1"/>
+              <text x={midX} y={midY + 4} fontSize="9" textAnchor="middle" fill={color} fontWeight="700" fontFamily="monospace">{w.number}</text>
+            </g>
+          );
+        })}
+
+        {/* Points pivots */}
+        {pivots.map((p, i) => (
+          <g key={i}>
+            <circle cx={xScale(p.index)} cy={yScale(p.price)} r="4"
+              fill={p.type === "high" ? "#22c55e" : "#ef4444"} opacity="0.8"
+            />
+            <text x={xScale(p.index)} y={p.type === "high" ? yScale(p.price) - 8 : yScale(p.price) + 16}
+              fontSize="8" textAnchor="middle" fill={p.type === "high" ? "#22c55e" : "#ef4444"} fontFamily="monospace">
+              {p.price.toFixed(1)}
+            </text>
+          </g>
+        ))}
+      </svg>
+
+      {/* Note */}
+      <p style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace", margin: "0 0 12px", padding: "8px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 6, borderLeft: "3px solid #ec4899" }}>
+        {note}
+      </p>
+
+      {/* Tableau des vagues */}
+      {waves.length > 0 && (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
+          <thead>
+            <tr style={{ background: "rgba(255,255,255,0.04)" }}>
+              {["Vague", "De", "À", "Amplitude", "Ratio Fibo", "Statut"].map(h => (
+                <th key={h} style={{ padding: "6px 10px", textAlign: "left", color: "#6b7280", fontFamily: "monospace", fontWeight: 500, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {waves.map((w, i) => {
+              const amp = Math.abs(w.endPrice - w.startPrice);
+              const pct = (amp / w.startPrice * 100).toFixed(1);
+              const prevAmp = i > 0 ? Math.abs(waves[i-1].endPrice - waves[i-1].startPrice) : null;
+              const ratio = prevAmp ? (amp / prevAmp).toFixed(3) : "—";
+              const color = waveColors[w.number] || "#6b7280";
+              return (
+                <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <td style={{ padding: "6px 10px" }}>
+                    <span style={{ color, fontWeight: 700, fontFamily: "monospace", background: `${color}22`, padding: "2px 8px", borderRadius: 4 }}>
+                      {w.number}
+                    </span>
+                  </td>
+                  <td style={{ padding: "6px 10px", color: "#9ca3af", fontFamily: "monospace" }}>{w.startPrice.toFixed(2)}</td>
+                  <td style={{ padding: "6px 10px", color: "#9ca3af", fontFamily: "monospace" }}>{w.endPrice.toFixed(2)}</td>
+                  <td style={{ padding: "6px 10px", color: "#e8e8e8", fontFamily: "monospace" }}>{amp.toFixed(2)} ({pct}%)</td>
+                  <td style={{ padding: "6px 10px", color: "#6b7280", fontFamily: "monospace" }}>{ratio}</td>
+                  <td style={{ padding: "6px 10px" }}>
+                    {w.valid
+                      ? <span style={{ color: "#22c55e", fontSize: 10, fontFamily: "monospace" }}>✓ valide</span>
+                      : <span style={{ color: "#ef4444", fontSize: 10, fontFamily: "monospace" }}>✗ {w.invalidReason}</span>
+                    }
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 interface Props { tickers: string[]; }
 
@@ -200,7 +512,8 @@ export default function IndicatorsPanel({ tickers }: Props) {
   const [period, setPeriod] = useState("6mo");
   const [data, setData] = useState<OHLCV[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"rsi" | "bollinger" | "macd" | "fibo">("rsi");
+  const [activeTab, setActiveTab] = useState<"rsi" | "bollinger" | "macd" | "fibo" | "elliott">("rsi");
+  const [elliottThreshold, setElliottThreshold] = useState(0.05);
   const [config, setConfig] = useState<IndicatorConfig>({
     rsi:       { period: 14, oversold: 30, overbought: 70 },
     bollinger: { period: 20, stdDev: 2 },
@@ -248,6 +561,7 @@ export default function IndicatorsPanel({ tickers }: Props) {
     { key: "bollinger", label: "Bollinger",     color: "#6366f1" },
     { key: "macd",      label: "MACD",          color: "#1d9e75" },
     { key: "fibo",      label: "Fibonacci",     color: "#f97316" },
+    { key: "elliott",   label: "Elliott Wave",  color: "#ec4899" },
   ] as const;
 
   const PERIODS = ["1mo", "3mo", "6mo", "1y", "2y"];
@@ -438,6 +752,21 @@ export default function IndicatorsPanel({ tickers }: Props) {
                 <LineChart data={macdData.macdLine} color="#1d9e75" height={80}/>
                 <p style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", margin: "8px 0" }}>Histogramme</p>
                 <BarChart data={macdData.histogram} height={60}/>
+              </div>
+            )}
+
+            {/* Elliott Wave */}
+            {activeTab === "elliott" && (
+              <div>
+                <div style={{ marginBottom: 16 }}>
+                  <Slider label="Seuil ZigZag" value={Math.round(elliottThreshold * 100)} min={2} max={15} step={1}
+                    onChange={(v: number) => setElliottThreshold(v / 100)}
+                  />
+                  <p style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", margin: "6px 0 0" }}>
+                    Seuil = variation minimale pour considérer un pivot. 5% = vagues hebdomadaires, 10% = vagues mensuelles.
+                  </p>
+                </div>
+                <ElliottChart closes={closes} dates={dates} threshold={elliottThreshold} />
               </div>
             )}
 
