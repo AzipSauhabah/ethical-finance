@@ -231,7 +231,6 @@ async def _fetch_prices_supabase(tickers, start, end):
     return df
 
 
-
 async def _fetch_prices_postgres(
     tickers: list[str],
     start: date,
@@ -239,6 +238,7 @@ async def _fetch_prices_postgres(
 ) -> pd.DataFrame:
     """Lit les prix adj_close depuis PostgreSQL ohlcv — source principale."""
     import os
+
     import sqlalchemy as sa
 
     database_url = os.environ.get("DATABASE_URL", "")
@@ -252,7 +252,8 @@ async def _fetch_prices_postgres(
 
         def _query():
             with engine.connect() as conn:
-                rows = conn.execute(sa.text("""
+                rows = conn.execute(
+                    sa.text("""
                     SELECT ticker, date, adj_close
                     FROM ohlcv
                     WHERE ticker = ANY(:tickers)
@@ -260,7 +261,9 @@ async def _fetch_prices_postgres(
                       AND date <= :end
                       AND adj_close IS NOT NULL
                     ORDER BY date ASC
-                """), {"tickers": tickers, "start": start, "end": end}).fetchall()
+                """),
+                    {"tickers": tickers, "start": start, "end": end},
+                ).fetchall()
             if not rows:
                 return pd.DataFrame()
             df = pd.DataFrame(rows, columns=["ticker", "date", "adj_close"])
@@ -271,6 +274,7 @@ async def _fetch_prices_postgres(
     except Exception as e:
         log.warning("_fetch_prices_postgres error: %s", e)
         return pd.DataFrame()
+
 
 async def get_prices(
     tickers: list[str],
