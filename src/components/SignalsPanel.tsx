@@ -208,7 +208,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
     fetchRealSignals(selectedStrategy, tickers || [], filterUniverse === "Tous" ? "all" : filterUniverse.toLowerCase().replace(" ", "_"))
       .then(data => { setSignals(data); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
-  }, [selectedStrategy]);
+  }, [selectedStrategy, JSON.stringify(tickers)]);
 
   const universes = ["Tous", "SP500", "CAC40", "ETF Precious", "ETF Broad", "MSCI World"];
   const filtered = signals
