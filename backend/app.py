@@ -142,7 +142,9 @@ async def _startup() -> None:
         async def daily_signals_job():
             try:
                 import os
+
                 import sqlalchemy as sa
+
                 from backend.signals.daily import compute_daily_signals
 
                 database_url = os.environ.get("DATABASE_URL", "")
@@ -151,26 +153,74 @@ async def _startup() -> None:
 
                 # Récupérer tous les tickers en base
                 with engine.connect() as conn:
-                    rows = conn.execute(sa.text("SELECT DISTINCT ticker FROM ticker_fundamentals ORDER BY ticker")).fetchall()
+                    rows = conn.execute(
+                        sa.text("SELECT DISTINCT ticker FROM ticker_fundamentals ORDER BY ticker")
+                    ).fetchall()
                 tickers = [r[0] for r in rows]
                 log.info("Daily signals job — %d tickers", len(tickers))
 
-                STRATEGIES = ["epr5", "momentum", "mean_reversion", "sma_crossover", "dual_momentum", "buy_hold"]
+                STRATEGIES = [
+                    "epr5",
+                    "momentum",
+                    "mean_reversion",
+                    "sma_crossover",
+                    "dual_momentum",
+                    "buy_hold",
+                ]
                 WEIGHTS = {
-                    "epr5":           {"sma": 0.20, "rsi": 0.20, "macd": 0.20, "momentum": 0.20, "sentiment": 0.20},
-                    "momentum":       {"sma": 0.10, "rsi": 0.15, "macd": 0.20, "momentum": 0.35, "sentiment": 0.20},
-                    "mean_reversion": {"sma": 0.15, "rsi": 0.35, "macd": 0.15, "momentum": 0.10, "sentiment": 0.25},
-                    "sma_crossover":  {"sma": 0.55, "rsi": 0.10, "macd": 0.15, "momentum": 0.10, "sentiment": 0.10},
-                    "dual_momentum":  {"sma": 0.10, "rsi": 0.15, "macd": 0.15, "momentum": 0.30, "sentiment": 0.30},
-                    "buy_hold":       {"sma": 0.20, "rsi": 0.20, "macd": 0.20, "momentum": 0.15, "sentiment": 0.25},
+                    "epr5": {
+                        "sma": 0.20,
+                        "rsi": 0.20,
+                        "macd": 0.20,
+                        "momentum": 0.20,
+                        "sentiment": 0.20,
+                    },
+                    "momentum": {
+                        "sma": 0.10,
+                        "rsi": 0.15,
+                        "macd": 0.20,
+                        "momentum": 0.35,
+                        "sentiment": 0.20,
+                    },
+                    "mean_reversion": {
+                        "sma": 0.15,
+                        "rsi": 0.35,
+                        "macd": 0.15,
+                        "momentum": 0.10,
+                        "sentiment": 0.25,
+                    },
+                    "sma_crossover": {
+                        "sma": 0.55,
+                        "rsi": 0.10,
+                        "macd": 0.15,
+                        "momentum": 0.10,
+                        "sentiment": 0.10,
+                    },
+                    "dual_momentum": {
+                        "sma": 0.10,
+                        "rsi": 0.15,
+                        "macd": 0.15,
+                        "momentum": 0.30,
+                        "sentiment": 0.30,
+                    },
+                    "buy_hold": {
+                        "sma": 0.20,
+                        "rsi": 0.20,
+                        "macd": 0.20,
+                        "momentum": 0.15,
+                        "sentiment": 0.25,
+                    },
                 }
 
                 # Traiter par batch de 50
                 for strategy in STRATEGIES:
                     weights = WEIGHTS[strategy]
-                    def norm(v): return (v + 1) / 2.0
+
+                    def norm(v):
+                        return (v + 1) / 2.0
+
                     for i in range(0, len(tickers), 50):
-                        batch = tickers[i:i+50]
+                        batch = tickers[i : i + 50]
                         try:
                             raw = await compute_daily_signals(batch)
                             pool = app.state.pool
@@ -180,13 +230,15 @@ async def _startup() -> None:
                                 for s in raw:
                                     ind = s.get("indicators", {})
                                     composite = round(
-                                        norm(ind.get("sma_crossover",0)) * weights["sma"] +
-                                        norm(ind.get("rsi",0))           * weights["rsi"] +
-                                        norm(ind.get("macd",0))          * weights["macd"] +
-                                        norm(ind.get("momentum",0))      * weights["momentum"] +
-                                        norm(ind.get("sentiment",0))     * weights["sentiment"], 4
+                                        norm(ind.get("sma_crossover", 0)) * weights["sma"]
+                                        + norm(ind.get("rsi", 0)) * weights["rsi"]
+                                        + norm(ind.get("macd", 0)) * weights["macd"]
+                                        + norm(ind.get("momentum", 0)) * weights["momentum"]
+                                        + norm(ind.get("sentiment", 0)) * weights["sentiment"],
+                                        4,
                                     )
-                                    await conn.execute("""
+                                    await conn.execute(
+                                        """
                                         INSERT INTO signals_history
                                             (ticker, date, strategy_id, signal_buy, signal_sell,
                                              rf_score, lstm_score, sentiment_score, fundamental_score,
@@ -197,14 +249,17 @@ async def _startup() -> None:
                                             signal_buy=EXCLUDED.signal_buy,
                                             signal_sell=EXCLUDED.signal_sell
                                     """,
-                                        s["ticker"], s["date"], strategy,
-                                        composite >= 0.60, composite <= 0.40,
-                                        norm(ind.get("sma_crossover",0)),
-                                        norm(ind.get("macd",0)),
-                                        norm(ind.get("sentiment",0)),
-                                        norm(ind.get("rsi",0)),
-                                        norm(ind.get("momentum",0)),
-                                        composite
+                                        s["ticker"],
+                                        s["date"],
+                                        strategy,
+                                        composite >= 0.60,
+                                        composite <= 0.40,
+                                        norm(ind.get("sma_crossover", 0)),
+                                        norm(ind.get("macd", 0)),
+                                        norm(ind.get("sentiment", 0)),
+                                        norm(ind.get("rsi", 0)),
+                                        norm(ind.get("momentum", 0)),
+                                        composite,
                                     )
                         except Exception as e:
                             log.warning("signals batch error %s: %s", strategy, e)
