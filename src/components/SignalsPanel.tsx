@@ -302,7 +302,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
       </div>
 
       {/* ── Tableau signaux ── */}
-      <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+      <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", marginBottom: 20, background: "transparent" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "rgba(255,255,255,0.04)" }}>
@@ -319,7 +319,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
                 <tr
                   key={row.ticker}
                   onClick={() => setExpandedTicker(expandedTicker === row.ticker ? null : row.ticker)}
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.03)", cursor: "pointer" }}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "transparent", cursor: "pointer" }}
                 >
                   <td style={{ padding: "12px 12px", fontFamily: "monospace", fontWeight: 600, color: "#e8e8e8" }}>
                     {row.ticker}
