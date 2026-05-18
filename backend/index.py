@@ -556,7 +556,7 @@ async def monte_carlo(payload: MonteCarloIn):
 
 
 @app.post("/api/signals/daily")
-async def daily_signals(payload: TickerListIn, strategy: str = "epr5"):
+async def daily_signals(payload: TickerListIn, strategy: str = "epr5", request: Request = None):
     """Signaux journaliers pondérés selon la stratégie choisie.
 
     Stratégies disponibles : epr5, momentum, mean_reversion, sma_crossover, dual_momentum, buy_hold
@@ -624,6 +624,30 @@ async def daily_signals(payload: TickerListIn, strategy: str = "epr5"):
                 "sentiment_detail": s.get("sentiment", {}),
             }
         )
+    # Persistance automatique dans signals_history
+    if request and hasattr(request.app.state, "pool") and request.app.state.pool:
+        try:
+            async with request.app.state.pool.acquire() as conn:
+                for s in results:
+                    await conn.execute("""
+                        INSERT INTO signals_history
+                            (ticker, date, strategy_id, signal_buy, signal_sell,
+                             rf_score, lstm_score, sentiment_score, fundamental_score,
+                             technical_score, composite_score)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                        ON CONFLICT (ticker, date, strategy_id) DO UPDATE SET
+                            signal_buy=EXCLUDED.signal_buy,
+                            signal_sell=EXCLUDED.signal_sell,
+                            composite_score=EXCLUDED.composite_score
+                    """,
+                        s["ticker"], s["date"], strategy,
+                        s["signal"] == "BUY", s["signal"] == "SELL",
+                        s["rf_score"], s["lstm_score"], s["sentiment_score"],
+                        s["fundamental_score"], s["technical_score"], s["composite_score"]
+                    )
+        except Exception as e:
+            log.warning("signals_history insert error: %s", e)
+
     return {"signals": results, "strategy": strategy}
 
 
