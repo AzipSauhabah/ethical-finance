@@ -43,8 +43,14 @@ except ImportError:
     HAS_SCHEDULER = False
 
 
+_STARTED = False
+
 @app.on_event("startup")
 async def _startup() -> None:
+    global _STARTED
+    if _STARTED:
+        return
+    _STARTED = True
     import asyncio
 
     from backend.core.queue import start_worker
