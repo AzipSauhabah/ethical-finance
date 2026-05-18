@@ -556,8 +556,52 @@ async def monte_carlo(payload: MonteCarloIn):
 
 
 @app.post("/api/signals/daily")
-async def daily_signals(payload: TickerListIn):
-    return {"signals": await compute_daily_signals(payload.tickers)}
+async def daily_signals(payload: TickerListIn, strategy: str = "epr5"):
+    """Signaux journaliers pondérés selon la stratégie choisie.
+    
+    Stratégies disponibles : epr5, momentum, mean_reversion, sma_crossover, dual_momentum, buy_hold
+    Les poids de chaque vote varient selon la stratégie.
+    """
+    STRATEGY_WEIGHTS = {
+        "epr5":           {"sma": 0.20, "rsi": 0.20, "macd": 0.20, "momentum": 0.20, "sentiment": 0.20},
+        "momentum":       {"sma": 0.10, "rsi": 0.15, "macd": 0.20, "momentum": 0.35, "sentiment": 0.20},
+        "mean_reversion": {"sma": 0.15, "rsi": 0.35, "macd": 0.15, "momentum": 0.10, "sentiment": 0.25},
+        "sma_crossover":  {"sma": 0.55, "rsi": 0.10, "macd": 0.15, "momentum": 0.10, "sentiment": 0.10},
+        "dual_momentum":  {"sma": 0.10, "rsi": 0.15, "macd": 0.15, "momentum": 0.30, "sentiment": 0.30},
+        "buy_hold":       {"sma": 0.20, "rsi": 0.20, "macd": 0.20, "momentum": 0.15, "sentiment": 0.25},
+    }
+    weights = STRATEGY_WEIGHTS.get(strategy, STRATEGY_WEIGHTS["epr5"])
+    raw = await compute_daily_signals(payload.tickers)
+
+    results = []
+    for s in raw:
+        ind = s.get("indicators", {})
+        # Normalise chaque vote de -1/0/+1 vers 0..1
+        def norm(v): return (v + 1) / 2.0
+        technical = (
+            norm(ind.get("sma_crossover", 0)) * weights["sma"] +
+            norm(ind.get("rsi", 0))           * weights["rsi"] +
+            norm(ind.get("macd", 0))          * weights["macd"] +
+            norm(ind.get("momentum", 0))      * weights["momentum"] +
+            norm(ind.get("sentiment", 0))     * weights["sentiment"]
+        )
+        composite = round(technical, 4)
+        signal = "BUY" if composite >= 0.60 else ("SELL" if composite <= 0.40 else "HOLD")
+        results.append({
+            "ticker":            s["ticker"],
+            "date":              s["date"],
+            "strategy":          strategy,
+            "signal":            signal,
+            "composite_score":   composite,
+            "rf_score":          norm(ind.get("sma_crossover", 0)),
+            "lstm_score":        norm(ind.get("macd", 0)),
+            "sentiment_score":   norm(ind.get("sentiment", 0)),
+            "fundamental_score": norm(ind.get("rsi", 0)),
+            "technical_score":   norm(ind.get("momentum", 0)),
+            "raw_indicators":    ind,
+            "sentiment_detail":  s.get("sentiment", {}),
+        })
+    return {"signals": results, "strategy": strategy}
 
 
 @app.post("/api/sentiment")

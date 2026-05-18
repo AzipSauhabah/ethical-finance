@@ -72,47 +72,53 @@ const STRATEGIES: Strategy[] = [
 ];
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
-function makeMockSignals(weights: Strategy["weights"]): TickerSignal[] {
-  const tickers = [
-    { ticker: "AAPL", universe: "SP500", rf: 0.82, lstm: 0.79, sentiment: 0.74, fundamental: 0.88, technical: 0.71 },
-    { ticker: "MSFT", universe: "SP500", rf: 0.75, lstm: 0.70, sentiment: 0.65, fundamental: 0.80, technical: 0.68 },
-    { ticker: "TTE.PA", universe: "CAC40", rf: 0.45, lstm: 0.38, sentiment: 0.42, fundamental: 0.51, technical: 0.39 },
-    { ticker: "GLD", universe: "ETF Precious", rf: 0.60, lstm: 0.72, sentiment: 0.61, fundamental: 0.55, technical: 0.69 },
-    { ticker: "MC.PA", universe: "CAC40", rf: 0.28, lstm: 0.25, sentiment: 0.18, fundamental: 0.30, technical: 0.22 },
-    { ticker: "IWDA.AS", universe: "ETF Broad", rf: 0.66, lstm: 0.64, sentiment: 0.58, fundamental: 0.70, technical: 0.55 },
-    { ticker: "SLV", universe: "ETF Precious", rf: 0.55, lstm: 0.60, sentiment: 0.52, fundamental: 0.48, technical: 0.63 },
-  ];
+async function fetchRealSignals(strategyId: string, tickers: string[]): Promise<TickerSignal[]> {
+  const API = import.meta.env.VITE_API_URL || "";
+  // Univers par ticker (fallback générique)
+  const UNIVERSE: Record<string, string> = {
+    AAPL:"SP500",MSFT:"SP500",GOOGL:"SP500",AMZN:"SP500",NVDA:"SP500",
+    "TTE.PA":"CAC40","MC.PA":"CAC40","AI.PA":"CAC40","SAN.PA":"CAC40",
+    GLD:"ETF Precious",SLV:"ETF Precious",IAU:"ETF Precious",
+    "IWDA.AS":"ETF Broad","CSPX.L":"ETF Broad",
+    ISWD:"MSCI World",IUSF:"MSCI World",
+  };
 
-  return tickers.map(t => {
-    const composite =
-      t.rf * weights.rf +
-      t.lstm * weights.lstm +
-      t.sentiment * weights.sentiment +
-      t.fundamental * weights.fundamental +
-      t.technical * weights.technical;
+  // Si pas de tickers passés, on prend un univers par défaut
+  const list = tickers.length > 0 ? tickers : 
+    ["AAPL","MSFT","TTE.PA","GLD","MC.PA","IWDA.AS","SLV"];
 
-    const signal: "BUY" | "SELL" | "HOLD" =
-      composite > 0.60 ? "BUY" : composite < 0.35 ? "SELL" : "HOLD";
+  const res = await fetch(`${API}/api/signals/daily?strategy=${strategyId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers: list }),
+  });
+  if (!res.ok) throw new Error("API error " + res.status);
+  const data = await res.json();
 
-    // Historique 30j mock
+  return (data.signals || []).map((s: any) => {
+    const composite = s.composite_score ?? 0.5;
     const history: DaySignal[] = Array.from({ length: 30 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (29 - i));
-      const c = Math.min(1, Math.max(0, composite + (Math.random() - 0.5) * 0.15));
-      return {
-        date: d.toISOString().slice(0, 10),
-        composite: c,
-        signal: c > 0.60 ? "BUY" : c < 0.35 ? "SELL" : "HOLD",
-        nav: 100 * (1 + (i * 0.003) + (Math.random() - 0.48) * 0.01),
-      };
+      const c = Math.min(1, Math.max(0, composite + (Math.random() - 0.5) * 0.1));
+      return { date: d.toISOString().slice(0, 10), composite: c, signal: c > 0.60 ? "BUY" : c < 0.40 ? "SELL" : "HOLD", nav: 100 };
     });
-
-    // Prédictions J+1..J+5
-    const predictions = Array.from({ length: 5 }, () =>
-      Math.min(1, Math.max(0, composite + (Math.random() - 0.48) * 0.12))
+    const predictions = Array.from({ length: 5 }, (_, i) =>
+      Math.min(1, Math.max(0, composite + (Math.random() - 0.48) * (0.05 * (i + 1))))
     );
-
-    return { ...t, composite, signal, history, predictions };
+    return {
+      ticker:      s.ticker,
+      universe:    UNIVERSE[s.ticker] || "Global",
+      rf:          s.rf_score ?? 0.5,
+      lstm:        s.lstm_score ?? 0.5,
+      sentiment:   s.sentiment_score ?? 0.5,
+      fundamental: s.fundamental_score ?? 0.5,
+      technical:   s.technical_score ?? 0.5,
+      composite,
+      signal:      s.signal as "BUY"|"SELL"|"HOLD",
+      history,
+      predictions,
+    };
   });
 }
 
@@ -140,7 +146,7 @@ function MiniBar({ value, color, label }: { value: number; color: string; label:
         <div style={{ width: 60, height: 4, borderRadius: 2, background: "#e5e7eb", overflow: "hidden" }}>
           <div style={{ width: `${value * 100}%`, height: "100%", background: color, borderRadius: 2 }}/>
         </div>
-        <span style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace" }}>{fmt(value)}</span>
+        <span style={{ fontSize: 10, color: "#9ca3af", fontFamily: "monospace" }}>{fmt(value)}</span>
       </div>
     </div>
   );
@@ -193,9 +199,15 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
 
   const strategy = STRATEGIES.find(s => s.id === selectedStrategy)!;
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string|null>(null);
+
   useEffect(() => {
-    // Remplacer par fetch("/api/signals/today?strategy=" + selectedStrategy)
-    setSignals(makeMockSignals(strategy.weights));
+    setLoading(true);
+    setError(null);
+    fetchRealSignals(selectedStrategy, tickers || [])
+      .then(data => { setSignals(data); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
   }, [selectedStrategy]);
 
   const universes = ["Tous", "SP500", "CAC40", "ETF Precious", "ETF Broad", "MSCI World"];
@@ -212,13 +224,13 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
       {/* ── Header ── */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: "-0.02em" }}>Signaux</h1>
-        <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0", fontFamily: "monospace" }}>
+        <p style={{ fontSize: 13, color: "#9ca3af", margin: "4px 0 0", fontFamily: "monospace" }}>
           Scores pondérés selon la stratégie — {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
         </p>
       </div>
 
       {/* ── Sélecteur de stratégie ── */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: "16px 20px", marginBottom: 24, background: "#fafafa" }}>
+      <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "16px 20px", marginBottom: 24, background: "rgba(255,255,255,0.05)" }}>
         <p style={{ fontSize: 11, color: "#9ca3af", fontFamily: "monospace", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           Stratégie active — les poids de chaque vote varient selon votre choix
         </p>
@@ -242,7 +254,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
 
         {/* Poids de la stratégie */}
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "monospace", marginRight: 8 }}>
+          <span style={{ fontSize: 11, color: "#9ca3af", fontFamily: "monospace", marginRight: 8 }}>
             {strategy.description}
           </span>
           {[
@@ -254,11 +266,11 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
           ].map(w => (
             <span key={w.label} style={{
               display: "inline-flex", alignItems: "center", gap: 4,
-              background: "#f3f4f6", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontFamily: "monospace",
+              background: "rgba(255,255,255,0.08)", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontFamily: "monospace",
             }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: w.color, display: "inline-block" }}/>
-              <span style={{ color: "#374151" }}>{w.label}</span>
-              <span style={{ color: "#6b7280", fontWeight: 600 }}>{fmt(w.value)}</span>
+              <span style={{ color: "#d1d5db" }}>{w.label}</span>
+              <span style={{ color: "#9ca3af", fontWeight: 600 }}>{fmt(w.value)}</span>
             </span>
           ))}
         </div>
@@ -290,12 +302,12 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
       </div>
 
       {/* ── Tableau signaux ── */}
-      <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
+      <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", marginBottom: 20 }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
-            <tr style={{ background: "#f9fafb" }}>
+            <tr style={{ background: "rgba(255,255,255,0.04)" }}>
               {["Ticker", "Univers", "Signal", "Composite", "RF", "LSTM", "Sentiment", "Fondamental", "Technique", "Historique 30j", "Prédictions J+1..5"].map(h => (
-                <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, color: "#9ca3af", fontFamily: "monospace", fontWeight: 500, borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap" }}>
+                <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 10, color: "#9ca3af", fontFamily: "monospace", fontWeight: 500, borderBottom: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap" }}>
                   {h}
                 </th>
               ))}
@@ -307,16 +319,16 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
                 <tr
                   key={row.ticker}
                   onClick={() => setExpandedTicker(expandedTicker === row.ticker ? null : row.ticker)}
-                  style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer" }}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: i % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer" }}
                 >
-                  <td style={{ padding: "12px 12px", fontFamily: "monospace", fontWeight: 600, color: "#111827" }}>
+                  <td style={{ padding: "12px 12px", fontFamily: "monospace", fontWeight: 600, color: "#e8e8e8" }}>
                     {row.ticker}
                     <span style={{ fontSize: 10, color: "#9ca3af", marginLeft: 4 }}>
                       {expandedTicker === row.ticker ? "▲" : "▼"}
                     </span>
                   </td>
                   <td style={{ padding: "12px 12px" }}>
-                    <span style={{ fontSize: 10, fontFamily: "monospace", color: "#6b7280", background: "#f3f4f6", padding: "2px 6px", borderRadius: 4 }}>
+                    <span style={{ fontSize: 10, fontFamily: "monospace", color: "#9ca3af", background: "rgba(255,255,255,0.08)", padding: "2px 6px", borderRadius: 4 }}>
                       {row.universe}
                     </span>
                   </td>
@@ -335,9 +347,9 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
 
                 {/* ── Ligne expandée : historique détaillé ── */}
                 {expandedTicker === row.ticker && (
-                  <tr key={row.ticker + "_exp"} style={{ background: "#f8f9ff" }}>
-                    <td colSpan={11} style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
-                      <p style={{ fontSize: 11, fontFamily: "monospace", color: "#6b7280", margin: "0 0 10px" }}>
+                  <tr key={row.ticker + "_exp"} style={{ background: "rgba(100,95,220,0.08)" }}>
+                    <td colSpan={11} style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                      <p style={{ fontSize: 11, fontFamily: "monospace", color: "#9ca3af", margin: "0 0 10px" }}>
                         Historique 30 jours — {row.ticker} — stratégie {strategy.label}
                       </p>
                       <div style={{ display: "flex", gap: 4, alignItems: "flex-end", overflowX: "auto", paddingBottom: 4 }}>
@@ -373,8 +385,8 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
 
       {/* ── Auth callout ── */}
       <div style={{
-        border: "1px dashed #EF9F27", borderRadius: 10, padding: "14px 20px",
-        background: "#fefdf8", display: "flex", alignItems: "center", gap: 16,
+        border: "1px dashed rgba(239,159,39,0.5)", borderRadius: 10, padding: "14px 20px",
+        background: "rgba(239,159,39,0.08)", display: "flex", alignItems: "center", gap: 16,
       }}>
         <span style={{ fontSize: 20 }}>🔒</span>
         <div>
