@@ -128,10 +128,13 @@ def _fetch_google_news(ticker: str, max_items: int = 10) -> list[dict]:
         articles = _fetch_rss(url, max_items=max_items)
         # Google News encode le titre dans description — on extrait le texte brut
         import re
+
         for a in articles:
             if a.get("description"):
                 # Enlève les balises HTML
-                a["title"] = re.sub(r"<[^>]+>", " ", a.get("description", a.get("title", ""))).strip()
+                a["title"] = re.sub(
+                    r"<[^>]+>", " ", a.get("description", a.get("title", ""))
+                ).strip()
         return articles
     except Exception as e:
         log.debug("Google News fetch error for %s: %s", ticker, e)
@@ -208,7 +211,7 @@ def analyze_ticker_sentiment(ticker: str, max_articles: int = 10) -> dict:
             seen_titles.add(title_key)
             articles.append(a)
 
-    articles = articles[:max_articles * 2]  # max 20 articles au total
+    articles = articles[: max_articles * 2]  # max 20 articles au total
 
     if not articles:
         return {
