@@ -26,3 +26,4 @@ google-auth>=2.23.0
 python-jose[cryptography]
 bcrypt
 asyncpg
+praw

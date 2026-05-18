@@ -82,6 +82,14 @@ YAHOO_MARKET_RSS = (
     "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EIXIC&region=US&lang=en-US"
 )
 
+# Google News RSS — gratuit, sans limite, 80 000+ sources
+GOOGLE_NEWS_TEMPLATE = (
+    "https://news.google.com/rss/search?q={query}+stock&hl=en-US&gl=US&ceid=US:en"
+)
+GOOGLE_NEWS_MARKET = (
+    "https://news.google.com/rss/search?q=stock+market+investing&hl=en-US&gl=US&ceid=US:en"
+)
+
 
 # ─── VADER avec lexique financier ────────────────────────────────────────────
 
@@ -108,6 +116,26 @@ def _score_text(text: str) -> float:
         return 0.0
     scores = analyzer.polarity_scores(text)
     return float(scores["compound"])
+
+
+# ─── Fetcher Google News RSS ─────────────────────────────────────────────────────
+def _fetch_google_news(ticker: str, max_items: int = 10) -> list[dict]:
+    """Fetch Google News RSS pour un ticker — gratuit, sans API key."""
+    # Normalise le ticker pour la recherche (enlève .PA, .L, etc.)
+    query = ticker.split(".")[0] if "." in ticker else ticker
+    url = GOOGLE_NEWS_TEMPLATE.format(query=query)
+    try:
+        articles = _fetch_rss(url, max_items=max_items)
+        # Google News encode le titre dans description — on extrait le texte brut
+        import re
+        for a in articles:
+            if a.get("description"):
+                # Enlève les balises HTML
+                a["title"] = re.sub(r"<[^>]+>", " ", a.get("description", a.get("title", ""))).strip()
+        return articles
+    except Exception as e:
+        log.debug("Google News fetch error for %s: %s", ticker, e)
+        return []
 
 
 # ─── Fetcher RSS ──────────────────────────────────────────────────────────────
@@ -164,8 +192,23 @@ def analyze_ticker_sentiment(ticker: str, max_articles: int = 10) -> dict:
     Returns:
         dict avec score, articles, tendance
     """
+    # Source 1 : Yahoo Finance RSS
     url = YAHOO_RSS_TEMPLATE.format(ticker=ticker)
-    articles = _fetch_rss(url, max_items=max_articles)
+    yahoo_articles = _fetch_rss(url, max_items=max_articles)
+
+    # Source 2 : Google News RSS (gratuit, sans API key)
+    google_articles = _fetch_google_news(ticker, max_items=max_articles)
+
+    # Fusion et déduplication par titre
+    seen_titles = set()
+    articles = []
+    for a in yahoo_articles + google_articles:
+        title_key = a.get("title", "")[:50].lower()
+        if title_key not in seen_titles:
+            seen_titles.add(title_key)
+            articles.append(a)
+
+    articles = articles[:max_articles * 2]  # max 20 articles au total
 
     if not articles:
         return {
@@ -176,6 +219,7 @@ def analyze_ticker_sentiment(ticker: str, max_articles: int = 10) -> dict:
             "articles": [],
             "bullish": [],
             "bearish": [],
+            "sources": [],
         }
 
     # Scorer chaque article
