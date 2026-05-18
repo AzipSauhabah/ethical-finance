@@ -27,7 +27,7 @@ from backend.config import (
     DISCLAIMER,
 )
 from backend.core.data import get_fx_rate, get_live_quote, get_prices
-from backend.core.queue import start_worker, subscribe, unsubscribe, watch
+from backend.core.queue import subscribe, unsubscribe, watch
 from backend.core.registry import registry, ticker_to_dict
 from backend.quant.montecarlo import run_simulation
 from backend.report.pdf import generate_pdf
@@ -42,9 +42,6 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("api")
 
 strategy_registry.auto_discover()
-
-
-
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
