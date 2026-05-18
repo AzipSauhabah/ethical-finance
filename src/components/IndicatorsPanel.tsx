@@ -217,7 +217,7 @@ export default function IndicatorsPanel({ tickers }: Props) {
     if (!ticker) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/prices?tickers=${ticker}&period=${period}`);
+      const res = await fetch(`${API}/api/prices/db?tickers=${ticker}&period=${period}`);
       const json = await res.json();
       const rows: OHLCV[] = (json.data || []).map((d: any) => ({
         date: d.date,

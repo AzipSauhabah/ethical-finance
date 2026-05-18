@@ -162,6 +162,42 @@ async def quote_stream(ticker: str):
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
+@app.get("/api/prices/db")
+async def prices_from_db(tickers: str = Query(...), period: str = Query("6mo")):
+    """Lit les prix OHLCV directement depuis PostgreSQL — rapide, pas de yfinance."""
+    import os
+    from datetime import date, timedelta
+    import sqlalchemy as sa
+
+    PERIODS = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730}
+    days = PERIODS.get(period, 180)
+    start = date.today() - timedelta(days=days)
+    ts = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+    engine = sa.create_engine(sync_url, pool_pre_ping=True)
+
+    with engine.connect() as conn:
+        rows = conn.execute(sa.text("""
+            SELECT ticker, date::text, adj_close
+            FROM ohlcv
+            WHERE ticker = ANY(:tickers)
+              AND date >= :start
+              AND adj_close IS NOT NULL
+            ORDER BY date ASC
+        """), {"tickers": ts, "start": start}).fetchall()
+
+    # Pivot : [{date, AAPL, MSFT, ...}]
+    from collections import defaultdict
+    by_date: dict = defaultdict(dict)
+    for ticker, dt, close in rows:
+        by_date[dt][ticker] = float(close)
+
+    data = [{"date": dt, **vals} for dt, vals in sorted(by_date.items())]
+    return {"tickers": ts, "period": period, "data": data}
+
+
 @app.get("/api/prices")
 async def prices(tickers: str = Query(...), period: str = Query(DEFAULT_PERIOD)):
     ts = [t.strip().upper() for t in tickers.split(",") if t.strip()]
