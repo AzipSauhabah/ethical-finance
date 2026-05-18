@@ -10,28 +10,31 @@ from typing import Optional
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-SECRET_KEY         = os.environ.get("JWT_SECRET", "change-me-in-production-please")
-ALGORITHM          = "HS256"
+SECRET_KEY = os.environ.get("JWT_SECRET", "change-me-in-production-please")
+ALGORITHM = "HS256"
 TOKEN_EXPIRE_HOURS = 72
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-bearer      = HTTPBearer(auto_error=False)
-router      = APIRouter(prefix="/auth", tags=["auth"])
+bearer = HTTPBearer(auto_error=False)
+router = APIRouter(prefix="/auth", tags=["auth"])
+
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
 
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -39,24 +42,30 @@ class TokenResponse(BaseModel):
     user_id: str
     email: str
 
+
 class UserOut(BaseModel):
     user_id: str
     email: str
+
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
+
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
+
 
 def create_token(user_id: str, email: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=TOKEN_EXPIRE_HOURS)
     payload = {"sub": user_id, "email": email, "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
+
 def decode_token(token: str) -> dict:
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
 
 # ─── Dépendances ──────────────────────────────────────────────────────────────
 async def get_current_user(
@@ -78,6 +87,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+
 async def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
 ) -> Optional[UserOut]:
@@ -89,6 +99,7 @@ async def get_optional_user(
     except JWTError:
         return None
 
+
 # ─── Routes ───────────────────────────────────────────────────────────────────
 @router.post("/register", response_model=TokenResponse, status_code=201)
 async def register(body: RegisterRequest, request: Request):
@@ -97,16 +108,16 @@ async def register(body: RegisterRequest, request: Request):
         raise HTTPException(status_code=503, detail="DB non disponible")
 
     async with pool.acquire() as conn:
-        existing = await conn.fetchrow(
-            "SELECT id FROM users WHERE email = $1", body.email
-        )
+        existing = await conn.fetchrow("SELECT id FROM users WHERE email = $1", body.email)
         if existing:
             raise HTTPException(status_code=409, detail="Email déjà utilisé")
 
         user_id = str(uuid.uuid4())
         await conn.execute(
             "INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)",
-            user_id, body.email, hash_password(body.password),
+            user_id,
+            body.email,
+            hash_password(body.password),
         )
 
     token = create_token(user_id, body.email)
