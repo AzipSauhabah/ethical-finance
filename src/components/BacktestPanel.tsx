@@ -92,7 +92,9 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
     period: '5y',
     initial_capital: 30000,
     monthly_contribution: 0,
-    broker: 'degiro',
+    broker: 'fortuneo',
+    allow_fractional: false,
+    use_adjusted_close: true,
     account_type: 'CTO',
     rebalance_frequency: 'monthly',
     max_position_pct: 0.25,
@@ -216,9 +218,32 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
           <input type="number" value={params.monthly_contribution} onChange={e => setParams({ ...params, monthly_contribution: +e.target.value })} style={inputStyle} />
         </div>
         <div><Label>Courtier</Label>
-          <select value={params.broker} onChange={e => setParams({ ...params, broker: e.target.value })} style={select}>
-            {['degiro','interactive_brokers','trade_republic','boursorama','default'].map(b => <option key={b} value={b}>{b}</option>)}
+          <select value={params.broker} onChange={e => {
+            const b = e.target.value;
+            setParams({ ...params, broker: b, allow_fractional: b === 'revolut' });
+          }} style={select}>
+            {['fortuneo','boursorama','degiro','interactive_brokers','trade_republic','revolut','default'].map(b => <option key={b} value={b}>{b}</option>)}
           </select>
+
+          {/* Fractions */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#9ca3af', fontFamily: 'monospace', cursor: 'pointer' }}>
+            <input type="checkbox"
+              checked={params.allow_fractional}
+              onChange={e => setParams({ ...params, allow_fractional: e.target.checked })}
+              style={{ accentColor: '#b8962f' }}
+            />
+            Actions fractionnaires (Revolut uniquement)
+          </label>
+
+          {/* Dividendes */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#9ca3af', fontFamily: 'monospace', cursor: 'pointer' }}>
+            <input type="checkbox"
+              checked={params.use_adjusted_close}
+              onChange={e => setParams({ ...params, use_adjusted_close: e.target.checked })}
+              style={{ accentColor: '#b8962f' }}
+            />
+            Dividendes réinvestis (prix ajusté)
+          </label>
         </div>
         <div><Label>Compte</Label>
           <select value={params.account_type} onChange={e => setParams({ ...params, account_type: e.target.value as 'CTO' | 'PEA' })} style={select}>
