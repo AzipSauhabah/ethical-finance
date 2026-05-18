@@ -30,14 +30,14 @@ def _normalize_ticker(ticker: str) -> tuple[str, str]:
     """Convertit ticker yfinance → Twelve Data format."""
     EXCHANGE_MAP = {
         ".PA": ("", "XPAR"),
-        ".L":  ("", "XLON"),
+        ".L": ("", "XLON"),
         ".DE": ("", "XETR"),
         ".AS": ("", "XAMS"),
         ".SW": ("", "XSWX"),
         ".ST": ("", "XSTO"),
         ".OL": ("", "XOSL"),
         ".CO": ("", "XCSE"),
-        ".T":  ("", "XTKS"),
+        ".T": ("", "XTKS"),
         ".AX": ("", "XASX"),
         ".JO": ("", "XJSE"),
     }
@@ -83,14 +83,17 @@ async def _fetch_db_price(ticker: str) -> dict | None:
 
         def _query():
             with engine.connect() as conn:
-                rows = conn.execute(sa.text("""
+                rows = conn.execute(
+                    sa.text("""
                     SELECT date, adj_close, close, volume
                     FROM ohlcv
                     WHERE ticker = :ticker
                       AND adj_close IS NOT NULL
                     ORDER BY date DESC
                     LIMIT 2
-                """), {"ticker": ticker}).fetchall()
+                """),
+                    {"ticker": ticker},
+                ).fetchall()
             return rows
 
         rows = await loop.run_in_executor(None, _query)
@@ -119,7 +122,7 @@ async def _fetch_db_price(ticker: str) -> dict | None:
 async def intraday_ws(websocket: WebSocket, ticker: str, interval: int = 10):
     """
     WebSocket live intraday.
-    
+
     Envoie un message JSON toutes les `interval` secondes :
     {
         "ticker": "AAPL",
@@ -159,11 +162,13 @@ async def intraday_ws(websocket: WebSocket, ticker: str, interval: int = 10):
                     source = db_data["source"]
 
             if price is None:
-                await websocket.send_json({
-                    "ticker": ticker,
-                    "error": "Prix non disponible",
-                    "timestamp": timestamp,
-                })
+                await websocket.send_json(
+                    {
+                        "ticker": ticker,
+                        "error": "Prix non disponible",
+                        "timestamp": timestamp,
+                    }
+                )
             else:
                 if ref_price is None:
                     ref_price = price
@@ -174,15 +179,17 @@ async def intraday_ws(websocket: WebSocket, ticker: str, interval: int = 10):
                 db_data = await _fetch_db_price(ticker)
                 volume = db_data["volume"] if db_data else 0
 
-                await websocket.send_json({
-                    "ticker": ticker,
-                    "price": round(price, 4),
-                    "change_pct": round(change_pct, 3),
-                    "change_abs": round(price - ref_price, 4),
-                    "volume": volume,
-                    "timestamp": timestamp,
-                    "source": source,
-                })
+                await websocket.send_json(
+                    {
+                        "ticker": ticker,
+                        "price": round(price, 4),
+                        "change_pct": round(change_pct, 3),
+                        "change_abs": round(price - ref_price, 4),
+                        "volume": volume,
+                        "timestamp": timestamp,
+                        "source": source,
+                    }
+                )
 
             await asyncio.sleep(interval)
 

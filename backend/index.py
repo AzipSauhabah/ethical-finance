@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from backend.app import app
 from backend.ws.intraday import router as ws_router
+
 app.include_router(ws_router)
 from backend.backtest.engine import BacktestEngine
 from backend.config import (
