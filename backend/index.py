@@ -629,7 +629,8 @@ async def daily_signals(payload: TickerListIn, strategy: str = "epr5", request: 
         try:
             async with request.app.state.pool.acquire() as conn:
                 for s in results:
-                    await conn.execute("""
+                    await conn.execute(
+                        """
                         INSERT INTO signals_history
                             (ticker, date, strategy_id, signal_buy, signal_sell,
                              rf_score, lstm_score, sentiment_score, fundamental_score,
@@ -640,10 +641,17 @@ async def daily_signals(payload: TickerListIn, strategy: str = "epr5", request: 
                             signal_sell=EXCLUDED.signal_sell,
                             composite_score=EXCLUDED.composite_score
                     """,
-                        s["ticker"], s["date"], strategy,
-                        s["signal"] == "BUY", s["signal"] == "SELL",
-                        s["rf_score"], s["lstm_score"], s["sentiment_score"],
-                        s["fundamental_score"], s["technical_score"], s["composite_score"]
+                        s["ticker"],
+                        s["date"],
+                        strategy,
+                        s["signal"] == "BUY",
+                        s["signal"] == "SELL",
+                        s["rf_score"],
+                        s["lstm_score"],
+                        s["sentiment_score"],
+                        s["fundamental_score"],
+                        s["technical_score"],
+                        s["composite_score"],
                     )
         except Exception as e:
             log.warning("signals_history insert error: %s", e)
