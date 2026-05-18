@@ -231,6 +231,47 @@ async def _fetch_prices_supabase(tickers, start, end):
     return df
 
 
+
+async def _fetch_prices_postgres(
+    tickers: list[str],
+    start: date,
+    end: date,
+) -> pd.DataFrame:
+    """Lit les prix adj_close depuis PostgreSQL ohlcv — source principale."""
+    import os
+    import sqlalchemy as sa
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url:
+        return pd.DataFrame()
+
+    sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+    try:
+        engine = sa.create_engine(sync_url, pool_pre_ping=True)
+        loop = asyncio.get_event_loop()
+
+        def _query():
+            with engine.connect() as conn:
+                rows = conn.execute(sa.text("""
+                    SELECT ticker, date, adj_close
+                    FROM ohlcv
+                    WHERE ticker = ANY(:tickers)
+                      AND date >= :start
+                      AND date <= :end
+                      AND adj_close IS NOT NULL
+                    ORDER BY date ASC
+                """), {"tickers": tickers, "start": start, "end": end}).fetchall()
+            if not rows:
+                return pd.DataFrame()
+            df = pd.DataFrame(rows, columns=["ticker", "date", "adj_close"])
+            df["date"] = pd.to_datetime(df["date"])
+            return df.pivot(index="date", columns="ticker", values="adj_close")
+
+        return await loop.run_in_executor(None, _query)
+    except Exception as e:
+        log.warning("_fetch_prices_postgres error: %s", e)
+        return pd.DataFrame()
+
 async def get_prices(
     tickers: list[str],
     period: str = DEFAULT_PERIOD,
@@ -254,10 +295,12 @@ async def get_prices(
 
         return pd.read_json(io.StringIO(cached_df))
 
-    # Essaie Supabase en priorité
-    df = await _fetch_prices_supabase(tickers, start, end)
+    # 1. PostgreSQL local en priorité absolue
+    df = await _fetch_prices_postgres(tickers, start, end)
+
+    # 2. Fallback yfinance uniquement si aucune donnée en base
     if df.empty:
-        # Fallback yfinance
+        log.warning("get_prices: aucune donnée en base pour %s — fallback yfinance", tickers)
         for chunk in _ticker_chunks(tickers):
             part = await _fetch_prices_raw(chunk, start, end)
             df = part if df.empty else df.join(part, how="outer")
