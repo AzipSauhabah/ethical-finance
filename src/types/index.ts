@@ -48,6 +48,8 @@ export interface BacktestParams {
   initial_capital: number;
   monthly_contribution: number;
   broker: string;
+  allow_fractional: boolean;
+  use_adjusted_close: boolean;
   account_type: 'CTO' | 'PEA';
   rebalance_frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly';
   max_position_pct: number;
