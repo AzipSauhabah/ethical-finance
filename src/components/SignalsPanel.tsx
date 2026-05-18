@@ -205,7 +205,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
   useEffect(() => {
     setLoading(true);
     setError(null);
-    fetchRealSignals(selectedStrategy, tickers || [])
+    fetchRealSignals(selectedStrategy, tickers || [], filterUniverse === "Tous" ? "all" : filterUniverse.toLowerCase().replace(" ", "_"))
       .then(data => { setSignals(data); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [selectedStrategy]);
