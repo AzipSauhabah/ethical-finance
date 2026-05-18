@@ -278,6 +278,80 @@ async def _startup() -> None:
                 log.warning("Daily signals job error: %s", e)
 
         scheduler.add_job(daily_signals_job, "cron", hour=20, minute=30, timezone="UTC")
+
+        # Intraday 1h — fetch Twelve Data toutes les heures (marché ouvert)
+        async def intraday_job():
+            try:
+                import os
+                import sqlalchemy as sa
+                from datetime import datetime, timezone
+                import httpx
+
+                api_key = os.environ.get("TWELVE_DATA_API_KEY", "")
+                if not api_key:
+                    return
+
+                database_url = os.environ.get("DATABASE_URL", "")
+                sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+                engine = sa.create_engine(sync_url, pool_pre_ping=True)
+
+                # Récupérer les tickers actifs (top 50 par market cap)
+                with engine.connect() as conn:
+                    rows = conn.execute(sa.text("""
+                        SELECT ticker FROM ticker_fundamentals
+                        WHERE universe IN ('sp500', 'cac40', 'etf_broad', 'etf_precious_metals')
+                        ORDER BY market_cap DESC NULLS LAST
+                        LIMIT 50
+                    """)).fetchall()
+                tickers = [r[0] for r in rows]
+
+                # Normalise ticker pour Twelve Data
+                def norm(t):
+                    for suffix, exchange in [(".PA","XPAR"),(".L","XLON"),(".DE","XETR"),(".AS","XAMS")]:
+                        if t.endswith(suffix):
+                            return t.replace(suffix,""), exchange
+                    return t, ""
+
+                inserted = 0
+                async with httpx.AsyncClient(timeout=10) as client:
+                    for ticker in tickers:
+                        sym, exchange = norm(ticker)
+                        params = {"symbol": sym, "interval": "1h", "outputsize": 2, "apikey": api_key}
+                        if exchange:
+                            params["exchange"] = exchange
+                        try:
+                            r = await client.get("https://api.twelvedata.com/time_series", params=params)
+                            data = r.json()
+                            if "values" not in data:
+                                continue
+                            with engine.connect() as conn:
+                                for v in data["values"]:
+                                    conn.execute(sa.text("""
+                                        INSERT INTO ohlcv_intraday (ticker, datetime, open, high, low, close, volume, interval)
+                                        VALUES (:ticker, :dt, :open, :high, :low, :close, :volume, '1h')
+                                        ON CONFLICT (ticker, datetime, interval) DO UPDATE SET
+                                            close=EXCLUDED.close, volume=EXCLUDED.volume
+                                    """), {
+                                        "ticker": ticker,
+                                        "dt": v["datetime"],
+                                        "open": float(v["open"]),
+                                        "high": float(v["high"]),
+                                        "low": float(v["low"]),
+                                        "close": float(v["close"]),
+                                        "volume": int(v.get("volume") or 0),
+                                    })
+                                    conn.commit()
+                                    inserted += 1
+                            import asyncio
+                            await asyncio.sleep(0.5)  # 800 req/jour = 1 req/2s
+                        except Exception as e:
+                            log.debug("intraday_job error %s: %s", ticker, e)
+
+                log.info("Intraday job complete — %d rows inserted", inserted)
+            except Exception as e:
+                log.warning("Intraday job error: %s", e)
+
+        scheduler.add_job(intraday_job, "interval", hours=1, timezone="UTC")
         scheduler.start()
         log.info("Scheduler started — OHLCV 21h, SEC 22h, FMP 22h30, Backup 23h, Signals 20h30 UTC")
         asyncio.create_task(_init_and_load())

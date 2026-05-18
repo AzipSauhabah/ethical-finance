@@ -169,6 +169,32 @@ async def quote_stream(ticker: str):
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
+@app.get("/api/prices/intraday")
+async def prices_intraday(ticker: str = Query(...), hours: int = Query(48)):
+    """Lit les données OHLCV 1h depuis ohlcv_intraday — pour Elliott Wave intraday."""
+    import os
+    import sqlalchemy as sa
+    from datetime import datetime, timedelta, timezone
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+    engine = sa.create_engine(sync_url, pool_pre_ping=True)
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+    with engine.connect() as conn:
+        rows = conn.execute(sa.text("""
+            SELECT datetime::text, open, high, low, close, volume
+            FROM ohlcv_intraday
+            WHERE ticker = :ticker AND datetime >= :since AND interval = '1h'
+            ORDER BY datetime ASC
+        """), {"ticker": ticker.upper(), "since": since}).fetchall()
+
+    data = [{"datetime": r[0], "open": float(r[1] or 0), "high": float(r[2] or 0),
+             "low": float(r[3] or 0), "close": float(r[4] or 0), "volume": int(r[5] or 0)}
+            for r in rows]
+    return {"ticker": ticker.upper(), "interval": "1h", "hours": hours, "data": data, "count": len(data)}
+
+
 @app.get("/api/prices/db")
 async def prices_from_db(tickers: str = Query(...), period: str = Query("6mo")):
     """Lit les prix OHLCV directement depuis PostgreSQL — rapide, pas de yfinance."""
