@@ -72,7 +72,7 @@ const STRATEGIES: Strategy[] = [
 ];
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
-async function fetchRealSignals(strategyId: string, tickers: string[]): Promise<TickerSignal[]> {
+async function fetchRealSignals(strategyId: string, tickers: string[], universe: string = "all"): Promise<TickerSignal[]> {
   const API = import.meta.env.VITE_API_URL || "";
   // Univers par ticker (fallback générique)
   const UNIVERSE: Record<string, string> = {
