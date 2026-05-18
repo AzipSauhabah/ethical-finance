@@ -11,9 +11,10 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from backend.auth.jwt import get_current_user, UserOut
+from backend.auth.jwt import UserOut, get_current_user
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
+
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
 class PositionIn(BaseModel):
@@ -23,9 +24,11 @@ class PositionIn(BaseModel):
     currency: str = "EUR"
     notes: Optional[str] = None
 
+
 class PositionOut(PositionIn):
     id: str
     opened_at: str
+
 
 class SignalHistoryOut(BaseModel):
     ticker: str
@@ -34,6 +37,7 @@ class SignalHistoryOut(BaseModel):
     signal_buy: bool
     signal_sell: bool
     composite_score: Optional[float]
+
 
 # ─── Positions ────────────────────────────────────────────────────────────────
 @router.get("/positions")
@@ -66,8 +70,13 @@ async def add_position(
         await conn.execute(
             """INSERT INTO user_portfolios (id, user_id, ticker, qty, avg_price, currency, notes)
                VALUES ($1, $2, $3, $4, $5, $6, $7)""",
-            pos_id, current_user.user_id, body.ticker.upper(),
-            body.qty, body.avg_price, body.currency, body.notes,
+            pos_id,
+            current_user.user_id,
+            body.ticker.upper(),
+            body.qty,
+            body.avg_price,
+            body.currency,
+            body.notes,
         )
     return {"id": pos_id, "status": "created"}
 
@@ -82,7 +91,8 @@ async def delete_position(
     async with pool.acquire() as conn:
         result = await conn.execute(
             "DELETE FROM user_portfolios WHERE id = $1 AND user_id = $2",
-            position_id, current_user.user_id,
+            position_id,
+            current_user.user_id,
         )
     if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Position introuvable")
