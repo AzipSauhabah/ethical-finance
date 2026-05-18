@@ -283,9 +283,9 @@ async def _startup() -> None:
         async def intraday_job():
             try:
                 import os
-                import sqlalchemy as sa
-                from datetime import datetime, timezone
+
                 import httpx
+                import sqlalchemy as sa
 
                 api_key = os.environ.get("TWELVE_DATA_API_KEY", "")
                 if not api_key:
@@ -307,42 +307,58 @@ async def _startup() -> None:
 
                 # Normalise ticker pour Twelve Data
                 def norm(t):
-                    for suffix, exchange in [(".PA","XPAR"),(".L","XLON"),(".DE","XETR"),(".AS","XAMS")]:
+                    for suffix, exchange in [
+                        (".PA", "XPAR"),
+                        (".L", "XLON"),
+                        (".DE", "XETR"),
+                        (".AS", "XAMS"),
+                    ]:
                         if t.endswith(suffix):
-                            return t.replace(suffix,""), exchange
+                            return t.replace(suffix, ""), exchange
                     return t, ""
 
                 inserted = 0
                 async with httpx.AsyncClient(timeout=10) as client:
                     for ticker in tickers:
                         sym, exchange = norm(ticker)
-                        params = {"symbol": sym, "interval": "1h", "outputsize": 2, "apikey": api_key}
+                        params = {
+                            "symbol": sym,
+                            "interval": "1h",
+                            "outputsize": 2,
+                            "apikey": api_key,
+                        }
                         if exchange:
                             params["exchange"] = exchange
                         try:
-                            r = await client.get("https://api.twelvedata.com/time_series", params=params)
+                            r = await client.get(
+                                "https://api.twelvedata.com/time_series", params=params
+                            )
                             data = r.json()
                             if "values" not in data:
                                 continue
                             with engine.connect() as conn:
                                 for v in data["values"]:
-                                    conn.execute(sa.text("""
+                                    conn.execute(
+                                        sa.text("""
                                         INSERT INTO ohlcv_intraday (ticker, datetime, open, high, low, close, volume, interval)
                                         VALUES (:ticker, :dt, :open, :high, :low, :close, :volume, '1h')
                                         ON CONFLICT (ticker, datetime, interval) DO UPDATE SET
                                             close=EXCLUDED.close, volume=EXCLUDED.volume
-                                    """), {
-                                        "ticker": ticker,
-                                        "dt": v["datetime"],
-                                        "open": float(v["open"]),
-                                        "high": float(v["high"]),
-                                        "low": float(v["low"]),
-                                        "close": float(v["close"]),
-                                        "volume": int(v.get("volume") or 0),
-                                    })
+                                    """),
+                                        {
+                                            "ticker": ticker,
+                                            "dt": v["datetime"],
+                                            "open": float(v["open"]),
+                                            "high": float(v["high"]),
+                                            "low": float(v["low"]),
+                                            "close": float(v["close"]),
+                                            "volume": int(v.get("volume") or 0),
+                                        },
+                                    )
                                     conn.commit()
                                     inserted += 1
                             import asyncio
+
                             await asyncio.sleep(0.5)  # 800 req/jour = 1 req/2s
                         except Exception as e:
                             log.debug("intraday_job error %s: %s", ticker, e)
