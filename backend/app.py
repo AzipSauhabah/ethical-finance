@@ -137,8 +137,84 @@ async def _startup() -> None:
                 log.warning("FMP job error: %s", e)
 
         scheduler.add_job(fmp_fundamentals_job, "cron", hour=22, minute=30, timezone="UTC")
+
+        # Signaux journaliers — calcul + persistance pour tous les tickers à 20h30 UTC
+        async def daily_signals_job():
+            try:
+                import os
+                import sqlalchemy as sa
+                from backend.signals.daily import compute_daily_signals
+
+                database_url = os.environ.get("DATABASE_URL", "")
+                sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+                engine = sa.create_engine(sync_url, pool_pre_ping=True)
+
+                # Récupérer tous les tickers en base
+                with engine.connect() as conn:
+                    rows = conn.execute(sa.text("SELECT DISTINCT ticker FROM ticker_fundamentals ORDER BY ticker")).fetchall()
+                tickers = [r[0] for r in rows]
+                log.info("Daily signals job — %d tickers", len(tickers))
+
+                STRATEGIES = ["epr5", "momentum", "mean_reversion", "sma_crossover", "dual_momentum", "buy_hold"]
+                WEIGHTS = {
+                    "epr5":           {"sma": 0.20, "rsi": 0.20, "macd": 0.20, "momentum": 0.20, "sentiment": 0.20},
+                    "momentum":       {"sma": 0.10, "rsi": 0.15, "macd": 0.20, "momentum": 0.35, "sentiment": 0.20},
+                    "mean_reversion": {"sma": 0.15, "rsi": 0.35, "macd": 0.15, "momentum": 0.10, "sentiment": 0.25},
+                    "sma_crossover":  {"sma": 0.55, "rsi": 0.10, "macd": 0.15, "momentum": 0.10, "sentiment": 0.10},
+                    "dual_momentum":  {"sma": 0.10, "rsi": 0.15, "macd": 0.15, "momentum": 0.30, "sentiment": 0.30},
+                    "buy_hold":       {"sma": 0.20, "rsi": 0.20, "macd": 0.20, "momentum": 0.15, "sentiment": 0.25},
+                }
+
+                # Traiter par batch de 50
+                for strategy in STRATEGIES:
+                    weights = WEIGHTS[strategy]
+                    def norm(v): return (v + 1) / 2.0
+                    for i in range(0, len(tickers), 50):
+                        batch = tickers[i:i+50]
+                        try:
+                            raw = await compute_daily_signals(batch)
+                            pool = app.state.pool
+                            if not pool:
+                                continue
+                            async with pool.acquire() as conn:
+                                for s in raw:
+                                    ind = s.get("indicators", {})
+                                    composite = round(
+                                        norm(ind.get("sma_crossover",0)) * weights["sma"] +
+                                        norm(ind.get("rsi",0))           * weights["rsi"] +
+                                        norm(ind.get("macd",0))          * weights["macd"] +
+                                        norm(ind.get("momentum",0))      * weights["momentum"] +
+                                        norm(ind.get("sentiment",0))     * weights["sentiment"], 4
+                                    )
+                                    await conn.execute("""
+                                        INSERT INTO signals_history
+                                            (ticker, date, strategy_id, signal_buy, signal_sell,
+                                             rf_score, lstm_score, sentiment_score, fundamental_score,
+                                             technical_score, composite_score)
+                                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                                        ON CONFLICT (ticker, date, strategy_id) DO UPDATE SET
+                                            composite_score=EXCLUDED.composite_score,
+                                            signal_buy=EXCLUDED.signal_buy,
+                                            signal_sell=EXCLUDED.signal_sell
+                                    """,
+                                        s["ticker"], s["date"], strategy,
+                                        composite >= 0.60, composite <= 0.40,
+                                        norm(ind.get("sma_crossover",0)),
+                                        norm(ind.get("macd",0)),
+                                        norm(ind.get("sentiment",0)),
+                                        norm(ind.get("rsi",0)),
+                                        norm(ind.get("momentum",0)),
+                                        composite
+                                    )
+                        except Exception as e:
+                            log.warning("signals batch error %s: %s", strategy, e)
+                log.info("Daily signals job complete")
+            except Exception as e:
+                log.warning("Daily signals job error: %s", e)
+
+        scheduler.add_job(daily_signals_job, "cron", hour=20, minute=30, timezone="UTC")
         scheduler.start()
-        log.info("Scheduler started — OHLCV 21h, SEC 22h, FMP 22h30, Backup 23h UTC")
+        log.info("Scheduler started — OHLCV 21h, SEC 22h, FMP 22h30, Backup 23h, Signals 20h30 UTC")
         asyncio.create_task(_init_and_load())
 
 
