@@ -85,53 +85,36 @@ class MemoryCache:
 
 
 class KVCache:
-    """Thin async wrapper around Vercel KV REST API.
-
-    Gracefully degrades to no-op when env vars are absent.
+    """Cache en mémoire local — remplace Vercel KV.
+    
+    TTL par clé, thread-safe, zéro dépendance externe.
     """
 
     def __init__(self) -> None:
-        self._ok = bool(KV_REST_API_URL and KV_REST_API_TOKEN)
-        self._headers = {"Authorization": f"Bearer {KV_REST_API_TOKEN}"}
-        self._base = KV_REST_API_URL.rstrip("/")
+        self._store: dict[str, tuple[Any, float]] = {}  # key → (value, expire_at)
+        self._ok = True
 
-    # ------------------------------------------------------------------
     async def get(self, key: str) -> Any | None:
-        if not self._ok:
+        entry = self._store.get(key)
+        if entry is None:
             return None
-        try:
-            async with httpx.AsyncClient(timeout=2.0) as c:
-                r = await c.get(f"{self._base}/get/{key}", headers=self._headers)
-                if r.status_code == 200:
-                    payload = r.json()
-                    raw = payload.get("result")
-                    return json.loads(raw) if raw is not None else None
-        except Exception as exc:  # noqa: BLE001
-            log.debug("KV.get error: %s", exc)
-        return None
+        value, expire_at = entry
+        import time
+        if time.time() > expire_at:
+            del self._store[key]
+            return None
+        return value
 
     async def set(self, key: str, value: Any, ttl: int = PRICE_CACHE_TTL) -> None:
-        if not self._ok:
-            return
-        try:
-            body = json.dumps(value)
-            async with httpx.AsyncClient(timeout=2.0) as c:
-                await c.post(
-                    f"{self._base}/set/{key}",
-                    headers=self._headers,
-                    json={"value": body, "ex": ttl},
-                )
-        except Exception as exc:  # noqa: BLE001
-            log.debug("KV.set error: %s", exc)
+        import time
+        self._store[key] = (value, time.time() + ttl)
+        # Nettoyage périodique — évite la fuite mémoire
+        if len(self._store) > 10_000:
+            now = time.time()
+            self._store = {k: v for k, v in self._store.items() if v[1] > now}
 
     async def delete(self, key: str) -> None:
-        if not self._ok:
-            return
-        try:
-            async with httpx.AsyncClient(timeout=1.0) as c:
-                await c.get(f"{self._base}/del/{key}", headers=self._headers)
-        except Exception as exc:  # noqa: BLE001
-            log.debug("KV.delete error: %s", exc)
+        self._store.pop(key, None)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
