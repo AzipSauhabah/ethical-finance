@@ -319,7 +319,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
                 <tr
                   key={row.ticker}
                   onClick={() => setExpandedTicker(expandedTicker === row.ticker ? null : row.ticker)}
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: i % 2 === 0 ? "#fff" : "#fafafa", cursor: "pointer" }}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.03)", cursor: "pointer" }}
                 >
                   <td style={{ padding: "12px 12px", fontFamily: "monospace", fontWeight: 600, color: "#e8e8e8" }}>
                     {row.ticker}
