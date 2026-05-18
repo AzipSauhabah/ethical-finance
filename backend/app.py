@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 
+import asyncpg
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -23,6 +25,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Routers v2 ────────────────────────────────────────────────────────────────
+from backend.auth.jwt import router as auth_router
+from backend.auth.portfolio_routes import router as portfolio_router
+
+app.include_router(auth_router)
+app.include_router(portfolio_router)
+
 # Scheduler optionnel — uniquement sur Docker/Fly.io, pas sur Vercel serverless
 try:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -39,6 +48,15 @@ async def _startup() -> None:
     import asyncio
 
     from backend.core.queue import start_worker
+
+    # ── Pool asyncpg (auth + portfolio) ──────────────────────────────────────
+    database_url = os.environ.get("DATABASE_URL", "")
+    if database_url:
+        app.state.pool = await asyncpg.create_pool(database_url, min_size=2, max_size=10)
+        log.info("asyncpg pool created")
+    else:
+        app.state.pool = None
+        log.warning("DATABASE_URL non définie — routes auth désactivées")
 
     start_worker()
     log.info("API ready — strategies loaded")
@@ -65,7 +83,7 @@ async def _startup() -> None:
         # Backup PostgreSQL quotidien à 23h00 UTC
         async def pg_backup_job():
             import asyncio
-            import os
+            import glob
             from datetime import datetime
 
             try:
@@ -82,8 +100,6 @@ async def _startup() -> None:
                 )
                 await proc.wait()
                 # Garder seulement les 7 derniers backups
-                import glob
-
                 backups = sorted(glob.glob(f"{backup_dir}/ethical_finance_*.sql.gz"))
                 for old_backup in backups[:-7]:
                     os.remove(old_backup)
@@ -149,3 +165,6 @@ async def _init_and_load() -> None:
 async def _shutdown() -> None:
     if HAS_SCHEDULER and scheduler:
         scheduler.shutdown()
+    if hasattr(app.state, "pool") and app.state.pool:
+        await app.state.pool.close()
+        log.info("asyncpg pool closed")

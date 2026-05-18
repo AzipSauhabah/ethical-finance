@@ -23,3 +23,6 @@ vaderSentiment>=3.3.2
 feedparser>=6.0.0
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
+python-jose[cryptography]
+passlib[bcrypt]
+asyncpg
