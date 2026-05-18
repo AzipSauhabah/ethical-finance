@@ -12,7 +12,6 @@ Design:
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 from collections import OrderedDict
@@ -20,9 +19,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypeVar
 
-import httpx
-
-from backend.config import KV_REST_API_TOKEN, KV_REST_API_URL, PRICE_CACHE_TTL
+from backend.config import PRICE_CACHE_TTL
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +83,7 @@ class MemoryCache:
 
 class KVCache:
     """Cache en mémoire local — remplace Vercel KV.
-    
+
     TTL par clé, thread-safe, zéro dépendance externe.
     """
 
@@ -100,6 +97,7 @@ class KVCache:
             return None
         value, expire_at = entry
         import time
+
         if time.time() > expire_at:
             del self._store[key]
             return None
@@ -107,6 +105,7 @@ class KVCache:
 
     async def set(self, key: str, value: Any, ttl: int = PRICE_CACHE_TTL) -> None:
         import time
+
         self._store[key] = (value, time.time() + ttl)
         # Nettoyage périodique — évite la fuite mémoire
         if len(self._store) > 10_000:
