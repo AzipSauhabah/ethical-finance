@@ -238,7 +238,7 @@ async def _fetch_prices_postgres(
     use_adjusted: bool = True,
 ) -> pd.DataFrame:
     """Lit les prix depuis PostgreSQL ohlcv.
-    
+
     use_adjusted=True  → adj_close (dividendes réinvestis)
     use_adjusted=False → close (prix brut, dividendes en cash)
     """
