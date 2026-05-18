@@ -476,48 +476,53 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
 
 
 async def _fetch_fundamentals_db(ticker: str) -> dict | None:
-    """Fetch fundamentals from Supabase REST API."""
+    """Fetch fundamentals depuis PostgreSQL local — source principale."""
     import os
+    import sqlalchemy as sa
 
-    import httpx
-
-    supabase_url = os.environ.get("SUPABASE_URL", "")
-    supabase_key = os.environ.get("SUPABASE_ANON_KEY", "")
-    if not supabase_url or not supabase_key:
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url:
         return None
 
+    sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
     try:
-        url = f"{supabase_url}/rest/v1/ticker_fundamentals"
-        headers = {
-            "apikey": supabase_key,
-            "Authorization": f"Bearer {supabase_key}",
+        engine = sa.create_engine(sync_url, pool_pre_ping=True)
+        loop = asyncio.get_event_loop()
+
+        def _query():
+            with engine.connect() as conn:
+                row = conn.execute(sa.text("""
+                    SELECT ticker, name, sector, industry, country, currency, exchange,
+                           market_cap, beta, dividend_yield, total_debt, total_revenue
+                    FROM ticker_fundamentals
+                    WHERE ticker = :ticker
+                    LIMIT 1
+                """), {"ticker": ticker}).fetchone()
+            return row
+
+        row = await loop.run_in_executor(None, _query)
+        if not row:
+            return None
+
+        return {
+            "ticker": row[0],
+            "name": row[1] or ticker,
+            "sector": row[2] or "",
+            "industry": row[3] or "",
+            "country": row[4] or "",
+            "currency": row[5] or "USD",
+            "exchange": row[6] or "",
+            "market_cap": int(row[7] or 0),
+            "beta": float(row[8] or 1.0),
+            "dividend_yield": float(row[9] or 0.0),
+            "total_debt": int(row[10] or 0),
+            "total_revenue": int(row[11] or 0),
+            "interest_expense": 0,
+            "esg_scores": {},
         }
-        params = {"ticker": f"eq.{ticker}", "select": "*", "limit": "1"}
-        async with httpx.AsyncClient(timeout=5) as client:
-            r = await client.get(url, headers=headers, params=params)
-            if r.status_code != 200 or not r.json():
-                return None
-            row = r.json()[0]
-            return {
-                "ticker": ticker,
-                "name": row.get("name") or ticker,
-                "sector": row.get("sector") or "",
-                "industry": row.get("industry") or "",
-                "country": row.get("country") or "",
-                "currency": row.get("currency") or "USD",
-                "exchange": row.get("exchange") or "",
-                "market_cap": int(row.get("market_cap") or 0),
-                "beta": float(row.get("beta") or 1.0),
-                "dividend_yield": float(row.get("dividend_yield") or 0.0),
-                "total_debt": int(row.get("total_debt") or 0),
-                "total_revenue": int(row.get("total_revenue") or 0),
-                "interest_expense": 0,
-                "esg_scores": {},
-            }
     except Exception as e:
         import logging
-
-        logging.getLogger("api").warning("DB fundamentals failed for %s: %s", ticker, e)
+        logging.getLogger("api").warning("PG fundamentals failed for %s: %s", ticker, e)
     return None
 
 
