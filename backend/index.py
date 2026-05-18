@@ -44,10 +44,7 @@ log = logging.getLogger("api")
 strategy_registry.auto_discover()
 
 
-@app.on_event("startup")
-async def _startup():
-    start_worker()
-    log.info("API ready — %d strategies", len(strategy_registry))
+
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────

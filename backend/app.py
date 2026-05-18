@@ -48,6 +48,8 @@ async def _startup() -> None:
     import asyncio
 
     from backend.core.queue import start_worker
+    from backend.strategies.registry import strategy_registry
+    strategy_registry.auto_discover()
 
     # ── Pool asyncpg (auth + portfolio) ──────────────────────────────────────
     database_url = os.environ.get("DATABASE_URL", "")
