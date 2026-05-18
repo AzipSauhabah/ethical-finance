@@ -303,7 +303,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
 
       {/* ── Tableau signaux ── */}
       <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", marginBottom: 20, background: "transparent" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, background: "transparent", color: "#e8e8e8" }}>
           <thead>
             <tr style={{ background: "rgba(255,255,255,0.04)" }}>
               {["Ticker", "Univers", "Signal", "Composite", "RF", "LSTM", "Sentiment", "Fondamental", "Technique", "Historique 30j", "Prédictions J+1..5"].map(h => (
@@ -313,7 +313,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody style={{ background: "transparent" }}>
             {filtered.map((row, i) => (
               <>
                 <tr
