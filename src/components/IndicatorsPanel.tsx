@@ -513,7 +513,21 @@ export default function IndicatorsPanel({ tickers }: Props) {
   const [data, setData] = useState<OHLCV[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"rsi" | "bollinger" | "macd" | "fibo" | "elliott">("rsi");
-  const [elliottThreshold, setElliottThreshold] = useState(0.05);
+  const [elliottThreshold, setElliottThreshold] = useState(0.03);
+  const [intradayData, setIntradayData] = useState<{datetime:string;close:number}[]>([]);
+  const [intradayLoading, setIntradayLoading] = useState(false);
+  const [useIntraday, setUseIntraday] = useState(false);
+
+  // Fetch données intraday quand onglet Elliott actif
+  useEffect(() => {
+    if (activeTab !== "elliott" || !ticker || !useIntraday) return;
+    setIntradayLoading(true);
+    fetch(`${API}/api/prices/intraday?ticker=${ticker}&hours=96`)
+      .then(r => r.json())
+      .then(d => setIntradayData((d.data || []).map((v: any) => ({ datetime: v.datetime, close: parseFloat(v.close) }))))
+      .catch(console.error)
+      .finally(() => setIntradayLoading(false));
+  }, [activeTab, ticker, useIntraday]);
   const [config, setConfig] = useState<IndicatorConfig>({
     rsi:       { period: 14, oversold: 30, overbought: 70 },
     bollinger: { period: 20, stdDev: 2 },
@@ -759,14 +773,28 @@ export default function IndicatorsPanel({ tickers }: Props) {
             {activeTab === "elliott" && (
               <div>
                 <div style={{ marginBottom: 16 }}>
-                  <Slider label="Seuil ZigZag" value={Math.round(elliottThreshold * 100)} min={2} max={15} step={1}
+                  <Slider label="Seuil ZigZag" value={Math.round(elliottThreshold * 100)} min={1} max={15} step={1}
                     onChange={(v: number) => setElliottThreshold(v / 100)}
                   />
                   <p style={{ fontSize: 10, color: "#6b7280", fontFamily: "monospace", margin: "6px 0 0" }}>
-                    Seuil = variation minimale pour considérer un pivot. 5% = vagues hebdomadaires, 10% = vagues mensuelles.
+                    Seuil = variation minimale pour considérer un pivot. 3% = micro-vagues, 5% = hebdo, 10% = mensuel.
                   </p>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, cursor: "pointer", fontSize: 11, color: "#9ca3af", fontFamily: "monospace" }}>
+                    <input type="checkbox" checked={useIntraday} onChange={e => setUseIntraday(e.target.checked)} style={{ accentColor: "#ec4899" }}/>
+                    Utiliser données intraday 1h (plus précis — alimenté toutes les heures)
+                    {intradayLoading && <span style={{ color: "#ec4899" }}> chargement…</span>}
+                    {!intradayLoading && useIntraday && intradayData.length > 0 && <span style={{ color: "#22c55e" }}> {intradayData.length} barres 1h</span>}
+                    {!intradayLoading && useIntraday && intradayData.length === 0 && <span style={{ color: "#ef4444" }}> aucune donnée intraday pour ce ticker</span>}
+                  </label>
                 </div>
-                <ElliottChart closes={closes} dates={dates} threshold={elliottThreshold} />
+                {useIntraday && intradayData.length > 0
+                  ? <ElliottChart
+                      closes={intradayData.map(d => d.close)}
+                      dates={intradayData.map(d => d.datetime)}
+                      threshold={elliottThreshold}
+                    />
+                  : <ElliottChart closes={closes} dates={dates} threshold={elliottThreshold} />
+                }
               </div>
             )}
 
