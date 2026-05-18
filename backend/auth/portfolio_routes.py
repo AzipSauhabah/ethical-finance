@@ -1,20 +1,19 @@
 """
 backend/auth/portfolio_routes.py
 Routes protégées — portfolio utilisateur et historique signaux.
-Toutes nécessitent un JWT valide via Depends(get_current_user).
 """
 
 from datetime import date
 from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+import asyncpg
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from backend.auth.jwt import UserOut, get_current_user
+from backend.auth.jwt import get_current_user, UserOut
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
-
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
 class PositionIn(BaseModel):
@@ -24,28 +23,13 @@ class PositionIn(BaseModel):
     currency: str = "EUR"
     notes: Optional[str] = None
 
-
-class PositionOut(PositionIn):
-    id: str
-    opened_at: str
-
-
-class SignalHistoryOut(BaseModel):
-    ticker: str
-    date: str
-    strategy_id: str
-    signal_buy: bool
-    signal_sell: bool
-    composite_score: Optional[float]
-
-
 # ─── Positions ────────────────────────────────────────────────────────────────
 @router.get("/positions")
 async def get_positions(
-    request=None,
+    request: Request,
     current_user: UserOut = Depends(get_current_user),
 ):
-    pool = request.app.state.pool
+    pool: asyncpg.Pool = request.app.state.pool
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT id, ticker, qty, avg_price, currency, notes,
@@ -61,22 +45,17 @@ async def get_positions(
 @router.post("/positions", status_code=201)
 async def add_position(
     body: PositionIn,
-    request=None,
+    request: Request,
     current_user: UserOut = Depends(get_current_user),
 ):
-    pool = request.app.state.pool
+    pool: asyncpg.Pool = request.app.state.pool
     pos_id = str(uuid4())
     async with pool.acquire() as conn:
         await conn.execute(
             """INSERT INTO user_portfolios (id, user_id, ticker, qty, avg_price, currency, notes)
                VALUES ($1, $2, $3, $4, $5, $6, $7)""",
-            pos_id,
-            current_user.user_id,
-            body.ticker.upper(),
-            body.qty,
-            body.avg_price,
-            body.currency,
-            body.notes,
+            pos_id, current_user.user_id, body.ticker.upper(),
+            body.qty, body.avg_price, body.currency, body.notes,
         )
     return {"id": pos_id, "status": "created"}
 
@@ -84,15 +63,14 @@ async def add_position(
 @router.delete("/positions/{position_id}")
 async def delete_position(
     position_id: str,
-    request=None,
+    request: Request,
     current_user: UserOut = Depends(get_current_user),
 ):
-    pool = request.app.state.pool
+    pool: asyncpg.Pool = request.app.state.pool
     async with pool.acquire() as conn:
         result = await conn.execute(
             "DELETE FROM user_portfolios WHERE id = $1 AND user_id = $2",
-            position_id,
-            current_user.user_id,
+            position_id, current_user.user_id,
         )
     if result == "DELETE 0":
         raise HTTPException(status_code=404, detail="Position introuvable")
@@ -102,15 +80,15 @@ async def delete_position(
 # ─── Historique signaux ───────────────────────────────────────────────────────
 @router.get("/signals/history")
 async def get_signals_history(
+    request: Request,
     ticker: Optional[str] = None,
     strategy_id: Optional[str] = None,
     from_date: Optional[date] = None,
     to_date: Optional[date] = None,
     limit: int = 90,
-    request=None,
     current_user: UserOut = Depends(get_current_user),
 ):
-    pool = request.app.state.pool
+    pool: asyncpg.Pool = request.app.state.pool
     filters = ["1=1"]
     params = []
 
