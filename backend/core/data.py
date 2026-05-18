@@ -478,6 +478,7 @@ async def get_fx_rate(from_ccy: str = "USD", to_ccy: str = "EUR") -> float:
 async def _fetch_fundamentals_db(ticker: str) -> dict | None:
     """Fetch fundamentals depuis PostgreSQL local — source principale."""
     import os
+
     import sqlalchemy as sa
 
     database_url = os.environ.get("DATABASE_URL", "")
@@ -491,13 +492,16 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
 
         def _query():
             with engine.connect() as conn:
-                row = conn.execute(sa.text("""
+                row = conn.execute(
+                    sa.text("""
                     SELECT ticker, name, sector, industry, country, currency, exchange,
                            market_cap, beta, dividend_yield, total_debt, total_revenue
                     FROM ticker_fundamentals
                     WHERE ticker = :ticker
                     LIMIT 1
-                """), {"ticker": ticker}).fetchone()
+                """),
+                    {"ticker": ticker},
+                ).fetchone()
             return row
 
         row = await loop.run_in_executor(None, _query)
@@ -522,6 +526,7 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
         }
     except Exception as e:
         import logging
+
         logging.getLogger("api").warning("PG fundamentals failed for %s: %s", ticker, e)
     return None
 
