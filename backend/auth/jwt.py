@@ -12,7 +12,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt as _bcrypt
 from pydantic import BaseModel, EmailStr
 
 # ─── Config ───────────────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ SECRET_KEY         = os.environ.get("JWT_SECRET", "change-me-in-production-pleas
 ALGORITHM          = "HS256"
 TOKEN_EXPIRE_HOURS = 72
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 bearer      = HTTPBearer(auto_error=False)
 router      = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -45,10 +45,10 @@ class UserOut(BaseModel):
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return _bcrypt.hashpw(password.encode()[:72], _bcrypt.gensalt()).decode()
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return _bcrypt.checkpw(plain.encode()[:72], hashed.encode())
 
 def create_token(user_id: str, email: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=TOKEN_EXPIRE_HOURS)
