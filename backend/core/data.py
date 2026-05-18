@@ -235,8 +235,13 @@ async def _fetch_prices_postgres(
     tickers: list[str],
     start: date,
     end: date,
+    use_adjusted: bool = True,
 ) -> pd.DataFrame:
-    """Lit les prix adj_close depuis PostgreSQL ohlcv — source principale."""
+    """Lit les prix depuis PostgreSQL ohlcv.
+    
+    use_adjusted=True  → adj_close (dividendes réinvestis)
+    use_adjusted=False → close (prix brut, dividendes en cash)
+    """
     import os
 
     import sqlalchemy as sa
@@ -245,6 +250,7 @@ async def _fetch_prices_postgres(
     if not database_url:
         return pd.DataFrame()
 
+    price_col = "adj_close" if use_adjusted else "close"
     sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
     try:
         engine = sa.create_engine(sync_url, pool_pre_ping=True)
@@ -253,20 +259,20 @@ async def _fetch_prices_postgres(
         def _query():
             with engine.connect() as conn:
                 rows = conn.execute(
-                    sa.text("""
-                    SELECT ticker, date, adj_close
+                    sa.text(f"""
+                    SELECT ticker, date, {price_col}
                     FROM ohlcv
                     WHERE ticker = ANY(:tickers)
                       AND date >= :start
                       AND date <= :end
-                      AND adj_close IS NOT NULL
+                      AND {price_col} IS NOT NULL
                     ORDER BY date ASC
                 """),
                     {"tickers": tickers, "start": start, "end": end},
                 ).fetchall()
             if not rows:
                 return pd.DataFrame()
-            df = pd.DataFrame(rows, columns=["ticker", "date", "adj_close"])
+            df = pd.DataFrame(rows, columns=["ticker", "date", price_col])
             df["date"] = pd.to_datetime(df["date"])
             return df.pivot(index="date", columns="ticker", values="adj_close")
 
@@ -281,6 +287,7 @@ async def get_prices(
     period: str = DEFAULT_PERIOD,
     start: date | None = None,
     end: date | None = None,
+    use_adjusted: bool = True,
 ) -> pd.DataFrame:
     """Return adjusted close prices for *tickers* over the requested period.
 
@@ -300,7 +307,7 @@ async def get_prices(
         return pd.read_json(io.StringIO(cached_df))
 
     # 1. PostgreSQL local en priorité absolue
-    df = await _fetch_prices_postgres(tickers, start, end)
+    df = await _fetch_prices_postgres(tickers, start, end, use_adjusted=use_adjusted)
 
     # 2. Fallback yfinance uniquement si aucune donnée en base
     if df.empty:

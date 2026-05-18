@@ -513,7 +513,9 @@ async def run_backtest(payload: BacktestIn):
         "USDEUR=X",
     }
 
+    use_adj = getattr(payload, "use_adjusted_close", True)
     all_tickers = list(set(tickers + [payload.benchmark, "^VIX", "^GSPC", "EURUSD=X"]))
+    # Benchmark toujours adj_close — portfolio selon use_adjusted_close
     prices_full = await get_prices(all_tickers, period=payload.period)
 
     bench_series = (
