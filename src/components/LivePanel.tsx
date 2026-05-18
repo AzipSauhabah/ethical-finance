@@ -74,15 +74,15 @@ function MiniSparkline({ ticks, color }: { ticks: number[]; color: string }) {
 }
 
 function SourceBadge({ source }: { source: string }) {
-  const live = source === "twelve_data";
+  const live = false; // Twelve Data gratuit = 15min délai — pas de temps réel
   return (
     <span style={{
       fontSize: 9, fontFamily: "monospace", padding: "1px 6px", borderRadius: 3,
-      background: live ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.06)",
-      color: live ? "#22c55e" : "#6b7280",
-      border: `1px solid ${live ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)"}`,
+      background: source === "twelve_data" ? "rgba(239,159,39,0.15)" : "rgba(255,255,255,0.06)",
+      color: source === "twelve_data" ? "#EF9F27" : "#6b7280",
+      border: `1px solid ${source === "twelve_data" ? "rgba(239,159,39,0.3)" : "rgba(255,255,255,0.08)"}`,
     }}>
-      {live ? "LIVE" : "DB"}
+      {source === "twelve_data" ? "15min" : "DB"}
     </span>
   );
 }
@@ -95,7 +95,7 @@ export default function LivePanel({ tickers }: Props) {
   const [positions, setPositions] = useState<Position[]>([]);
   const [newTicker, setNewTicker] = useState("");
   const [activeTickers, setActiveTickers] = useState<string[]>([]);
-  const [interval, setInterval_] = useState(10);
+  const [interval, setInterval_] = useState(60);
   const wsRefs = useRef<Map<string, WebSocket>>(new Map());
   const tickCountRef = useRef(0);
 
@@ -342,7 +342,7 @@ export default function LivePanel({ tickers }: Props) {
           {/* Footer */}
           <div style={{ padding: "8px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 10, color: "#444" }}>
-              LIVE = Twelve Data temps réel · DB = dernier cours PostgreSQL
+              15min = Twelve Data (délai 15min, plan gratuit) · DB = dernier cours PostgreSQL
             </span>
             <span style={{ fontSize: 10, color: "#444" }}>
               Intervalle : {interval}s · {rowsArray.length} ticker{rowsArray.length !== 1 ? "s" : ""}
