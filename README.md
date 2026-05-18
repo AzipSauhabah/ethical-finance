@@ -5,7 +5,7 @@
 Analyse 20+ métriques quant, backtest des stratégies Renaissance & Buffett, optimise des portefeuilles ETF halal multi-actifs, simule du DCA intelligent, génère des rapports PDF institutionnels — le tout sur un NAS auto-hébergé avec pipeline de données automatisé.
 
 🔗 **Live** : [app.sauhabah-advisory.eu](https://app.sauhabah-advisory.eu)
-🔗 **API** : [api.sauhabah-advisory.eu](https://api.sauhabah-advisory.eu/docs)
+🔗 **API** : [api.sauhabah-advisory.eu/docs](https://api.sauhabah-advisory.eu/docs)
 📦 **Repo** : [github.com/AzipSauhabah/ethical-finance](https://github.com/AzipSauhabah/ethical-finance)
 
 [![NAS](https://img.shields.io/badge/Hébergement-Synology%20DS925%2B-blue)](https://www.synology.com)
@@ -22,20 +22,23 @@ Analyse 20+ métriques quant, backtest des stratégies Renaissance & Buffett, op
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  COUCHE DONNÉES  (PostgreSQL — source principale, zéro yfinance RT) │
-│  OHLCV+splits │ Fundamentals SEC │ NAV div.réinvestis │ Intraday WS │
-│  Sentiment VADER │ Cache mémoire local (TTL)                         │
+│  ohlcv (daily) │ ohlcv_intraday (1h) │ ticker_fundamentals          │
+│  nav_history │ signals_history │ user_portfolios │ users             │
+│  Cache mémoire local TTL — zéro Supabase / Vercel KV                │
 └──────────────────────────────────┬──────────────────────────────────┘
                                    │
 ┌──────────────────────────────────▼──────────────────────────────────┐
 │  MOTEUR DE SIGNAUX  (strategy-aware — 5 votes combinés)              │
-│  EPR5 RF+LSTM │ Sentiment VADER │ Fondamental SEC │ RSI/Fibo/Elliott │
-│  Persistance automatique dans signals_history à 20h30 UTC            │
+│  SMA crossover │ MACD │ Momentum │ RSI │ Sentiment                   │
+│  Sources sentiment : Yahoo Finance RSS + Google News RSS (VADER)     │
+│  Persistance auto dans signals_history à 20h30 UTC                   │
 └────────────────────┬────────────────────────────────────────────────┘
                      │
          ┌───────────▼───────────┐
          │   Filtre stratégie    │
-         │  Poids adaptés selon  │
-         │  EPR5/Momentum/etc.   │
+         │  EPR5 / Momentum /    │
+         │  Mean Rev / SMA /     │
+         │  Dual Mom / Buy&Hold  │
          └───┬───────────────┬───┘
              │               │
     ┌────────▼──────┐ ┌──────▼────────────┐
@@ -51,7 +54,7 @@ Analyse 20+ métriques quant, backtest des stratégies Renaissance & Buffett, op
 ┌──────────────────────────────▼──────────────────────────────────────┐
 │  FRONTEND  React / Vite / TypeScript — dark theme institutionnel     │
 │  Accueil │ Portfolio │ Screener │ Backtest │ Signaux │ Sentiment     │
-│  Technical │ Indicateurs │ Live                                      │
+│  Technical │ Indicateurs (RSI/BB/MACD/Fibo/Elliott) │ Live           │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -65,8 +68,8 @@ Analyse 20+ métriques quant, backtest des stratégies Renaissance & Buffett, op
 - Badge halal par ticker dans toutes les vues
 
 ### 🌍 Screener multi-univers
-- 5 univers séparés : SP500, CAC40, ETF broad, ETF Precious Metals, MSCI World
-- 573 tickers, 2.75M lignes OHLCV, 615 fiches fondamentales SEC EDGAR
+- 5 univers : SP500, CAC40, ETF broad, ETF Precious Metals, MSCI World
+- 573 tickers, 2.75M lignes OHLCV daily, 615 fiches fondamentales
 - Filtres Magic Formula, Piotroski, PE/PB/rendement
 
 ### 📊 20+ Métriques quantitatives
@@ -81,69 +84,61 @@ Analyse 20+ métriques quant, backtest des stratégies Renaissance & Buffett, op
 | Trade stats | Win Rate, Avg Win/Loss, Profit Factor |
 
 ### 🔬 Stratégies backtestables
-- **EPR5** — RF + LSTM TensorFlow (40%/60%), 5 votes combinés
-- **Buffett Quality** — Log R² linearity + low volatility + momentum
-- **Renaissance Composite** — Multi-factor stat-arb signal
-- **Dual Momentum** (Antonacci) — Absolute + relative momentum
+- **EPR5** — RF + LSTM TensorFlow, 5 votes combinés
+- **Buffett Quality**, **Renaissance Composite**, **Dual Momentum** (Antonacci)
 - **Trend Following EMA 50/200**, **Mean Reversion Z-Score**, **RSI Contrarian**
 - **SMA Crossover, Adaptive Trend, Buy & Hold, Equal Weight, Min Variance, Risk Parity**
 
 Toutes les stratégies intègrent un `PositionManager` (ATR sizing, stop-loss, trailing stop).
 
 **Réalisme broker :**
-- Fortuneo / Boursorama / Degiro → actions entières uniquement (`floor`)
-- Revolut → fractions d'actions permises (toggle)
+- Fortuneo / Boursorama / Degiro → actions entières (`floor`)
+- Revolut → fractions d'actions (toggle)
 - Toggle dividendes réinvestis (`adj_close`) ou perçus en cash (`close`)
 
 ### 🎯 Moteur de signaux strategy-aware (v2)
-- **5 votes combinés** : SMA crossover, MACD, Sentiment VADER, RSI, Momentum
-- **Poids adaptés selon la stratégie choisie** (EPR5 / Momentum / Mean Reversion / etc.)
-- **Persistance automatique** dans `signals_history` à 20h30 UTC via APScheduler
+- 5 votes pondérés selon la stratégie choisie
+- Persistance automatique dans `signals_history` à 20h30 UTC
 - 573 tickers × 6 stratégies archivés chaque jour
-- Prédictions J+1 à J+5 affichées dans le Dashboard Signaux
-- Dans quelques années : vérification a posteriori de la qualité des prédictions
+- Prédictions J+1 à J+5 dans le Dashboard Signaux
+
+### 😐 Sentiment multi-sources (v2)
+- **Yahoo Finance RSS** — flux financier par ticker
+- **Google News RSS** — 80 000+ sources, gratuit, sans API key
+- Fusion et déduplication automatique, jusqu'à 20 articles par ticker
+- VADER avec lexique financier custom (beat, downgrade, bankruptcy…)
+- Score composite [-1, +1] intégré comme vote dans les signaux
 
 ### 📈 Indicateurs techniques configurables (v2)
-- **RSI** — période variable (5-30), seuils oversold/overbought ajustables, jauge animée
-- **Bollinger Bands** — période et écart-type configurables, position actuelle dans les bandes
+- **RSI** — période variable, seuils ajustables, jauge animée
+- **Bollinger Bands** — période et écart-type configurables
 - **MACD** — EMA rapide/lente/signal ajustables, histogramme
-- **Fibonacci** — retracements automatiques sur le range de la période, niveaux "PROCHE" alertés
-- Calculs côté client sur données PostgreSQL (rapide, pas de yfinance RT)
+- **Fibonacci** — retracements auto sur le range, alertes "PROCHE"
+- **Elliott Wave** — ZigZag + identification vagues 1-5 + validation règles strictes
+  - Mode **daily** (6 mois de données) → vagues hebdomadaires/mensuelles
+  - Mode **intraday 1h** (données Twelve Data, alimentées toutes les heures) → micro-vagues
+  - Tableau de validation : Wave 2 < Wave 1, Wave 3 la plus longue, Wave 4 sans chevauchement
+  - Confiance calculée sur 6 règles Elliott, affichée honnêtement
 
 ### 📡 Live intraday WebSocket (v2)
 - WebSocket `/ws/intraday/{ticker}` — prix toutes les 60s
 - Source : Twelve Data (délai 15min, plan gratuit) → fallback PostgreSQL
 - Badge honnête "15min" (pas de faux "LIVE")
-- Sparkline des 30 derniers ticks par ticker
-- Saisie positions réelles (Qté, PRU) → P&L calculé en temps réel
+- Sparkline des 30 derniers ticks, P&L temps réel
 
 ### 👤 Portfolio avec positions réelles (v2)
-- Saisie Qté + PRU par ticker
-- Valeur totale, P&L€, P&L% calculés sur le dernier cours
-- Stats globales : VALEUR portefeuille, P&L total
-- Sauvegarde automatique en PostgreSQL si connecté (JWT)
+- Saisie Qté + PRU par ticker, P&L€ et P&L% temps réel
+- Valeur totale et P&L global du portefeuille
 - Modal auth intégrée (login / inscription)
+- Sauvegarde automatique en PostgreSQL si connecté
 
-### 📐 Optimisation de portefeuille
-- Max Sharpe (Markowitz), Min Volatility, Risk Parity, Equal Weight, Max Diversification
-- Frontière efficiente, matrice de corrélations
-
-### 💰 Variantes DCA
-- Classic, Momentum-Weighted, Smart DCA (ATH trigger), Value Averaging
+### 📐 Optimisation & DCA
+- Max Sharpe, Min Volatility, Risk Parity, Equal Weight, Max Diversification
+- DCA Classic, Momentum-Weighted, Smart DCA, Value Averaging
 
 ### 📄 Rapport PDF institutionnel
 - 15 pages, style Goldman Sachs
 - 8 graphiques matplotlib HD : rolling Sharpe, volatility, heatmap, distribution, underwater, beta, win/loss
-- Narratif auto-généré par métrique
-
-### 📈 Analyse fondamentale (SEC EDGAR)
-- 30+ métriques GAAP (PE, PB, ROE, ROA, FCF, Debt/Equity…)
-- Lookup CIK automatique depuis `www.sec.gov/files/company_tickers.json`
-- Intégré comme vote dans le score composite des signaux
-
-### ⚙️ Registre de tickers dynamique
-- Ajouter n'importe quel ticker via UI ou `POST /api/registry/add`
-- Configurer les paramètres GBM fallback (μ, σ) par ticker
 
 ---
 
@@ -155,61 +150,40 @@ ethical-finance/
 ├── backend/
 │   ├── app.py                      # FastAPI app + APScheduler (1 worker)
 │   ├── index.py                    # Routes FastAPI
-│   ├── config.py
 │   ├── auth/
-│   │   ├── jwt.py                  # JWT register/login/me
-│   │   └── portfolio_routes.py     # Routes protégées portfolio + signals_history
+│   │   ├── jwt.py                  # JWT register/login/me (bcrypt)
+│   │   └── portfolio_routes.py     # Routes protégées portfolio
 │   ├── core/
-│   │   ├── data.py                 # get_prices → PostgreSQL en priorité
-│   │   ├── cache.py                # Cache mémoire local (remplace Vercel KV)
-│   │   ├── registry.py             # Registre tickers + screening éthique
-│   │   ├── sec_edgar.py            # SEC EDGAR — 30+ métriques GAAP
+│   │   ├── data.py                 # get_prices → PostgreSQL priorité
+│   │   ├── cache.py                # Cache mémoire local TTL
+│   │   ├── registry.py             # Registre tickers + screening
+│   │   ├── sec_edgar.py            # SEC EDGAR 30+ GAAP
 │   │   ├── fmp.py                  # FMP fundamentals non-US
-│   │   ├── twelve_data.py          # Twelve Data — OHLCV pipeline
-│   │   └── loader.py               # Chargement initial univers complet
+│   │   └── twelve_data.py          # Twelve Data OHLCV + intraday
 │   ├── quant/
 │   │   ├── metrics.py              # 25+ métriques
 │   │   ├── signals.py              # Indicateurs techniques + ML
-│   │   ├── sentiment.py            # VADER + lexique financier custom
-│   │   └── montecarlo.py
-│   ├── strategies/
-│   │   ├── base.py                 # PositionManager + StrategyParams
-│   │   └── builtin/                # EPR5, Momentum, MeanRev, SMA…
-│   ├── backtest/
-│   │   ├── engine.py               # Event-driven, anti look-ahead
-│   │   ├── portfolio.py            # NAV, cash, positions
-│   │   └── costs.py                # Frais broker + slippage + PFU 30%
-│   ├── signals/
-│   │   └── daily.py                # Signaux journaliers strategy-aware
-│   ├── ws/
-│   │   └── intraday.py             # WebSocket live intraday
-│   └── report/
-│       ├── pdf.py                  # PDF 15p matplotlib HD
-│       └── tearsheet.py
+│   │   └── sentiment.py            # VADER + Yahoo RSS + Google News RSS
+│   ├── strategies/builtin/         # EPR5, Momentum, MeanRev…
+│   ├── backtest/engine.py          # Event-driven, anti look-ahead
+│   ├── signals/daily.py            # Signaux journaliers strategy-aware
+│   └── ws/intraday.py              # WebSocket live intraday
 │
-├── src/                            # Frontend React / Vite / TypeScript
+├── src/
 │   ├── App.tsx                     # 9 onglets
-│   ├── components/
-│   │   ├── TickerManager.tsx       # Portfolio + positions réelles + auth modal
-│   │   ├── SignalsPanel.tsx        # Signaux strategy-aware + sparklines
-│   │   ├── IndicatorsPanel.tsx     # RSI/Bollinger/MACD/Fibonacci
-│   │   ├── LivePanel.tsx           # WebSocket intraday
-│   │   ├── BacktestPanel.tsx       # Backtest + broker settings
-│   │   ├── ScreeningPanel.tsx
-│   │   ├── SentimentPanel.tsx
-│   │   └── TechnicalPanel.tsx
-│   └── hooks/
-│       └── useLiveQuotes.ts
+│   └── components/
+│       ├── TickerManager.tsx       # Portfolio + positions + auth modal
+│       ├── SignalsPanel.tsx        # Signaux strategy-aware
+│       ├── IndicatorsPanel.tsx     # RSI/BB/MACD/Fibo/Elliott Wave
+│       ├── LivePanel.tsx           # WebSocket intraday
+│       └── BacktestPanel.tsx       # Backtest + broker settings
 │
 ├── migrations/
-│   └── v2_portfolio_auth.sql       # Tables users, portfolios, signals_history, nav_history
-├── Dockerfile                      # workers=1 (évite double scheduler)
-├── docker-compose.yml
-├── .github/workflows/
-│   ├── daily-ohlcv.yml             # 20h UTC — OHLCV + signaux
-│   └── weekly-fundamentals.yml    # Dimanche 8h UTC
-└── docs/
-    └── STRATEGY_GUIDE.md
+│   └── v2_portfolio_auth.sql       # users, portfolios, signals_history, nav_history, ohlcv_intraday
+├── Dockerfile                      # workers=1
+└── .github/workflows/
+    ├── daily-ohlcv.yml             # 20h UTC
+    └── weekly-fundamentals.yml    # Dimanche 8h UTC
 ```
 
 ---
@@ -219,66 +193,49 @@ ethical-finance/
 ### Backend (Python)
 | Bibliothèque | Rôle |
 |---|---|
-| FastAPI + Uvicorn (workers=1) | Framework REST API + WebSocket |
+| FastAPI + Uvicorn (workers=1) | REST API + WebSocket |
 | PostgreSQL 16 + asyncpg | Base de données principale |
-| APScheduler 3.x | Pipeline automatique (5 jobs) |
-| scikit-learn | Random Forest, clustering HRP |
-| TensorFlow 2.17 | LSTM (EPR5 — 40% du score) |
+| APScheduler 3.x | 6 jobs automatiques |
+| scikit-learn | Random Forest, HRP |
+| TensorFlow 2.17 | LSTM (EPR5) |
 | VADER + lexique custom | Sentiment financier |
-| Twelve Data / FMP | Données OHLCV pipeline |
 | python-jose + bcrypt | Auth JWT |
 | httpx | Requêtes async |
-| ReportLab + Matplotlib | PDF institutionnel 15 pages |
-| Pydantic v2 | Validation |
+| Matplotlib + ReportLab | PDF 15 pages |
 
 ### Frontend (TypeScript)
 | Bibliothèque | Rôle |
 |---|---|
 | React 18 + Vite 6 | Framework + build |
-| TypeScript | Typage |
 | Recharts | Graphiques |
-| Tailwind CSS | Styles |
 | WebSocket natif | Live intraday |
-
-### Infrastructure
-| Composant | Détail |
-|---|---|
-| NAS | Synology DS925+ |
-| Docker Compose | 3 services : api, db, pgadmin |
-| Nginx | Sert le frontend (dist/) |
-| Cloudflare Tunnel | HTTPS automatique, zéro port exposé |
-| GitHub Actions | CI/CD + pipeline données |
-| pgAdmin 4 | `192.168.1.139:5050` |
 
 ---
 
-## 📡 API Endpoints principaux
+## 📡 API Endpoints
 
 ### Public
 ```
-GET    /api/prices/db             → Prix OHLCV depuis PostgreSQL (rapide)
+GET    /api/prices/db             → Prix daily depuis PostgreSQL
+GET    /api/prices/intraday       → Prix 1h depuis ohlcv_intraday
 POST   /api/signals/daily         → Signaux strategy-aware
 POST   /api/screener              → Screener multi-univers
 POST   /api/backtest              → Backtest event-driven
-GET    /api/metrics/{ticker}      → 20+ métriques
-POST   /api/optimize              → Optimisation portefeuille
-POST   /api/dca                   → Backtest DCA
+POST   /api/sentiment             → Sentiment Yahoo+Google News
 WS     /ws/intraday/{ticker}      → WebSocket live
 ```
 
 ### Auth
 ```
-POST   /auth/register             → Créer un compte
-POST   /auth/login                → Connexion → JWT
-GET    /auth/me                   → Profil utilisateur
+POST   /auth/register
+POST   /auth/login                → JWT
+GET    /auth/me
 ```
 
 ### Protégées (JWT)
 ```
-GET    /api/portfolio/positions   → Positions réelles
-POST   /api/portfolio/positions   → Ajouter une position
-DELETE /api/portfolio/positions/{id} → Supprimer
-GET    /api/portfolio/signals/history → Historique signaux archivés
+GET/POST/DELETE  /api/portfolio/positions
+GET              /api/portfolio/signals/history
 ```
 
 ---
@@ -286,74 +243,44 @@ GET    /api/portfolio/signals/history → Historique signaux archivés
 ## 🗄️ Schéma de base de données
 
 ```sql
--- Existant
+-- Daily OHLCV
+ohlcv (ticker, date PK, open, high, low, close, adj_close, volume, split_factor)
+
+-- Intraday 1h (Twelve Data — alimenté toutes les heures)
+ohlcv_intraday (ticker, datetime, interval PK, open, high, low, close, volume)
+
+-- Fundamentals
 ticker_fundamentals (ticker PK, universe, name, sector, pe, pb, roe, ...)
-ohlcv (ticker, date, open, high, low, close, adj_close, volume, split_factor)
-strategies (id, name, params_json)
 
--- v2
-users (id UUID PK, email UNIQUE, password_hash, created_at)
+-- Signaux archivés (1 entrée/ticker/stratégie/jour)
+signals_history (ticker, date, strategy_id PK, signal_buy, signal_sell,
+                 rf_score, lstm_score, sentiment_score, fundamental_score,
+                 technical_score, composite_score)
 
-user_portfolios (
-  id UUID PK, user_id UUID FK,
-  ticker, qty, avg_price, currency, opened_at, notes
-)
-
-signals_history (
-  id UUID PK, ticker, date, strategy_id,
-  signal_buy, signal_sell,
-  rf_score, lstm_score, sentiment_score, fundamental_score, technical_score,
-  composite_score, created_at,
-  UNIQUE (ticker, date, strategy_id)
-)
-
-nav_history (
-  ticker, date PRIMARY KEY,
-  nav, nav_div_reinvested, split_factor
-)
+-- Auth + Portfolio
+users          (id UUID PK, email UNIQUE, password_hash, created_at)
+user_portfolios(id UUID PK, user_id FK, ticker, qty, avg_price, currency, opened_at)
+nav_history    (ticker, date PK, nav, nav_div_reinvested, split_factor)
 ```
 
 ---
 
 ## ⏰ Pipeline automatique
 
-| Heure UTC | Action |
-|---|---|
-| 20h00 | GitHub Actions → yfinance → OHLCV 7 derniers jours → Google Drive |
-| 20h30 | NAS APScheduler → calcul signaux 573 tickers × 6 stratégies → `signals_history` |
-| 22h00 | NAS APScheduler → SEC EDGAR fundamentals SP500 (100 tickers) |
-| 22h30 | NAS APScheduler → FMP fundamentals CAC40 + MSCI |
-| 23h00 | NAS APScheduler → backup PostgreSQL (7 jours de rétention) |
-| 23h30 | NAS APScheduler → Drive sync → import OHLCV dans PostgreSQL |
-| Dim 8h | GitHub Actions → mise à jour fundamentals yfinance (tous tickers) |
-
----
-
-## 📊 ETF pré-chargés
-
-| Clé | Nom | ISIN | TER | Halal |
-|---|---|---|---|---|
-| ISWD | iShares MSCI World Islamic | IE00B27YCN58 | 0.50% | ✅ MSCI Shariah |
-| IUSF | iShares MSCI USA Islamic | IE00B296QM64 | 0.30% | ✅ MSCI Shariah |
-| ISDE | iShares MSCI EM Islamic | IE00B27YCP72 | 0.85% | ✅ MSCI Shariah |
-| AMAL | Saturna Al-Kawthar | IE00BMYMHS24 | 0.75% | ✅ Saturna Capital SB |
-| HIWS | HSBC MSCI EM Islamic | IE0009BC6K22 | 0.60% | ✅ HSBC Shariah SB |
-| IWDA | MSCI World (Benchmark) | IE00B4L5Y983 | 0.20% | ❌ |
-| CSPX | S&P 500 (Benchmark) | IE00B5BMR087 | 0.07% | ❌ |
-| GLD | SPDR Gold Shares | US78463V1070 | 0.40% | ✅ Or physique |
-| SLV | iShares Silver Trust | US46428Q1094 | 0.50% | ✅ Argent physique |
-| IAU | iShares Gold Trust | US4642851036 | 0.25% | ✅ Or physique |
+| Heure UTC | Service | Action |
+|---|---|---|
+| 20h00 | GitHub Actions | yfinance → OHLCV 7j → Google Drive |
+| 20h30 | APScheduler NAS | Signaux 573 tickers × 6 stratégies → `signals_history` |
+| **toutes les heures** | **APScheduler NAS** | **Twelve Data 1h → `ohlcv_intraday` (top 50 tickers)** |
+| 22h00 | APScheduler NAS | SEC EDGAR fundamentals SP500 |
+| 22h30 | APScheduler NAS | FMP fundamentals CAC40 + MSCI |
+| 23h00 | APScheduler NAS | Backup PostgreSQL (7j rétention) |
+| 23h30 | APScheduler NAS | Drive sync → import OHLCV daily |
+| Dim 8h | GitHub Actions | Fundamentals yfinance tous tickers |
 
 ---
 
 ## 🚀 Déploiement NAS
-
-### Prérequis
-- Synology DS925+ avec Docker
-- Git wrapper : `/volume1/docker/bin/git` (alpine/git)
-- `.env` : `TWELVE_DATA_API_KEY`, `FMP_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `DB_PASSWORD`, `JWT_SECRET`
-- Google Service Account : `ethical-finance-nas-*.json`
-- PostgreSQL port **5433** (5432 réservé NAS natif)
 
 ### Backend
 ```bash
@@ -376,8 +303,6 @@ sudo docker run --rm \
 sudo docker restart ethical-finance-frontend
 ```
 
-> `VITE_API_URL` doit être injecté **au build**, pas au runtime.
-
 ### Migration DB v2
 ```bash
 sudo docker exec -i ethical-finance-db \
@@ -385,15 +310,12 @@ sudo docker exec -i ethical-finance-db \
   < migrations/v2_portfolio_auth.sql
 ```
 
-### Développement local
+### Peupler ohlcv_intraday manuellement (premier run)
 ```bash
-# Backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn backend.index:app --reload --port 8000
-
-# Frontend
-npm install && npm run dev
+sudo docker exec -it ethical-finance-api python3 -c "
+import asyncio, os, sqlalchemy as sa, httpx
+# ... voir script complet dans migrations/seed_intraday.py
+"
 ```
 
 ---
@@ -403,41 +325,62 @@ npm install && npm run dev
 | Sujet | Note |
 |---|---|
 | Port PostgreSQL | **5433** externe ; 5432 dans Docker |
-| Uvicorn workers | **1 seul worker** (évite double démarrage APScheduler) |
-| Cache | Mémoire locale TTL — plus de Vercel KV / Supabase |
-| `get_prices` | Lit PostgreSQL en priorité — yfinance seulement en fallback |
-| `_fetch_fundamentals_db` | Lit PostgreSQL — plus de Supabase REST |
-| git wrapper NAS | `export PATH="/volume1/docker/bin:$PATH"` avant tout git |
-| sed macOS | `-i ''` (string vide après -i) |
-| JSX apostrophes | Utiliser `"` pour les strings contenant `'` |
-| `\copy` psql | Ne fonctionne pas dans `-c` multi-ligne |
-| Yahoo Finance | Rate-limitée depuis NAS — préférer Twelve Data / FMP |
-| VITE_API_URL | Injecté au **build**, pas au runtime |
+| Uvicorn workers | **1 seul** (évite double démarrage APScheduler) |
+| Cache | Mémoire locale TTL — zéro Vercel KV / Supabase |
+| `get_prices` | PostgreSQL priorité — yfinance seulement en fallback |
+| `_fetch_fundamentals_db` | PostgreSQL — zéro Supabase REST |
+| Sentiment | Yahoo Finance RSS + Google News RSS (gratuit, sans clé) |
+| Elliott Wave daily | 6 mois données daily — vagues hebdo/mensuelles |
+| Elliott Wave intraday | Twelve Data 1h — micro-vagues — plan gratuit OK |
+| Twelve Data | 800 req/jour gratuit — intraday job : 1 req/2s |
+| `.env` dédoublons | Vérifier unicité des clés (pas de doublon TWELVE_DATA_API_KEY) |
+| JWT_SECRET | Changer en production dans `.env` |
 | pgAdmin | `192.168.1.139:5050` — host: `ethical-finance-db`, port: `5432` |
-| JWT_SECRET | Changer en production (`JWT_SECRET=...` dans `.env`) |
+| sed macOS | `-i ''` (string vide après -i) |
+| VITE_API_URL | Injecté au **build**, pas au runtime |
 
 ---
 
 ## 🗺️ Roadmap
 
 ### Livré (v2 — 18/05/2026)
-- [x] Auth JWT + persistance portfolio utilisateurs
+- [x] Auth JWT + persistance portfolio PostgreSQL
 - [x] Page Signaux strategy-aware + historique jour/jour
 - [x] Scheduler signaux 20h30 UTC (573 tickers × 6 stratégies)
+- [x] Sentiment multi-sources : Yahoo Finance RSS + Google News RSS
+- [x] Indicateurs configurables : RSI, Bollinger, MACD, Fibonacci
+- [x] **Elliott Wave** — ZigZag + vagues 1-5 + validation + mode intraday 1h
+- [x] **ohlcv_intraday** — table 1h + scheduler toutes les heures + endpoint API
 - [x] Live intraday WebSocket + sparklines + P&L temps réel
-- [x] RSI configurable + Bollinger + MACD + Fibonacci dans le frontend
 - [x] Positions réelles (Qté/PRU) + P&L global dans Portfolio
 - [x] Backtest : fractions par broker + dividendes réinvestis toggle
-- [x] Cache mémoire local — suppression Supabase/Vercel KV
-- [x] PostgreSQL source principale — yfinance relégué en fallback
-- [x] Suppression double démarrage APScheduler (workers=1)
+- [x] Cache mémoire local — zéro dépendance cloud externe
+- [x] PostgreSQL source principale partout
+- [x] Workers=1 Uvicorn
 
 ### À venir
 - [ ] NAV changements de composition d'indice (SP500/CAC40 annuels)
+- [ ] Elliott Wave ML supervisé (entraînement sur historique labeled)
 - [ ] Ollama LLM local (après installation RAM 16 Go)
-- [ ] TensorFlow modèles avancés EPR5 (LSTM bidirectionnel, attention)
+- [ ] TensorFlow EPR5 avancé (LSTM bidirectionnel, attention)
 - [ ] Backtesting intraday (données Twelve Data historiques)
-- [ ] Elliott Wave automatique (détection pivots daily)
+
+---
+
+## 📊 ETF pré-chargés
+
+| Clé | Nom | ISIN | TER | Halal |
+|---|---|---|---|---|
+| ISWD | iShares MSCI World Islamic | IE00B27YCN58 | 0.50% | ✅ |
+| IUSF | iShares MSCI USA Islamic | IE00B296QM64 | 0.30% | ✅ |
+| ISDE | iShares MSCI EM Islamic | IE00B27YCP72 | 0.85% | ✅ |
+| AMAL | Saturna Al-Kawthar | IE00BMYMHS24 | 0.75% | ✅ |
+| HIWS | HSBC MSCI EM Islamic | IE0009BC6K22 | 0.60% | ✅ |
+| IWDA | MSCI World (Benchmark) | IE00B4L5Y983 | 0.20% | ❌ |
+| CSPX | S&P 500 (Benchmark) | IE00B5BMR087 | 0.07% | ❌ |
+| GLD | SPDR Gold Shares | US78463V1070 | 0.40% | ✅ |
+| SLV | iShares Silver Trust | US46428Q1094 | 0.50% | ✅ |
+| IAU | iShares Gold Trust | US4642851036 | 0.25% | ✅ |
 
 ---
 
@@ -449,10 +392,7 @@ Cette application est un outil d'analyse personnel à but éducatif. Elle ne con
 
 ## 👤 Auteur
 
-**Azip Sauhabah**
-GitHub : [github.com/AzipSauhabah](https://github.com/AzipSauhabah)
-
----
+**Azip Sauhabah** · GitHub : [github.com/AzipSauhabah](https://github.com/AzipSauhabah)
 
 ## 📄 Licence
 
