@@ -77,11 +77,10 @@ def _fx_convert(
 
 
 def _target_shares(
-    weight: float, nav_eur: float, price_eur: float, cap: float,
-    allow_fractional: bool = False
+    weight: float, nav_eur: float, price_eur: float, cap: float, allow_fractional: bool = False
 ) -> float:
     """Calcule le nombre d'actions cible.
-    
+
     - Fortuneo / Boursorama / default : actions entières uniquement (floor)
     - Revolut : fractions permises (allow_fractional=True)
     """
@@ -298,9 +297,10 @@ class BacktestEngine:
             pos = portfolio._positions.get(ticker)
             cur_shares = pos.shares if pos else 0
             target_shares = _target_shares(
-                target_w, portfolio.market_value(prices_eur,
-                allow_fractional=params.allow_fractional
-            ), price, params.max_position_pct
+                target_w,
+                portfolio.market_value(prices_eur, allow_fractional=params.allow_fractional),
+                price,
+                params.max_position_pct,
             )
             diff = target_shares - cur_shares
             if diff > 0:

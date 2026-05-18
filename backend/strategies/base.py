@@ -31,8 +31,10 @@ class StrategyParams:
     max_position_pct: float = 0.25
     stop_loss_pct: float | None = 0.10
     broker: str = "default"
-    allow_fractional: bool = False   # True uniquement pour Revolut
-    use_adjusted_close: bool = True  # True = dividendes réinvestis (adj_close), False = prix brut (close)
+    allow_fractional: bool = False  # True uniquement pour Revolut
+    use_adjusted_close: bool = (
+        True  # True = dividendes réinvestis (adj_close), False = prix brut (close)
+    )
     account_type: str = "CTO"
     rebalance_frequency: str = "monthly"
     custom: dict[str, Any] = field(default_factory=dict)

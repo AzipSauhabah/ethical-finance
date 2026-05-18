@@ -65,8 +65,8 @@ class BacktestIn(BaseModel):
     benchmark: str = "^GSPC"
     custom_params: dict = Field(default_factory=dict)
     require_ethical: bool = False
-    allow_fractional: bool = False      # Revolut uniquement
-    use_adjusted_close: bool = True     # True = dividendes réinvestis
+    allow_fractional: bool = False  # Revolut uniquement
+    use_adjusted_close: bool = True  # True = dividendes réinvestis
     require_sharia: bool = False
     use_var_constraint: bool = False
 
@@ -99,8 +99,8 @@ class ScreenerIn(BaseModel):
     method: str = "magic_formula"  # magic_formula | momentum | low_vol | ml | combined
     top_n: int = 20
     require_ethical: bool = False
-    allow_fractional: bool = False      # Revolut uniquement
-    use_adjusted_close: bool = True     # True = dividendes réinvestis
+    allow_fractional: bool = False  # Revolut uniquement
+    use_adjusted_close: bool = True  # True = dividendes réinvestis
     require_sharia: bool = False
     min_market_cap: float = 1e9
     universe: str = "all"
