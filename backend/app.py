@@ -45,6 +45,7 @@ except ImportError:
 
 _STARTED = False
 
+
 @app.on_event("startup")
 async def _startup() -> None:
     global _STARTED
