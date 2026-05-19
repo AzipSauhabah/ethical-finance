@@ -1,0 +1,21 @@
+name: Weekly Fundamentals Update
+
+on:
+  schedule:
+    - cron: '0 8 * * 0'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run fundamentals update in API container
+        run: |
+          docker exec ethical-finance-api python3 -c "
+import asyncio
+from backend.core.loader import load_all_tickers
+asyncio.run(load_all_tickers(years=1))
+print('Fundamentals update complete')
+" || true
