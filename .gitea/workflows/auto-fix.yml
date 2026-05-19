@@ -7,16 +7,12 @@ on:
 jobs:
   autofix:
     runs-on: ubuntu-latest
+    container:
+      image: python:3.11-slim
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITEA_TOKEN }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Install tools
         run: pip install ruff black
