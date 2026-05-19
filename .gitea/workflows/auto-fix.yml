@@ -12,14 +12,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install tools
-        run: pip3 install ruff black --break-system-packages
-
-      - name: Ruff auto-fix
-        run: python3 -m ruff check . --fix --unsafe-fixes || true
-
-      - name: Black format
-        run: python3 -m black .
+      - name: Ruff auto-fix in API container
+        run: |
+          docker exec ethical-finance-api python3 -m ruff check /app --fix --unsafe-fixes || true
+          docker exec ethical-finance-api python3 -m black /app || true
 
       - name: Commit fixes
         run: |
