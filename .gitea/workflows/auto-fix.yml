@@ -1,0 +1,36 @@
+name: Auto Fix Python
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITEA_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install tools
+        run: pip install ruff black
+
+      - name: Ruff auto-fix
+        run: ruff check . --fix --unsafe-fixes || true
+
+      - name: Black format
+        run: black .
+
+      - name: Commit fixes
+        run: |
+          git config user.email "bot@sauhabah.eu"
+          git config user.name "Gitea Bot"
+          git add -A
+          git diff --cached --quiet || git commit -m "chore: auto-fix ruff + black"
+          git push || true
