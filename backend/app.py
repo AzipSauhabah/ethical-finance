@@ -279,6 +279,102 @@ async def _startup() -> None:
 
         scheduler.add_job(daily_signals_job, "cron", hour=20, minute=30, timezone="UTC")
 
+        # OHLCV daily — remplace GitHub Actions + Google Drive
+        async def ohlcv_update_job():
+            try:
+                import os, time
+                import yfinance as yf
+                import pandas as pd
+                import sqlalchemy as sa
+                from datetime import date, timedelta
+
+                database_url = os.environ.get("DATABASE_URL", "")
+                sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+                engine = sa.create_engine(sync_url, pool_pre_ping=True)
+
+                TICKERS = []
+                # SP500
+                TICKERS += ["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","BRK-B","JPM","UNH",
+                    "V","XOM","JNJ","WMT","MA","PG","LLY","CVX","HD","MRK","ABBV","PEP","KO","COST",
+                    "AVGO","MCD","TMO","ACN","BAC","CRM","ABT","NKE","DIS","TXN","NEE","PM","ORCL",
+                    "DHR","LIN","AMGN","IBM","QCOM","RTX","HON","UPS","SBUX","GS","CAT","INTU","SPGI",
+                    "AMD","ELV","AXP","ISRG","BLK","DE","SYK","T","GILD","ADI","MDLZ","REGN","PLD",
+                    "CI","VRTX","ADP","MO","ZTS","TJX","C","ETN","BSX","NOC","SO","DUK","AON",
+                    "CME","ITW","PNC","USB","EMR","WM","MCO","F","GM","FDX","NSC","ECL","APD","HCA",
+                    "ICE","SHW","GD","EW","MSI","CL","OXY","PSA","D"]
+                # CAC40
+                TICKERS += ["MC.PA","TTE.PA","SAN.PA","OR.PA","AIR.PA","BNP.PA","AXA.PA","SU.PA",
+                    "DG.PA","RI.PA","KER.PA","CAP.PA","BN.PA","VIE.PA","SGO.PA","ORA.PA","GLE.PA",
+                    "DSY.PA","HO.PA","STM.PA","EL.PA","RMS.PA","URW.PA","ML.PA","ACA.PA","LR.PA",
+                    "PUB.PA","TEP.PA","WLN.PA","EN.PA","ATO.PA","CS.PA","SAF.PA","VK.PA",
+                    "BOL.PA","AI.PA","SW.PA","RNO.PA","MT.AS"]
+                # MSCI World
+                TICKERS += ["NESN.SW","ROG.SW","NOVN.SW","ASML.AS","SAP.DE","SIE.DE","ALV.DE",
+                    "HSBA.L","BP.L","GSK.L","AZN.L","ULVR.L","RIO.L","BHP.L","SHEL.L",
+                    "7203.T","6758.T","9984.T","8306.T","BHP.AX","CBA.AX","CSL.AX","NAB.AX",
+                    "NOVO-B.CO","EQNR.OL","VOLV-B.ST","NPN.JO"]
+                # ETF + FX + Indices
+                TICKERS += ["IWDA.AS","VWRL.AS","GLD","IAU","SLV",
+                    "EURUSD=X","EURGBP=X","EURCHF=X","EURJPY=X",
+                    "^GSPC","^FCHI","^GDAXI","^VIX","^N225"]
+                TICKERS = list(set(TICKERS))
+
+                start = (date.today() - timedelta(days=7)).isoformat()
+                end = date.today().isoformat()
+                log.info("OHLCV job started — %d tickers from %s to %s", len(TICKERS), start, end)
+
+                inserted = 0
+                loop = asyncio.get_event_loop()
+
+                def _download_and_insert():
+                    nonlocal inserted
+                    for ticker in TICKERS:
+                        try:
+                            df = yf.download(ticker, start=start, end=end,
+                                           auto_adjust=False, progress=False)
+                            if isinstance(df.columns, pd.MultiIndex):
+                                df.columns = [col[0] for col in df.columns]
+                            if df.empty:
+                                continue
+                            df = df.reset_index()
+                            df["ticker"] = ticker
+                            df = df.rename(columns={
+                                "Date": "date", "Open": "open", "High": "high",
+                                "Low": "low", "Close": "close",
+                                "Adj Close": "adj_close", "Volume": "volume"
+                            })
+                            with engine.connect() as conn:
+                                for _, row in df.iterrows():
+                                    conn.execute(sa.text("""
+                                        INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
+                                        VALUES (:ticker, :date, :open, :high, :low, :close, :adj_close, :volume)
+                                        ON CONFLICT (ticker, date) DO UPDATE SET
+                                            close=EXCLUDED.close,
+                                            adj_close=EXCLUDED.adj_close,
+                                            volume=EXCLUDED.volume
+                                    """), {
+                                        "ticker": ticker,
+                                        "date": row["date"].date() if hasattr(row["date"], "date") else row["date"],
+                                        "open": float(row["open"] or 0),
+                                        "high": float(row["high"] or 0),
+                                        "low": float(row["low"] or 0),
+                                        "close": float(row["close"] or 0),
+                                        "adj_close": float(row.get("adj_close") or row["close"] or 0),
+                                        "volume": int(row["volume"] or 0),
+                                    })
+                                    conn.commit()
+                                    inserted += 1
+                        except Exception as e:
+                            log.debug("OHLCV error %s: %s", ticker, e)
+                        time.sleep(0.05)
+
+                await loop.run_in_executor(None, _download_and_insert)
+                log.info("OHLCV job complete — %d rows inserted", inserted)
+            except Exception as e:
+                log.warning("OHLCV job error: %s", e)
+
+        scheduler.add_job(ohlcv_update_job, "cron", hour=20, minute=0, day_of_week="mon-fri", timezone="UTC")
+
         # Intraday 1h — fetch Twelve Data toutes les heures (marché ouvert)
         async def intraday_job():
             try:
