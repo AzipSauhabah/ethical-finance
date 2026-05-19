@@ -7,21 +7,19 @@ on:
 jobs:
   autofix:
     runs-on: ubuntu-latest
-    container:
-      image: python:3.11-slim
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Install tools
-        run: pip install ruff black
+        run: pip3 install ruff black --break-system-packages
 
       - name: Ruff auto-fix
-        run: ruff check . --fix --unsafe-fixes || true
+        run: python3 -m ruff check . --fix --unsafe-fixes || true
 
       - name: Black format
-        run: black .
+        run: python3 -m black .
 
       - name: Commit fixes
         run: |
