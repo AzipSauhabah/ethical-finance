@@ -14,5 +14,5 @@ jobs:
           /volume1/docker/sonar-scanner/bin/sonar-scanner \
             -Dsonar.projectKey=ethical-finance \
             -Dsonar.sources=/volume1/docker/ethical-finance/backend \
-            -Dsonar.host.url=http://127.0.0.1:9000 \
+            -Dsonar.host.url=http://192.168.1.47:9000 \
             -Dsonar.token=${{ secrets.SONAR_TOKEN }}
