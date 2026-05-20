@@ -9,12 +9,6 @@ jobs:
   sonarqube:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        run: |
-          cd /volume1/docker/ethical-finance
-          export PATH="/volume1/docker/bin:$PATH"
-          git pull
-
       - name: SonarQube Scan
         run: |
           docker run --rm \
