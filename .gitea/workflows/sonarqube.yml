@@ -11,8 +11,10 @@ jobs:
     steps:
       - name: SonarQube Scan
         run: |
+          cd /volume1/docker/ethical-finance && \
           /volume1/docker/sonar-scanner/bin/sonar-scanner \
             -Dsonar.projectKey=ethical-finance \
-            -Dsonar.sources=/volume1/docker/ethical-finance/backend \
+            -Dsonar.projectBaseDir=/volume1/docker/ethical-finance/backend \
+            -Dsonar.sources=. \
             -Dsonar.host.url=http://192.168.1.47:9000 \
-            -Dsonar.token=sqa_b573b366e26e8394859948e7122360ee49752de5
+            -Dsonar.login=sqa_b573b366e26e8394859948e7122360ee49752de5
