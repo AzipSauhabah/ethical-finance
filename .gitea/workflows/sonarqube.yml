@@ -17,4 +17,4 @@ jobs:
             -Dsonar.projectBaseDir=/volume1/docker/ethical-finance/backend \
             -Dsonar.sources=. \
             -Dsonar.host.url=http://192.168.1.47:9000 \
-            -Dsonar.login=sqa_b573b366e26e8394859948e7122360ee49752de5
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
