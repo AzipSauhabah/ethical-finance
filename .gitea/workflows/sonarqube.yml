@@ -15,4 +15,4 @@ jobs:
             -Dsonar.projectKey=ethical-finance \
             -Dsonar.sources=/volume1/docker/ethical-finance/backend \
             -Dsonar.host.url=http://192.168.1.47:9000 \
-            -Dsonar.token=sqp_5547ed4f4f69d360cd207304ab3f241086282fec
+            -Dsonar.token=sqa_b573b366e26e8394859948e7122360ee49752de5
