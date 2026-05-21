@@ -531,8 +531,8 @@ def _pages_cover_summary(tearsheet: dict, styles: dict, narratives: dict, interp
     st_ = tearsheet.get('stress_tests', []); cs = tearsheet.get('cost_summary', {})
     bd = tearsheet.get('cost_breakdown', {})
     S: list = []
-# PAGE 1 — COVER
-S += [
+    # PAGE 1 — COVER
+    S += [
     Spacer(1, 4 * cm),
     HRFlowable(width="100%", thickness=4, color=colors.HexColor(GOLD)),
     Spacer(1, 0.4 * cm),
@@ -550,12 +550,12 @@ S += [
     Spacer(1, 0.5 * cm),
     Paragraph(COPYRIGHT, small_s),
     PageBreak(),
-]
+    ]
 
-# PAGE 2 — EXECUTIVE SUMMARY
-S += [Paragraph("Résumé exécutif", section_s), hr(), Spacer(1, 0.3 * cm)]
-S += [Paragraph(narratives["executive_summary"], body_s), Spacer(1, 0.4 * cm)]
-rows = [
+    # PAGE 2 — EXECUTIVE SUMMARY
+    S += [Paragraph("Résumé exécutif", section_s), hr(), Spacer(1, 0.3 * cm)]
+    S += [Paragraph(narratives["executive_summary"], body_s), Spacer(1, 0.4 * cm)]
+    rows = [
     ["Métrique", "Valeur", "Interprétation"],
     ["Rendement total", p(m.get("total_return")), interpretations.get("cagr", "")[:90]],
     ["CAGR", p(m.get("cagr")), interpretations.get("cagr", "")[:90]],
@@ -579,9 +579,9 @@ rows = [
         f(m.get("recovery_factor")),
         "RF > 3 : stratégie robuste. RF > 1 : viable.",
     ],
-]
-if "beta" in m:
-    rows += [
+    ]
+    if "beta" in m:
+        rows += [
         ["Bêta", f(m["beta"]), interpretations.get("beta", "")[:90]],
         [
             "Alpha Jensen",
@@ -594,11 +594,9 @@ if "beta" in m:
             "IR > 0.5 : surperformance régulière.",
         ],
     ]
-t = Table(rows, colWidths=[5 * cm, 3 * cm, 9 * cm])
-t.setStyle(tbl_style())
-S += [t, PageBreak()]
-
-
+    t = Table(rows, colWidths=[5 * cm, 3 * cm, 9 * cm])
+    t.setStyle(tbl_style())
+    S += [t, PageBreak()]
     return S
 
 
@@ -618,8 +616,8 @@ def _pages_performance_charts(tearsheet: dict, styles: dict, narratives: dict, i
     st_ = tearsheet.get('stress_tests', []); cs = tearsheet.get('cost_summary', {})
     bd = tearsheet.get('cost_breakdown', {})
     S: list = []
-# PAGE 3 — NAV vs BENCHMARK
-S += [
+    # PAGE 3 — NAV vs BENCHMARK
+    S += [
     Paragraph("Performance — NAV vs Benchmark", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
@@ -627,10 +625,10 @@ S += [
     Spacer(1, 0.3 * cm),
     chart(_chart_nav(nav, bnch), aspect=0.40),
     PageBreak(),
-]
+    ]
 
-# PAGE 4 — DRAWDOWN
-S += [
+    # PAGE 4 — DRAWDOWN
+    S += [
     Paragraph("Analyse du drawdown", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
@@ -645,12 +643,12 @@ S += [
     Spacer(1, 0.3 * cm),
     chart(_chart_drawdown(dd), aspect=0.30),
     PageBreak(),
-]
+    ]
 
-# PAGE 5 — RISK
-S += [Paragraph("Métriques de risque", section_s), hr(), Spacer(1, 0.3 * cm)]
-S += [Paragraph(narratives["risk"], body_s), Spacer(1, 0.3 * cm)]
-risk = [
+    # PAGE 5 — RISK
+    S += [Paragraph("Métriques de risque", section_s), hr(), Spacer(1, 0.3 * cm)]
+    S += [Paragraph(narratives["risk"], body_s), Spacer(1, 0.3 * cm)]
+    risk = [
     ["Métrique", "Quotidien", "Annualisé (≈)"],
     ["VaR hist. 95%", p(m.get("var_95")), p((m.get("var_95") or 0) * (252**0.5))],
     ["CVaR hist. 95%", p(m.get("cvar_95")), p((m.get("cvar_95") or 0) * (252**0.5))],
@@ -662,13 +660,13 @@ risk = [
     ["Tail Ratio", f(m.get("tail_ratio")), "—"],
     ["Hit Rate", p(m.get("hit_rate")), "—"],
     ["Profit Factor", f(m.get("profit_factor")), "—"],
-]
-t = Table(risk, colWidths=[8 * cm, 4.5 * cm, 4.5 * cm])
-t.setStyle(tbl_style())
-S += [t, PageBreak()]
+    ]
+    t = Table(risk, colWidths=[8 * cm, 4.5 * cm, 4.5 * cm])
+    t.setStyle(tbl_style())
+    S += [t, PageBreak()]
 
-# PAGE 6 — STRESS TESTS
-S += [
+    # PAGE 6 — STRESS TESTS
+    S += [
     Paragraph("Tests de résistance historiques", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
@@ -676,9 +674,9 @@ S += [
     Spacer(1, 0.3 * cm),
     chart(_chart_stress(st_), aspect=0.36),
     Spacer(1, 0.3 * cm),
-]
-if st_:
-    sd = [["Scénario", "Période", "Return", "Max DD", "Vol", "Sharpe"]]
+    ]
+    if st_:
+        sd = [["Scénario", "Période", "Return", "Max DD", "Vol", "Sharpe"]]
     for s in st_:
         if s.get("n_days", 0) > 0:
             sd.append(
@@ -694,30 +692,30 @@ if st_:
     t = Table(sd, colWidths=[5.5 * cm, 4.5 * cm, 2.0 * cm, 2.0 * cm, 2.0 * cm, 1.5 * cm])
     t.setStyle(tbl_style())
     S += [t]
-S += [PageBreak()]
+    S += [PageBreak()]
 
-# PAGE 6b — ROLLING SHARPE + VOL
-rolling_sharpe = tearsheet.get("rolling_sharpe", [])
-rolling_vol = tearsheet.get("rolling_vol", [])
-rolling_beta = tearsheet.get("rolling_beta", [])
-monthly_returns_list = tearsheet.get("monthly_returns_list", [])
-return_distribution = tearsheet.get("return_distribution", [])
-win_loss_data = tearsheet.get("win_loss_data", {})
-dd_chart = tearsheet.get("drawdown_chart", [])
+    # PAGE 6b — ROLLING SHARPE + VOL
+    rolling_sharpe = tearsheet.get("rolling_sharpe", [])
+    rolling_vol = tearsheet.get("rolling_vol", [])
+    rolling_beta = tearsheet.get("rolling_beta", [])
+    monthly_returns_list = tearsheet.get("monthly_returns_list", [])
+    return_distribution = tearsheet.get("return_distribution", [])
+    win_loss_data = tearsheet.get("win_loss_data", {})
+    dd_chart = tearsheet.get("drawdown_chart", [])
 
-if rolling_sharpe or rolling_vol:
-    S += [
-        Paragraph("Métriques glissantes — Sharpe et Volatilité", section_s),
-        hr(),
-        Spacer(1, 0.3 * cm),
-        Paragraph(
-            "Le Sharpe glissant (252j) mesure l'évolution de l'efficience de la stratégie "
-            "dans le temps. Un Sharpe > 1 de façon stable indique une génération d'alpha "
-            "robuste et non liée à un régime de marché particulier. "
-            "La volatilité glissante (63j) permet d'identifier les périodes de stress.",
-            body_s,
-        ),
-        Spacer(1, 0.3 * cm),
+    if rolling_sharpe or rolling_vol:
+        S += [
+            Paragraph("Métriques glissantes — Sharpe et Volatilité", section_s),
+            hr(),
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                "Le Sharpe glissant (252j) mesure l'évolution de l'efficience de la stratégie "
+                "dans le temps. Un Sharpe > 1 de façon stable indique une génération d'alpha "
+                "robuste et non liée à un régime de marché particulier. "
+                "La volatilité glissante (63j) permet d'identifier les périodes de stress.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
     ]
     if rolling_sharpe:
         S += [chart(_chart_rolling_sharpe(rolling_sharpe)), Spacer(1, 0.3 * cm)]
@@ -725,47 +723,47 @@ if rolling_sharpe or rolling_vol:
         S += [chart(_chart_rolling_vol(rolling_vol)), Spacer(1, 0.3 * cm)]
     S += [PageBreak()]
 
-# PAGE 6c — MONTHLY HEATMAP
-if monthly_returns_list:
-    S += [
-        Paragraph("Heatmap des rendements mensuels", section_s),
-        hr(),
-        Spacer(1, 0.3 * cm),
-        Paragraph(
-            "La heatmap affiche le rendement de chaque mois de l'année (rouge = perte, "
-            "vert = gain). Elle permet d'identifier les saisonnalités, les années "
-            "difficiles et la régularité de la stratégie dans le temps. "
-            "Une stratégie robuste présente une majorité de cellules vertes "
-            "sans concentration des pertes sur un seul mois ou une seule année.",
-            body_s,
-        ),
-        Spacer(1, 0.3 * cm),
-        chart(_chart_monthly_heatmap(monthly_returns_list), width_cm=17.0),
-        PageBreak(),
+    # PAGE 6c — MONTHLY HEATMAP
+    if monthly_returns_list:
+        S += [
+            Paragraph("Heatmap des rendements mensuels", section_s),
+            hr(),
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                "La heatmap affiche le rendement de chaque mois de l'année (rouge = perte, "
+                "vert = gain). Elle permet d'identifier les saisonnalités, les années "
+                "difficiles et la régularité de la stratégie dans le temps. "
+                "Une stratégie robuste présente une majorité de cellules vertes "
+                "sans concentration des pertes sur un seul mois ou une seule année.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
+            chart(_chart_monthly_heatmap(monthly_returns_list), width_cm=17.0),
+            PageBreak(),
     ]
 
-# PAGE 6d — RETURN DISTRIBUTION
-if return_distribution:
-    S += [
-        Paragraph("Distribution des rendements journaliers", section_s),
-        hr(),
-        Spacer(1, 0.3 * cm),
-        Paragraph(
-            "L'histogramme compare la distribution réelle des rendements journaliers "
-            "à la distribution gaussienne théorique (pointillés dorés). "
-            "Un excès de kurtosis positif (queues épaisses) signifie que les événements "
-            "extrêmes sont plus fréquents que prévu par la loi normale — "
-            "ce que les modèles VaR paramétriques sous-estiment systématiquement. "
-            "La ligne rouge indique la VaR historique à 95%.",
-            body_s,
-        ),
-        Spacer(1, 0.3 * cm),
-        chart(_chart_return_distribution(return_distribution)),
-        PageBreak(),
+    # PAGE 6d — RETURN DISTRIBUTION
+    if return_distribution:
+        S += [
+            Paragraph("Distribution des rendements journaliers", section_s),
+            hr(),
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                "L'histogramme compare la distribution réelle des rendements journaliers "
+                "à la distribution gaussienne théorique (pointillés dorés). "
+                "Un excès de kurtosis positif (queues épaisses) signifie que les événements "
+                "extrêmes sont plus fréquents que prévu par la loi normale — "
+                "ce que les modèles VaR paramétriques sous-estiment systématiquement. "
+                "La ligne rouge indique la VaR historique à 95%.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
+            chart(_chart_return_distribution(return_distribution)),
+            PageBreak(),
     ]
 
-# PAGE 6e — UNDERWATER + ROLLING BETA
-S += [
+    # PAGE 6e — UNDERWATER + ROLLING BETA
+    S += [
     Paragraph("Underwater Plot et Bêta glissant", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
@@ -778,31 +776,31 @@ S += [
         body_s,
     ),
     Spacer(1, 0.3 * cm),
-]
-if dd_chart:
-    S += [chart(_chart_underwater(dd_chart)), Spacer(1, 0.3 * cm)]
-if rolling_beta:
-    S += [chart(_chart_rolling_beta(rolling_beta))]
-S += [PageBreak()]
+    ]
+    if dd_chart:
+        S += [chart(_chart_underwater(dd_chart)), Spacer(1, 0.3 * cm)]
+        if rolling_beta:
+            S += [chart(_chart_rolling_beta(rolling_beta))]
+        S += [PageBreak()]
 
-# PAGE 6f — WIN/LOSS DISTRIBUTION
-if win_loss_data:
-    S += [
-        Paragraph("Distribution Win / Loss", section_s),
-        hr(),
-        Spacer(1, 0.3 * cm),
-        Paragraph(
-            "La distribution des jours positifs (gauche) et négatifs (droite) permet "
-            "d'analyser l'asymétrie des rendements. Une stratégie idéale présente "
-            "des gains plus grands que les pertes (profit factor > 1) même avec "
-            "un taux de réussite modéré. Le taux de réussite seul est insuffisant : "
-            "une stratégie avec 40% de gains peut être très profitable si les gains "
-            "sont en moyenne 2× plus grands que les pertes.",
-            body_s,
-        ),
-        Spacer(1, 0.3 * cm),
-        chart(_chart_win_loss(win_loss_data)),
-        PageBreak(),
+    # PAGE 6f — WIN/LOSS DISTRIBUTION
+    if win_loss_data:
+        S += [
+            Paragraph("Distribution Win / Loss", section_s),
+            hr(),
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                "La distribution des jours positifs (gauche) et négatifs (droite) permet "
+                "d'analyser l'asymétrie des rendements. Une stratégie idéale présente "
+                "des gains plus grands que les pertes (profit factor > 1) même avec "
+                "un taux de réussite modéré. Le taux de réussite seul est insuffisant : "
+                "une stratégie avec 40% de gains peut être très profitable si les gains "
+                "sont en moyenne 2× plus grands que les pertes.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
+            chart(_chart_win_loss(win_loss_data)),
+            PageBreak(),
     ]
 
 
@@ -825,8 +823,8 @@ def _pages_costs_allocation(tearsheet: dict, styles: dict, narratives: dict, int
     st_ = tearsheet.get('stress_tests', []); cs = tearsheet.get('cost_summary', {})
     bd = tearsheet.get('cost_breakdown', {})
     S: list = []
-# PAGE 7 — COSTS
-S += [
+    # PAGE 7 — COSTS
+    S += [
     Paragraph("Évolution des coûts", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
@@ -841,17 +839,17 @@ S += [
         body_s,
     ),
     PageBreak(),
-]
+    ]
 
-# PAGE 8 — COST BREAKDOWN
-S += [
+    # PAGE 8 — COST BREAKDOWN
+    S += [
     Paragraph("Décomposition des coûts", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
     chart(_chart_breakdown(bd), width_cm=10, aspect=0.65),
     Spacer(1, 0.3 * cm),
-]
-cb = [
+    ]
+    cb = [
     ["Poste", "Montant"],
     ["Commissions courtage", e(bd.get("commission"))],
     ["Slippage bid-ask", e(bd.get("slippage"))],
@@ -860,21 +858,19 @@ cb = [
     ["TTF (Tobin Tax FR)", e(bd.get("ttf"))],
     ["Stamp Duty (UK/BE/IT)", e(bd.get("stamp_duty"))],
     ["Taxes PFU/PEA", e(cs.get("total_taxes_eur"))],
-]
-t = Table(cb, colWidths=[10 * cm, 7 * cm])
-t.setStyle(tbl_style())
-S += [t, PageBreak()]
+    ]
+    t = Table(cb, colWidths=[10 * cm, 7 * cm])
+    t.setStyle(tbl_style())
+    S += [t, PageBreak()]
 
-# PAGE 9 — ALLOCATION
-S += [
+    # PAGE 9 — ALLOCATION
+    S += [
     Paragraph("Allocation Cash vs Investi", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
     chart(_chart_allocation(ac), aspect=0.32),
     PageBreak(),
-]
-
-
+    ]
     return S
 
 
@@ -894,13 +890,13 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
     st_ = tearsheet.get('stress_tests', []); cs = tearsheet.get('cost_summary', {})
     bd = tearsheet.get('cost_breakdown', {})
     S: list = []
-# PAGE 10 — SIGNIFICANCE
-if sig:
-    jk = sig.get("jobson_korkie", {})
-    at = sig.get("alpha_ttest", {})
-    sb = sig.get("sharpe_bootstrap_95ci", [None, None])
-    S += [Paragraph("Significativité statistique", section_s), hr(), Spacer(1, 0.3 * cm)]
-    sd = [
+    # PAGE 10 — SIGNIFICANCE
+    if sig:
+        jk = sig.get("jobson_korkie", {})
+        at = sig.get("alpha_ttest", {})
+        sb = sig.get("sharpe_bootstrap_95ci", [None, None])
+        S += [Paragraph("Significativité statistique", section_s), hr(), Spacer(1, 0.3 * cm)]
+        sd = [
         ["Test", "Stat", "p-value", "Sig. 5%"],
         [
             "Jobson-Korkie",
@@ -920,20 +916,20 @@ if sig:
     t.setStyle(tbl_style())
     S += [t, PageBreak()]
 
-# PAGE 11 — POSITIONS
-if pos and pos.get("positions"):
-    S += [
-        Paragraph("Positions finales", section_s),
-        hr(),
-        Spacer(1, 0.3 * cm),
-        Paragraph(
-            f"<b>NAV :</b> {e(pos.get('nav_eur'))}  "
-            f"<b>Cash :</b> {e(pos.get('cash_eur'))}  "
-            f"<b>Investi :</b> {e(pos.get('invested_eur'))}  "
-            f"<b>Return :</b> {p(pos.get('total_return'))}",
-            body_s,
-        ),
-        Spacer(1, 0.3 * cm),
+    # PAGE 11 — POSITIONS
+    if pos and pos.get("positions"):
+        S += [
+            Paragraph("Positions finales", section_s),
+            hr(),
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                f"<b>NAV :</b> {e(pos.get('nav_eur'))}  "
+                f"<b>Cash :</b> {e(pos.get('cash_eur'))}  "
+                f"<b>Investi :</b> {e(pos.get('invested_eur'))}  "
+                f"<b>Return :</b> {p(pos.get('total_return'))}",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
     ]
     pd_ = [["Ticker", "Parts", "Prix €", "Valeur €", "Coût moy.", "P&L"]]
     for tk, pp in pos["positions"].items():
@@ -951,20 +947,20 @@ if pos and pos.get("positions"):
     t.setStyle(tbl_style())
     S += [t, PageBreak()]
 
-# PAGE 12 — TRADES DÉTAILLÉS
-trades = tearsheet.get("trades", {})
-trade_list = trades.get("sample", [])
-if trade_list:
-    S += [
-        Paragraph("Journal des trades", section_s),
-        hr(),
-        Spacer(1, 0.3 * cm),
-        Paragraph(
-            f"<b>{trades.get('count', 0)} trades</b> exécutés sur la période. "
-            "Tous les coûts réels (commission, slippage, impact marché, TTF, stamp duty, spread FX) sont inclus.",
-            body_s,
-        ),
-        Spacer(1, 0.3 * cm),
+    # PAGE 12 — TRADES DÉTAILLÉS
+    trades = tearsheet.get("trades", {})
+    trade_list = trades.get("sample", [])
+    if trade_list:
+        S += [
+            Paragraph("Journal des trades", section_s),
+            hr(),
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                f"<b>{trades.get('count', 0)} trades</b> exécutés sur la période. "
+                "Tous les coûts réels (commission, slippage, impact marché, TTF, stamp duty, spread FX) sont inclus.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
     ]
     # Tableau par blocs de 30 trades max par page
     headers = ["Date", "Ticker", "Côté", "Parts", "Prix €", "Notionnel €", "Coût €", "P&L €"]
@@ -1016,20 +1012,20 @@ if trade_list:
         ]
     S += [PageBreak()]
 
-# PAGE 12a — RISQUE PAR POSITION
-risk_pos = tearsheet.get("risk_by_position", {})
-if risk_pos:
-    S += [
-        Paragraph("Risque par position — VaR et contribution", section_s),
-        hr(),
-        Spacer(1, 0.3 * cm),
-        Paragraph(
-            "La VaR (Valeur a Risque) est calculee par simulation historique sur les rendements "
-            "journaliers de chaque titre. La contribution au risque mesure l impact de chaque "
-            "position sur le risque global du portefeuille, pondere par son poids.",
-            body_s,
-        ),
-        Spacer(1, 0.3 * cm),
+    # PAGE 12a — RISQUE PAR POSITION
+    risk_pos = tearsheet.get("risk_by_position", {})
+    if risk_pos:
+        S += [
+            Paragraph("Risque par position — VaR et contribution", section_s),
+            hr(),
+            Spacer(1, 0.3 * cm),
+            Paragraph(
+                "La VaR (Valeur a Risque) est calculee par simulation historique sur les rendements "
+                "journaliers de chaque titre. La contribution au risque mesure l impact de chaque "
+                "position sur le risque global du portefeuille, pondere par son poids.",
+                body_s,
+            ),
+            Spacer(1, 0.3 * cm),
     ]
     risk_data = [
         [
@@ -1073,9 +1069,9 @@ if risk_pos:
         PageBreak(),
     ]
 
-# PAGE 12b — SECTION ML
-tearsheet.get("ml_info", {})
-S += [
+    # PAGE 12b — SECTION ML
+    tearsheet.get("ml_info", {})
+    S += [
     Paragraph("Intelligence artificielle et signaux ML", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
@@ -1108,8 +1104,8 @@ S += [
     Paragraph("<b>Score combine</b> : score_final = 0.6 x RF + 0.4 x LSTM", body_s),
     Spacer(1, 0.3 * cm),
     Paragraph("<b>Features utilisees (indicateurs techniques)</b>", body_s),
-]
-features_data = [
+    ]
+    features_data = [
     ["Feature", "Description", "Fenetre"],
     ["ret_1", "Rendement 1 jour", "1j"],
     ["ret_5", "Rendement 5 jours", "5j"],
@@ -1122,12 +1118,12 @@ features_data = [
     ["bb_pos", "Position dans les bandes Bollinger [0,1]", "20j"],
     ["mom_20", "Momentum 20 jours", "20j"],
     ["mom_60", "Momentum 60 jours", "60j"],
-]
-t = Table(features_data, colWidths=[3 * cm, 9 * cm, 3.5 * cm])
-t.setStyle(tbl_style())
-S += [t, Spacer(1, 0.3 * cm)]
+    ]
+    t = Table(features_data, colWidths=[3 * cm, 9 * cm, 3.5 * cm])
+    t.setStyle(tbl_style())
+    S += [t, Spacer(1, 0.3 * cm)]
 
-S += [
+    S += [
     Paragraph("<b>Modeles utilises</b>", body_s),
     Paragraph(
         "LightGBM (Light Gradient Boosting Machine) — deux configurations : "
@@ -1163,7 +1159,7 @@ S += [
         body_s,
     ),
     PageBreak(),
-]
+    ]
 
 
     return S
@@ -1185,42 +1181,42 @@ def _pages_methodology(tearsheet: dict, styles: dict, narratives: dict, interpre
     st_ = tearsheet.get('stress_tests', []); cs = tearsheet.get('cost_summary', {})
     bd = tearsheet.get('cost_breakdown', {})
     S: list = []
-# PAGE 13 — METHODOLOGIE
-from backend.report.glossary import LIMITATIONS_TEXT, METHODOLOGY_TEXT
+    # PAGE 13 — METHODOLOGIE
+    from backend.report.glossary import LIMITATIONS_TEXT, METHODOLOGY_TEXT
 
-S += [
+    S += [
     Paragraph("Methodologie et hypotheses", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
-]
-for para in METHODOLOGY_TEXT.split("\n\n"):
-    if para.strip():
-        if para.strip().startswith(("1.", "2.", "3.", "4.", "5.")):
-            S.append(Paragraph(para.strip(), body_s))
-        else:
-            S.append(Paragraph(para.strip(), body_s))
+    ]
+    for para in METHODOLOGY_TEXT.split("\n\n"):
+        if para.strip():
+            if para.strip().startswith(("1.", "2.", "3.", "4.", "5.")):
+                S.append(Paragraph(para.strip(), body_s))
+            else:
+                S.append(Paragraph(para.strip(), body_s))
         S.append(Spacer(1, 0.15 * cm))
-S += [PageBreak()]
+    S += [PageBreak()]
 
-# PAGE 14 — LIMITES DU MODELE
-S += [
+    # PAGE 14 — LIMITES DU MODELE
+    S += [
     Paragraph("Limites du modele et avertissements", section_s),
     hr(),
     Spacer(1, 0.3 * cm),
-]
-for para in LIMITATIONS_TEXT.split("\n\n"):
-    if para.strip():
-        S.append(Paragraph(para.strip(), body_s))
-        S.append(Spacer(1, 0.15 * cm))
-S += [PageBreak()]
+    ]
+    for para in LIMITATIONS_TEXT.split("\n\n"):
+        if para.strip():
+            S.append(Paragraph(para.strip(), body_s))
+            S.append(Spacer(1, 0.15 * cm))
+    S += [PageBreak()]
 
-# PAGE 15 — GLOSSARY
-S += [Paragraph("Glossaire financier", section_s), hr(), Spacer(1, 0.3 * cm)]
-for entry in GLOSSARY:
-    S.append(
-        Paragraph(f"<b>{entry['term']}</b> <i>({entry['fr']})</i> — {entry['def']}", body_s)
-    )
-S += [
+    # PAGE 15 — GLOSSARY
+    S += [Paragraph("Glossaire financier", section_s), hr(), Spacer(1, 0.3 * cm)]
+    for entry in GLOSSARY:
+        S.append(
+            Paragraph(f"<b>{entry['term']}</b> <i>({entry['fr']})</i> — {entry['def']}", body_s)
+        )
+    S += [
     Spacer(1, 0.5 * cm),
     HRFlowable(width="100%", thickness=0.5, color=colors.HexColor(NAVY)),
     Spacer(1, 0.3 * cm),
@@ -1228,7 +1224,7 @@ S += [
     Paragraph(DISCLAIMER, disclm_s),
     Spacer(1, 0.3 * cm),
     Paragraph(COPYRIGHT, small_s),
-]
+    ]
 
 
     return S
