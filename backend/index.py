@@ -357,33 +357,39 @@ def _screener_load_prices(engine, tickers):
     return price_df.pivot(index="date", columns="ticker", values="price")
 
 
+
+def _ticker_score(ticker: str, row, price_pivot) -> dict:
+    """Compute score dict for a single ticker."""
+    import pandas as pd
+    mc = float(row["market_cap"] or 1)
+    ey = float(row["earning_yield_sec"] or 0.0)
+    roic = float(row["roic_sec"] or 0.0)
+    if ey == 0.0 and roic == 0.0:
+        ev = mc + float(row["total_debt"] or 0)
+        ebit = float(row["total_revenue"] or 0) * 0.15
+        ey = (ebit / ev) if ev > 0 else 0.0
+        roic = ebit / max(mc * 0.5, 1)
+    ser = price_pivot[ticker].dropna() if ticker in price_pivot.columns else pd.Series(dtype=float)
+    ret_1m = float(ser.pct_change(21).iloc[-1]) if len(ser) >= 22 else 0.0
+    ret_6m = float(ser.pct_change(126).iloc[-1]) if len(ser) >= 127 else 0.0
+    ret_12m = float(ser.pct_change(252).iloc[-1]) if len(ser) >= 253 else 0.0
+    vol_20 = float(ser.pct_change().iloc[-20:].std()) if len(ser) >= 21 else 1.0
+    return {
+        "ticker": ticker, "name": str(row["name"]), "sector": str(row["sector"]),
+        "market_cap": mc, "earning_yield": round(ey,4), "roic": round(roic,4),
+        "beta": round(float(row["beta"] or 1.0),2),
+        "ret_1m": round(ret_1m*100,2), "ret_6m": round(ret_6m*100,2),
+        "ret_12m": round(ret_12m*100,2), "vol_20": round(vol_20*100,2),
+        "dividend_yield": round(float(row["dividend_yield"] or 0),2),
+    }
+
 def _screener_compute_scores(df, price_pivot):
     import pandas as pd
-    scores = {}
-    for ticker in df["ticker"].tolist():
-        row = df[df["ticker"] == ticker].iloc[0]
-        mc = float(row["market_cap"] or 1)
-        ey = float(row["earning_yield_sec"] or 0.0)
-        roic = float(row["roic_sec"] or 0.0)
-        if ey == 0.0 and roic == 0.0:
-            ev = mc + float(row["total_debt"] or 0)
-            ebit = float(row["total_revenue"] or 0) * 0.15
-            ey = (ebit / ev) if ev > 0 else 0.0
-            roic = ebit / max(mc * 0.5, 1)
-        ser = price_pivot[ticker].dropna() if ticker in price_pivot.columns else pd.Series(dtype=float)
-        ret_1m = float(ser.pct_change(21).iloc[-1]) if len(ser) >= 22 else 0.0
-        ret_6m = float(ser.pct_change(126).iloc[-1]) if len(ser) >= 127 else 0.0
-        ret_12m = float(ser.pct_change(252).iloc[-1]) if len(ser) >= 253 else 0.0
-        vol_20 = float(ser.pct_change().iloc[-20:].std()) if len(ser) >= 21 else 1.0
-        scores[ticker] = {
-            "ticker": ticker, "name": str(row["name"]), "sector": str(row["sector"]),
-            "market_cap": mc, "earning_yield": round(ey,4), "roic": round(roic,4),
-            "beta": round(float(row["beta"] or 1.0),2),
-            "ret_1m": round(ret_1m*100,2), "ret_6m": round(ret_6m*100,2),
-            "ret_12m": round(ret_12m*100,2), "vol_20": round(vol_20*100,2),
-            "dividend_yield": round(float(row["dividend_yield"] or 0),2),
-        }
-    return pd.DataFrame(list(scores.values()))
+    scores = [
+        _ticker_score(ticker, df[df["ticker"] == ticker].iloc[0], price_pivot)
+        for ticker in df["ticker"].tolist()
+    ]
+    return pd.DataFrame(scores)
 
 
 
