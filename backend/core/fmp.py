@@ -65,6 +65,63 @@ def fetch_profile(ticker: str) -> dict | None:
 # ─── Fondamentaux complets ────────────────────────────────────────────────────
 
 
+def _fmp_valuation_ratios(mc: float, ev: float, net_income, ebitda, revenue, equity, fcf) -> dict:
+    """Compute FMP valuation ratios."""
+    r = {}
+    if mc > 0 and net_income and net_income > 0:
+        r["pe_ratio"] = round(mc / net_income, 2)
+    if ev > 0 and ebitda > 0:
+        r["ev_ebitda"] = round(ev / ebitda, 2)
+    if ev > 0 and revenue > 0:
+        r["ev_revenue"] = round(ev / revenue, 2)
+    if mc > 0 and equity > 0:
+        r["pb_ratio"] = round(mc / equity, 2)
+    if mc > 0 and fcf > 0:
+        r["price_fcf"] = round(mc / fcf, 2)
+        r["fcf_yield"] = round(fcf / mc, 4)
+    return r
+
+
+def _fmp_profitability_ratios(revenue, net_income, ebit, total_assets, equity) -> dict:
+    """Compute FMP profitability ratios."""
+    r = {}
+    if revenue > 0:
+        if net_income:
+            r["net_margin"] = round(net_income / revenue, 4)
+        if ebit:
+            r["operating_margin"] = round(ebit / revenue, 4)
+    if total_assets > 0 and net_income:
+        r["roa"] = round(net_income / total_assets, 4)
+    if equity > 0 and net_income:
+        r["roe"] = round(net_income / equity, 4)
+    return r
+
+
+def _fmp_leverage_ratios(total_debt, equity, ebitda, cash, current_assets, current_liabilities) -> dict:
+    """Compute FMP leverage and liquidity ratios."""
+    r = {}
+    if equity > 0:
+        r["debt_equity"] = round(total_debt / equity, 2)
+    if ebitda > 0:
+        r["net_debt_ebitda"] = round((total_debt - cash) / ebitda, 2)
+    if current_liabilities > 0:
+        r["current_ratio"] = round(current_assets / current_liabilities, 2)
+    return r
+
+
+def _fmp_magic_formula(ev, ebit, total_assets, current_assets, current_liabilities) -> dict:
+    """Compute FMP Magic Formula ratios."""
+    r = {}
+    if ev > 0 and ebit:
+        r["earning_yield_fmp"] = round(ebit / ev, 4)
+    net_working_capital = current_assets - current_liabilities
+    net_fixed_assets = total_assets - current_assets
+    invested_capital = net_working_capital + net_fixed_assets
+    if invested_capital > 0 and ebit:
+        r["roic_fmp"] = round(ebit / invested_capital, 4)
+    return r
+
+
 def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
     """
     Récupère les fondamentaux complets depuis FMP.
@@ -113,49 +170,10 @@ def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
 
     # ── Ratios calculés ───────────────────────────────────────────────────────
     computed_ratios = {}
-
-    # Valorisation
-    if mc > 0 and net_income > 0:
-        computed_ratios["pe_ratio"] = round(mc / net_income, 2)
-    if ev > 0 and ebitda > 0:
-        computed_ratios["ev_ebitda"] = round(ev / ebitda, 2)
-    if ev > 0 and revenue > 0:
-        computed_ratios["ev_revenue"] = round(ev / revenue, 2)
-    if mc > 0 and equity > 0:
-        computed_ratios["pb_ratio"] = round(mc / equity, 2)
-    if mc > 0 and fcf > 0:
-        computed_ratios["price_fcf"] = round(mc / fcf, 2)
-        computed_ratios["fcf_yield"] = round(fcf / mc, 4)
-
-    # Rentabilité
-    if revenue > 0:
-        if net_income:
-            computed_ratios["net_margin"] = round(net_income / revenue, 4)
-        if ebit:
-            computed_ratios["operating_margin"] = round(ebit / revenue, 4)
-    if total_assets > 0 and net_income:
-        computed_ratios["roa"] = round(net_income / total_assets, 4)
-    if equity > 0 and net_income:
-        computed_ratios["roe"] = round(net_income / equity, 4)
-
-    # Magic Formula
-    if ev > 0 and ebit:
-        computed_ratios["earning_yield_fmp"] = round(ebit / ev, 4)
-    net_working_capital = current_assets - current_liabilities
-    net_fixed_assets = total_assets - current_assets
-    invested_capital = net_working_capital + net_fixed_assets
-    if invested_capital > 0 and ebit:
-        computed_ratios["roic_fmp"] = round(ebit / invested_capital, 4)
-
-    # Levier
-    if equity > 0:
-        computed_ratios["debt_equity"] = round(total_debt / equity, 2)
-    if ebitda > 0:
-        computed_ratios["net_debt_ebitda"] = round((total_debt - cash) / ebitda, 2)
-
-    # Liquidité
-    if current_liabilities > 0:
-        computed_ratios["current_ratio"] = round(current_assets / current_liabilities, 2)
+    computed_ratios.update(_fmp_valuation_ratios(mc, ev, net_income, ebitda, revenue, equity, fcf))
+    computed_ratios.update(_fmp_profitability_ratios(revenue, net_income, ebit, total_assets, equity))
+    computed_ratios.update(_fmp_magic_formula(ev, ebit, total_assets, current_assets, current_liabilities))
+    computed_ratios.update(_fmp_leverage_ratios(total_debt, equity, ebitda, cash, current_assets, current_liabilities))
 
     # Compléter avec les ratios FMP si disponibles
     fmp_ratios = {
