@@ -17,6 +17,10 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.app import app
+
+# ─── DB URL constants ────────────────────────────────────────────────────────
+_PG_SCHEME = "postgresql://"
+_PG_PSYCOPG2_SCHEME = "postgresql+psycopg2://"
 from backend.ws.intraday import router as ws_router
 
 app.include_router(ws_router)
@@ -178,7 +182,7 @@ async def prices_intraday(ticker: str = Query(...), hours: int = Query(48)):
     import sqlalchemy as sa
 
     database_url = os.environ.get("DATABASE_URL", "")
-    sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+    sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
     engine = sa.create_engine(sync_url, pool_pre_ping=True)
     since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
@@ -227,7 +231,7 @@ async def prices_from_db(tickers: str = Query(...), period: str = Query("6mo")):
     ts = [t.strip().upper() for t in tickers.split(",") if t.strip()]
 
     database_url = os.environ.get("DATABASE_URL", "")
-    sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+    sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
     engine = sa.create_engine(sync_url, pool_pre_ping=True)
 
     with engine.connect() as conn:
@@ -312,7 +316,7 @@ async def screener(payload: ScreenerIn):
 
     def _run_screener():
         database_url = os.environ.get("DATABASE_URL", "")
-        sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+        sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
         engine = sa.create_engine(sync_url, pool_pre_ping=True)
 
         # 1. Load fundamentals
@@ -712,7 +716,7 @@ async def daily_signals(payload: TickerListIn, strategy: str = "epr5"):
                 "sentiment_detail": s.get("sentiment", {}),
             }
         )
-    return {"signals": results, "strategy": strategy}
+    return {"signals": results, "strategy": strategy, "weights": weights}
 
 
 @app.post("/api/sentiment")
@@ -753,7 +757,7 @@ async def platform_stats():
 
     def _get_stats():
         database_url = os.environ.get("DATABASE_URL", "")
-        sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+        sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
         engine = sa.create_engine(sync_url, pool_pre_ping=True)
         with engine.connect() as conn:
             ohlcv = conn.execute(

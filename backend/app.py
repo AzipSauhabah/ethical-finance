@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# ─── DB URL constants ────────────────────────────────────────────────────────
+_PG_SCHEME = "postgresql://"
+_PG_PSYCOPG2_SCHEME = "postgresql+psycopg2://"
+
 import logging
 import os
 
@@ -158,7 +162,7 @@ async def _startup() -> None:
                 from backend.signals.daily import compute_daily_signals
 
                 database_url = os.environ.get("DATABASE_URL", "")
-                sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+                sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
                 engine = sa.create_engine(sync_url, pool_pre_ping=True)
 
                 # Récupérer tous les tickers en base
@@ -289,7 +293,7 @@ async def _startup() -> None:
                 from datetime import date, timedelta
 
                 database_url = os.environ.get("DATABASE_URL", "")
-                sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+                sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
                 engine = sa.create_engine(sync_url, pool_pre_ping=True)
 
                 TICKERS = []
@@ -388,7 +392,7 @@ async def _startup() -> None:
                     return
 
                 database_url = os.environ.get("DATABASE_URL", "")
-                sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+                sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
                 engine = sa.create_engine(sync_url, pool_pre_ping=True)
 
                 # Récupérer les tickers actifs (top 50 par market cap)

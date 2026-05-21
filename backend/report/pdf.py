@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# ─── Label constants ────────────────────────────────────────────────────────
+_LABEL_SPREAD_FX = "Spread FX"
+
 """
 :file: backend/report/pdf.py
 :brief: Institutional-grade multi-page PDF tearsheet (Goldman Sachs style).
@@ -229,8 +232,8 @@ def _chart_allocation(alloc_data):
 
 
 def _chart_breakdown(breakdown):
-    labels = ["Commissions", "Slippage", "Spread FX", "TTF"]
-    labels = ["Commissions", "Slippage", "Impact marché", "Spread FX", "TTF", "Stamp Duty"]
+    labels = ["Commissions", "Slippage", _LABEL_SPREAD_FX, "TTF"]
+    labels = ["Commissions", "Slippage", "Impact marché", _LABEL_SPREAD_FX, "TTF", "Stamp Duty"]
     values = [
         breakdown.get(k, 0)
         for k in ["commission", "slippage", "market_impact", "fx_spread", "ttf", "stamp_duty"]
@@ -899,7 +902,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         ["Commissions courtage", e(bd.get("commission"))],
         ["Slippage bid-ask", e(bd.get("slippage"))],
         ["Impact marché", e(bd.get("market_impact"))],
-        ["Spread FX", e(bd.get("fx_spread"))],
+        [_LABEL_SPREAD_FX, e(bd.get("fx_spread"))],
         ["TTF (Tobin Tax FR)", e(bd.get("ttf"))],
         ["Stamp Duty (UK/BE/IT)", e(bd.get("stamp_duty"))],
         ["Taxes PFU/PEA", e(cs.get("total_taxes_eur"))],

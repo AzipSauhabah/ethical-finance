@@ -118,6 +118,42 @@ async def _fetch_db_price(ticker: str) -> dict | None:
         return None
 
 
+
+async def _send_price_update(
+    websocket: WebSocket,
+    ticker: str,
+    price: float | None,
+    ref_price: float | None,
+    timestamp: str,
+    source: str,
+) -> float | None:
+    """Send price update or error to websocket. Returns updated ref_price."""
+    if price is None:
+        await websocket.send_json({
+            "ticker": ticker,
+            "error": "Prix non disponible",
+            "timestamp": timestamp,
+        })
+        return ref_price
+
+    if ref_price is None:
+        ref_price = price
+
+    change_pct = ((price - ref_price) / ref_price * 100) if ref_price else 0.0
+    db_data = await _fetch_db_price(ticker)
+    volume = db_data["volume"] if db_data else 0
+
+    await websocket.send_json({
+        "ticker": ticker,
+        "price": round(price, 4),
+        "change_pct": round(change_pct, 3),
+        "change_abs": round(price - ref_price, 4),
+        "volume": volume,
+        "timestamp": timestamp,
+        "source": source,
+    })
+    return ref_price
+
 @router.websocket("/ws/intraday/{ticker}")
 async def intraday_ws(websocket: WebSocket, ticker: str, interval: int = 10):
     """
@@ -161,35 +197,9 @@ async def intraday_ws(websocket: WebSocket, ticker: str, interval: int = 10):
                     price = db_data["price"]
                     source = db_data["source"]
 
-            if price is None:
-                await websocket.send_json(
-                    {
-                        "ticker": ticker,
-                        "error": "Prix non disponible",
-                        "timestamp": timestamp,
-                    }
-                )
-            else:
-                if ref_price is None:
-                    ref_price = price
-
-                change_pct = ((price - ref_price) / ref_price * 100) if ref_price else 0.0
-
-                # Récupère volume depuis DB
-                db_data = await _fetch_db_price(ticker)
-                volume = db_data["volume"] if db_data else 0
-
-                await websocket.send_json(
-                    {
-                        "ticker": ticker,
-                        "price": round(price, 4),
-                        "change_pct": round(change_pct, 3),
-                        "change_abs": round(price - ref_price, 4),
-                        "volume": volume,
-                        "timestamp": timestamp,
-                        "source": source,
-                    }
-                )
+            ref_price = await _send_price_update(
+                websocket, ticker, price, ref_price, timestamp, source
+            )
 
             await asyncio.sleep(interval)
 
