@@ -395,6 +395,57 @@ class EPR5Strategy(Strategy):
                 weights.pop(ticker, None)
         return weights
 
+
+    def _rank_candidates(
+        self,
+        past_prices: pd.DataFrame,
+        funds: dict,
+        clf, scaler,
+        state: dict,
+        ma_window: int,
+        ml_min_score: float,
+        top_pct: float,
+    ) -> list[str]:
+        """Rank tickers by Magic Formula + ML score. Returns list of winners."""
+        candidates = []
+        for ticker, ser in past_prices.items():
+            if ticker.startswith("^"):
+                continue
+            ser = ser.dropna()
+            if len(ser) < ma_window:
+                continue
+            if float(ser.iloc[-1]) <= self._sma(ser, ma_window):
+                continue
+            f = funds.get(ticker, {})
+            ey = f.get("earning_yield", 0.0)
+            roic = f.get("roic", 0.0)
+            roic_5y = f.get("roic_5y_avg", 0.0)
+            if ey <= 0 or roic <= 0 or roic_5y <= 0:
+                continue
+            ml_score = 0.5
+            if clf is not None and scaler is not None:
+                feat = _build_features(ser)
+                if feat is not None:
+                    try:
+                        ml_score = float(clf.predict_proba(scaler.transform(feat.reshape(1, -1)))[0][1])
+                    except Exception:
+                        ml_score = 0.5
+            lstm_score = lstm_score_ticker(state.get("lstm"), past_prices[ticker])
+            combined_score = 0.6 * ml_score + 0.4 * lstm_score
+            if combined_score < ml_min_score:
+                continue
+            candidates.append((ticker, ey, roic, combined_score))
+
+        if not candidates:
+            return []
+        df = pd.DataFrame(candidates, columns=["ticker", "ey", "roic", "ml_score"])
+        df["rank_ey"] = df["ey"].rank(ascending=False)
+        df["rank_roic"] = df["roic"].rank(ascending=False)
+        df["combined"] = (df["rank_ey"] + df["rank_roic"]) / df["ml_score"]
+        df = df.sort_values("combined")
+        n_keep = max(1, int(len(df) * top_pct))
+        return df.head(n_keep)["ticker"].tolist()
+
     # ── Main on_bar ──────────────────────────────────────────────────────
 
     def on_bar(
@@ -442,61 +493,12 @@ class EPR5Strategy(Strategy):
             return state.get("weights", {})
 
         # ── Rank candidates by Magic Formula + ML score ──────────────────
-        candidates = []
-        for ticker, ser in past_prices.items():
-            if ticker.startswith("^"):
-                continue
-            ser = ser.dropna()
-            if len(ser) < ma_window:
-                continue
-            # Trend gate
-            if float(ser.iloc[-1]) <= self._sma(ser, ma_window):
-                continue
-
-            f = funds.get(ticker, {})
-            ey = f.get("earning_yield", 0.0)
-            roic = f.get("roic", 0.0)
-            roic_5y = f.get("roic_5y_avg", 0.0)
-
-            if ey <= 0 or roic <= 0 or roic_5y <= 0:
-                continue
-
-            # ML score
-            ml_score = 0.5
-            if clf is not None and scaler is not None:
-                feat = _build_features(ser)
-                if feat is not None:
-                    try:
-                        feat_scaled = scaler.transform(feat.reshape(1, -1))
-                        ml_score = float(clf.predict_proba(feat_scaled)[0][1])
-                    except Exception:
-                        ml_score = 0.5
-
-            # Score LSTM
-            lstm_state = state.get("lstm")
-            lstm_score = lstm_score_ticker(lstm_state, past_prices[ticker])
-
-            # Score combiné : 60% RF + 40% LSTM
-            combined_score = 0.6 * ml_score + 0.4 * lstm_score
-
-            if combined_score < ml_min_score:
-                continue
-            ml_score = combined_score  # utilise le score combiné pour le ranking
-
-            candidates.append((ticker, ey, roic, ml_score))
-
-        if not candidates:
+        winners = self._rank_candidates(
+            past_prices, funds, clf, scaler, state, ma_window, ml_min_score, top_pct
+        )
+        if not winners:
             state["weights"] = {}
             return {}
-
-        # ── Combined rank ────────────────────────────────────────────────
-        df = pd.DataFrame(candidates, columns=["ticker", "ey", "roic", "ml_score"])
-        df["rank_ey"] = df["ey"].rank(ascending=False)
-        df["rank_roic"] = df["roic"].rank(ascending=False)
-        df["combined"] = (df["rank_ey"] + df["rank_roic"]) / df["ml_score"]
-        df = df.sort_values("combined")
-        n_keep = max(1, int(len(df) * top_pct))
-        winners = df.head(n_keep)["ticker"].tolist()
 
         # ── Sizing — MC-scaled, base 10% per name ───────────────────────
         base_w = 0.10
