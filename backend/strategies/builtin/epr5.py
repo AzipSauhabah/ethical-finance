@@ -409,32 +409,76 @@ class EPR5Strategy(Strategy):
         """Rank tickers by Magic Formula + ML score. Returns list of winners."""
         candidates = []
         for ticker, ser in past_prices.items():
-            if ticker.startswith("^"):
+            c = self._is_candidate(ticker, ser, funds, ma_window)
+            if c is None:
                 continue
-            ser = ser.dropna()
-            if len(ser) < ma_window:
+            ticker, ey, roic = c
+            score = self._ml_score(ser.dropna(), clf, scaler, state, ticker, past_prices)
+            if score < ml_min_score:
                 continue
-            if float(ser.iloc[-1]) <= self._sma(ser, ma_window):
+            candidates.append((ticker, ey, roic, score))
+
+        if not candidates:
+            return []
+        df = pd.DataFrame(candidates, columns=["ticker", "ey", "roic", "ml_score"])
+        df["rank_ey"] = df["ey"].rank(ascending=False)
+        df["rank_roic"] = df["roic"].rank(ascending=False)
+        df["combined"] = (df["rank_ey"] + df["rank_roic"]) / df["ml_score"]
+        df = df.sort_values("combined")
+        n_keep = max(1, int(len(df) * top_pct))
+        return df.head(n_keep)["ticker"].tolist()
+
+    def _ml_score(self, ser, clf, scaler, state: dict, ticker: str, past_prices) -> float:
+        """Compute combined RF+LSTM score for a ticker."""
+        ml_score = 0.5
+        if clf is not None and scaler is not None:
+            feat = _build_features(ser)
+            if feat is not None:
+                try:
+                    ml_score = float(clf.predict_proba(scaler.transform(feat.reshape(1, -1)))[0][1])
+                except Exception:
+                    ml_score = 0.5
+        lstm_score = lstm_score_ticker(state.get("lstm"), past_prices[ticker])
+        return 0.6 * ml_score + 0.4 * lstm_score
+
+    def _is_candidate(self, ticker: str, ser, funds: dict, ma_window: int) -> tuple | None:
+        """Check if ticker passes filters. Returns (ticker, ey, roic) or None."""
+        if ticker.startswith("^"):
+            return None
+        ser = ser.dropna()
+        if len(ser) < ma_window:
+            return None
+        if float(ser.iloc[-1]) <= self._sma(ser, ma_window):
+            return None
+        f = funds.get(ticker, {})
+        ey = f.get("earning_yield", 0.0)
+        roic = f.get("roic", 0.0)
+        roic_5y = f.get("roic_5y_avg", 0.0)
+        if ey <= 0 or roic <= 0 or roic_5y <= 0:
+            return None
+        return (ticker, ey, roic)
+
+    def _rank_candidates(
+        self,
+        past_prices: pd.DataFrame,
+        funds: dict,
+        clf, scaler,
+        state: dict,
+        ma_window: int,
+        ml_min_score: float,
+        top_pct: float,
+    ) -> list[str]:
+        """Rank tickers by Magic Formula + ML score. Returns list of winners."""
+        candidates = []
+        for ticker, ser in past_prices.items():
+            c = self._is_candidate(ticker, ser, funds, ma_window)
+            if c is None:
                 continue
-            f = funds.get(ticker, {})
-            ey = f.get("earning_yield", 0.0)
-            roic = f.get("roic", 0.0)
-            roic_5y = f.get("roic_5y_avg", 0.0)
-            if ey <= 0 or roic <= 0 or roic_5y <= 0:
+            ticker, ey, roic = c
+            score = self._ml_score(ser.dropna(), clf, scaler, state, ticker, past_prices)
+            if score < ml_min_score:
                 continue
-            ml_score = 0.5
-            if clf is not None and scaler is not None:
-                feat = _build_features(ser)
-                if feat is not None:
-                    try:
-                        ml_score = float(clf.predict_proba(scaler.transform(feat.reshape(1, -1)))[0][1])
-                    except Exception:
-                        ml_score = 0.5
-            lstm_score = lstm_score_ticker(state.get("lstm"), past_prices[ticker])
-            combined_score = 0.6 * ml_score + 0.4 * lstm_score
-            if combined_score < ml_min_score:
-                continue
-            candidates.append((ticker, ey, roic, combined_score))
+            candidates.append((ticker, ey, roic, score))
 
         if not candidates:
             return []
