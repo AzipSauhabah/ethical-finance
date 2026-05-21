@@ -298,7 +298,7 @@ class BacktestEngine:
             cur_shares = pos.shares if pos else 0
             target_shares = _target_shares(
                 target_w,
-                portfolio.market_value(prices_eur, allow_fractional=params.allow_fractional),
+                portfolio.market_value(prices_eur),
                 price,
                 params.max_position_pct,
             )
