@@ -190,7 +190,7 @@ export default function SignalsPage() {
   const [filterSignal, setFilterSignal] = useState("Tous");
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
 
-  const strategy = STRATEGIES.find(s => s.id === selectedStrategy)!;
+  const strategy = STRATEGIES.find(s => s.id === selectedStrategy) ?? STRATEGIES[0];
 
   useEffect(() => {
     // Remplacer par fetch("/api/signals/today?strategy=" + selectedStrategy)

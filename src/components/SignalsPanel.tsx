@@ -197,7 +197,7 @@ export default function SignalsPanel({ tickers, strategy: defaultStrategy }: Sig
   const [filterSignal, setFilterSignal] = useState("Tous");
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
 
-  const strategy = STRATEGIES.find(s => s.id === selectedStrategy)!;
+  const strategy = STRATEGIES.find(s => s.id === selectedStrategy) ?? STRATEGIES[0];
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string|null>(null);
