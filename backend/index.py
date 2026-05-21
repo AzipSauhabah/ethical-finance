@@ -301,6 +301,125 @@ async def create_custom_strategy(payload: CustomStrategyIn):
 # ─── Screener ────────────────────────────────────────────────────────────────
 
 
+def _screener_load_fundamentals(engine, payload) -> "pd.DataFrame":
+    import pandas as pd
+    import sqlalchemy as sa
+    if payload.universe == "all":
+        universe_filter = ""
+        qparams = {"min_cap": payload.min_market_cap}
+    elif payload.universe in ("etf_broad", "etf_precious_metals"):
+        universe_filter = "AND universe = :universe"
+        qparams = {"min_cap": 0, "universe": payload.universe}
+    else:
+        universe_filter = "AND universe = :universe"
+        qparams = {"min_cap": payload.min_market_cap, "universe": payload.universe}
+    with engine.connect() as conn:
+        rows = conn.execute(sa.text(f"""
+            SELECT ticker, name, sector, industry, market_cap,
+                   total_debt, total_revenue, beta, dividend_yield,
+                   earning_yield_sec, roic_sec, pe_ratio, ev_ebitda,
+                   net_margin, fcf_yield, debt_equity, current_ratio
+            FROM ticker_fundamentals WHERE market_cap >= :min_cap {universe_filter}
+            ORDER BY market_cap DESC
+        """), qparams).fetchall()
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(rows, columns=[
+        "ticker","name","sector","industry","market_cap","total_debt","total_revenue",
+        "beta","dividend_yield","earning_yield_sec","roic_sec","pe_ratio","ev_ebitda",
+        "net_margin","fcf_yield","debt_equity","current_ratio"])
+
+
+def _screener_apply_filters(df, payload):
+    if payload.require_ethical:
+        bl = ["weapons","tobacco","gambling","fossil","coal","oil"]
+        df = df[~df["sector"].str.lower().apply(lambda s: any(b in s for b in bl))]
+    if payload.require_sharia:
+        bl = ["bank","insurance","financial","alcohol","casino","tobacco"]
+        df = df[~df["sector"].str.lower().apply(lambda s: any(b in s for b in bl))]
+        df["debt_ratio"] = df["total_debt"] / (df["market_cap"] + 1)
+        df = df[df["debt_ratio"] <= 0.33]
+    return df
+
+
+def _screener_load_prices(engine, tickers):
+    import pandas as pd
+    import sqlalchemy as sa
+    with engine.connect() as conn:
+        rows = conn.execute(sa.text("""
+            SELECT ticker, date, adj_close FROM ohlcv
+            WHERE ticker = ANY(:tickers) AND date >= CURRENT_DATE - INTERVAL '300 days'
+            ORDER BY ticker, date
+        """), {"tickers": tickers}).fetchall()
+    if not rows:
+        return pd.DataFrame()
+    price_df = pd.DataFrame(rows, columns=["ticker","date","price"])
+    return price_df.pivot(index="date", columns="ticker", values="price")
+
+
+def _screener_compute_scores(df, price_pivot):
+    import pandas as pd
+    scores = {}
+    for ticker in df["ticker"].tolist():
+        row = df[df["ticker"] == ticker].iloc[0]
+        mc = float(row["market_cap"] or 1)
+        ey = float(row["earning_yield_sec"] or 0.0)
+        roic = float(row["roic_sec"] or 0.0)
+        if ey == 0.0 and roic == 0.0:
+            ev = mc + float(row["total_debt"] or 0)
+            ebit = float(row["total_revenue"] or 0) * 0.15
+            ey = (ebit / ev) if ev > 0 else 0.0
+            roic = ebit / max(mc * 0.5, 1)
+        ser = price_pivot[ticker].dropna() if ticker in price_pivot.columns else pd.Series(dtype=float)
+        ret_1m = float(ser.pct_change(21).iloc[-1]) if len(ser) >= 22 else 0.0
+        ret_6m = float(ser.pct_change(126).iloc[-1]) if len(ser) >= 127 else 0.0
+        ret_12m = float(ser.pct_change(252).iloc[-1]) if len(ser) >= 253 else 0.0
+        vol_20 = float(ser.pct_change().iloc[-20:].std()) if len(ser) >= 21 else 1.0
+        scores[ticker] = {
+            "ticker": ticker, "name": str(row["name"]), "sector": str(row["sector"]),
+            "market_cap": mc, "earning_yield": round(ey,4), "roic": round(roic,4),
+            "beta": round(float(row["beta"] or 1.0),2),
+            "ret_1m": round(ret_1m*100,2), "ret_6m": round(ret_6m*100,2),
+            "ret_12m": round(ret_12m*100,2), "vol_20": round(vol_20*100,2),
+            "dividend_yield": round(float(row["dividend_yield"] or 0),2),
+        }
+    return pd.DataFrame(list(scores.values()))
+
+
+def _screener_rank(scores_df, method, top_n):
+    if method == "magic_formula":
+        scores_df["score"] = scores_df["earning_yield"].rank(ascending=False) + scores_df["roic"].rank(ascending=False)
+        scores_df = scores_df.sort_values("score")
+    elif method == "momentum":
+        scores_df["score"] = scores_df["ret_12m"]*0.5 + scores_df["ret_6m"]*0.3 + scores_df["ret_1m"]*0.2
+        scores_df = scores_df.sort_values("score", ascending=False)
+    elif method == "low_vol":
+        scores_df["score"] = scores_df["vol_20"]
+        scores_df = scores_df.sort_values("score")
+    elif method == "ml":
+        try:
+            from sklearn.preprocessing import StandardScaler
+            features = ["earning_yield","roic","ret_1m","ret_6m","ret_12m","vol_20","beta"]
+            x_scaled = StandardScaler().fit_transform(scores_df[features].fillna(0).values)
+            scores_df["score"] = x_scaled @ np.array([1,1,1,1,1,-1,-1], dtype=float)
+            scores_df = scores_df.sort_values("score", ascending=False)
+        except Exception:
+            scores_df["score"] = scores_df["earning_yield"]
+            scores_df = scores_df.sort_values("score", ascending=False)
+    elif method == "combined":
+        scores_df["score"] = (
+            scores_df["earning_yield"].rank(ascending=False)
+            + scores_df["roic"].rank(ascending=False)
+            + (scores_df["ret_6m"] + scores_df["ret_12m"]).rank(ascending=False) * 0.5
+            + scores_df["vol_20"].rank(ascending=True) * 0.3
+        )
+        scores_df = scores_df.sort_values("score")
+    scores_df = scores_df.head(top_n).reset_index(drop=True)
+    scores_df["rank"] = scores_df.index + 1
+    scores_df["score"] = scores_df["score"].round(2)
+    return scores_df
+
+
 @app.post("/api/screener")
 async def screener(payload: ScreenerIn):
     """
@@ -315,212 +434,25 @@ async def screener(payload: ScreenerIn):
     loop = asyncio.get_event_loop()
 
     def _run_screener():
-        database_url = os.environ.get("DATABASE_URL", "")
-        sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
-        engine = sa.create_engine(sync_url, pool_pre_ping=True)
+            import sqlalchemy as sa
+            database_url = os.environ.get("DATABASE_URL", "")
+            sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
+            engine = sa.create_engine(sync_url, pool_pre_ping=True)
+            df = _screener_load_fundamentals(engine, payload)
+            if df.empty:
+                return []
+            df = _screener_apply_filters(df, payload)
+            if df.empty:
+                return []
+            tickers = df["ticker"].tolist()
+            price_pivot = _screener_load_prices(engine, tickers)
+            scores_df = _screener_compute_scores(df, price_pivot)
+            if scores_df.empty:
+                return []
+            scores_df = _screener_rank(scores_df, payload.method, payload.top_n)
+            return scores_df.to_dict(orient="records")
 
-        # 1. Load fundamentals
-        with engine.connect() as conn:
-            if payload.universe == "all":
-                universe_filter = ""
-                params = {"min_cap": payload.min_market_cap}
-            elif payload.universe in ("etf_broad", "etf_precious_metals"):
-                universe_filter = "AND universe = :universe"
-                params = {"min_cap": 0, "universe": payload.universe}
-            else:
-                universe_filter = "AND universe = :universe"
-                params = {"min_cap": payload.min_market_cap, "universe": payload.universe}
-
-            rows = conn.execute(
-                sa.text(f"""
-                    SELECT ticker, name, sector, industry, market_cap,
-                           total_debt, total_revenue, beta, dividend_yield,
-                           earning_yield_sec, roic_sec, pe_ratio, ev_ebitda,
-                           net_margin, fcf_yield, debt_equity, current_ratio
-                    FROM ticker_fundamentals
-                    WHERE market_cap >= :min_cap
-                    {universe_filter}
-                    ORDER BY market_cap DESC
-                """),
-                params,
-            ).fetchall()
-
-        if not rows:
-            return []
-
-        import pandas as pd
-
-        df = pd.DataFrame(
-            rows,
-            columns=[
-                "ticker",
-                "name",
-                "sector",
-                "industry",
-                "market_cap",
-                "total_debt",
-                "total_revenue",
-                "beta",
-                "dividend_yield",
-                "earning_yield_sec",
-                "roic_sec",
-                "pe_ratio",
-                "ev_ebitda",
-                "net_margin",
-                "fcf_yield",
-                "debt_equity",
-                "current_ratio",
-            ],
-        )
-
-        # 2. Ethical / Sharia filter
-        if payload.require_ethical:
-            ethical_blacklist = ["weapons", "tobacco", "gambling", "fossil", "coal", "oil"]
-            mask = ~df["sector"].str.lower().apply(lambda s: any(b in s for b in ethical_blacklist))
-            df = df[mask]
-
-        if payload.require_sharia:
-            sharia_blacklist = ["bank", "insurance", "financial", "alcohol", "casino", "tobacco"]
-            mask = ~df["sector"].str.lower().apply(lambda s: any(b in s for b in sharia_blacklist))
-            df = df[mask]
-            df["debt_ratio"] = df["total_debt"] / (df["market_cap"] + 1)
-            df = df[df["debt_ratio"] <= 0.33]
-
-        if df.empty:
-            return []
-
-        tickers = df["ticker"].tolist()
-
-        # 3. Load recent prices
-        with engine.connect() as conn:
-            price_rows = conn.execute(
-                sa.text("""
-                    SELECT ticker, date, adj_close
-                    FROM ohlcv
-                    WHERE ticker = ANY(:tickers)
-                      AND date >= CURRENT_DATE - INTERVAL '300 days'
-                    ORDER BY ticker, date
-                """),
-                {"tickers": tickers},
-            ).fetchall()
-
-        price_df = pd.DataFrame(price_rows, columns=["ticker", "date", "price"])
-        price_pivot = price_df.pivot(index="date", columns="ticker", values="price")
-
-        # 4. Compute scores — colonnes SEC depuis DB en priorité, fallback proxy
-        scores = {}
-        for ticker in tickers:
-            row = df[df["ticker"] == ticker].iloc[0]
-            market_cap = float(row["market_cap"] or 1)
-            total_debt = float(row["total_debt"] or 0)
-            total_revenue = float(row["total_revenue"] or 0)
-            beta = float(row["beta"] or 1.0)
-
-            # SEC depuis DB (pré-calculé par le scheduler 22h)
-            earning_yield = float(row["earning_yield_sec"] or 0.0)
-            roic = float(row["roic_sec"] or 0.0)
-
-            # Fallback proxy si colonnes SEC vides
-            if earning_yield == 0.0 and roic == 0.0:
-                ev = market_cap + total_debt
-                ebit = total_revenue * 0.15
-                net_assets = max(market_cap * 0.5, 1)
-                earning_yield = (ebit / ev) if ev > 0 else 0.0
-                roic = (ebit / net_assets) if net_assets > 0 else 0.0
-
-            ser = (
-                price_pivot[ticker].dropna()
-                if ticker in price_pivot.columns
-                else pd.Series(dtype=float)
-            )
-
-            ret_1m = float(ser.pct_change(21).iloc[-1]) if len(ser) >= 22 else 0.0
-            ret_6m = float(ser.pct_change(126).iloc[-1]) if len(ser) >= 127 else 0.0
-            ret_12m = float(ser.pct_change(252).iloc[-1]) if len(ser) >= 253 else 0.0
-            vol_20 = float(ser.pct_change().iloc[-20:].std()) if len(ser) >= 21 else 1.0
-
-            scores[ticker] = {
-                "ticker": ticker,
-                "name": str(row["name"]),
-                "sector": str(row["sector"]),
-                "market_cap": market_cap,
-                "earning_yield": round(earning_yield, 4),
-                "roic": round(roic, 4),
-                "beta": round(beta, 2),
-                "ret_1m": round(ret_1m * 100, 2),
-                "ret_6m": round(ret_6m * 100, 2),
-                "ret_12m": round(ret_12m * 100, 2),
-                "vol_20": round(vol_20 * 100, 2),
-                "dividend_yield": round(float(row["dividend_yield"] or 0), 2),
-            }
-
-        scores_df = pd.DataFrame(list(scores.values()))
-        if scores_df.empty:
-            return []
-
-        # 5. Ranking
-        if payload.method == "magic_formula":
-            scores_df["rank_ey"] = scores_df["earning_yield"].rank(ascending=False)
-            scores_df["rank_roic"] = scores_df["roic"].rank(ascending=False)
-            scores_df["score"] = scores_df["rank_ey"] + scores_df["rank_roic"]
-            scores_df = scores_df.sort_values("score")
-
-        elif payload.method == "momentum":
-            scores_df["score"] = (
-                scores_df["ret_12m"] * 0.5 + scores_df["ret_6m"] * 0.3 + scores_df["ret_1m"] * 0.2
-            )
-            scores_df = scores_df.sort_values("score", ascending=False)
-
-        elif payload.method == "low_vol":
-            scores_df["score"] = scores_df["vol_20"]
-            scores_df = scores_df.sort_values("score")
-
-        elif payload.method == "ml":
-            try:
-                from sklearn.preprocessing import StandardScaler
-
-                features = [
-                    "earning_yield",
-                    "roic",
-                    "ret_1m",
-                    "ret_6m",
-                    "ret_12m",
-                    "vol_20",
-                    "beta",
-                ]
-                X = scores_df[features].fillna(0).values
-                scaler = StandardScaler()
-                x_scaled = scaler.fit_transform(X)
-                ideal = np.array([1, 1, 1, 1, 1, -1, -1], dtype=float)
-                ml_scores = x_scaled @ ideal
-                scores_df["score"] = ml_scores
-                scores_df = scores_df.sort_values("score", ascending=False)
-            except Exception:
-                scores_df["score"] = scores_df["earning_yield"]
-                scores_df = scores_df.sort_values("score", ascending=False)
-
-        elif payload.method == "combined":
-            scores_df["rank_ey"] = scores_df["earning_yield"].rank(ascending=False)
-            scores_df["rank_roic"] = scores_df["roic"].rank(ascending=False)
-            scores_df["rank_mom"] = (scores_df["ret_6m"] + scores_df["ret_12m"]).rank(
-                ascending=False
-            )
-            scores_df["rank_vol"] = scores_df["vol_20"].rank(ascending=True)
-            scores_df["score"] = (
-                scores_df["rank_ey"]
-                + scores_df["rank_roic"]
-                + scores_df["rank_mom"] * 0.5
-                + scores_df["rank_vol"] * 0.3
-            )
-            scores_df = scores_df.sort_values("score")
-
-        scores_df = scores_df.head(payload.top_n).reset_index(drop=True)
-        scores_df["rank"] = scores_df.index + 1
-        scores_df["score"] = scores_df["score"].round(2)
-
-        return scores_df.to_dict(orient="records")
-
-    results = await loop.run_in_executor(None, _run_screener)
+        results = await loop.run_in_executor(None, _run_screener)
     return {"results": results, "method": payload.method, "count": len(results)}
 
 
