@@ -117,6 +117,25 @@ def _compile_rule(rule: dict[str, Any]):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _apply_combination_rules(prices: pd.DataFrame, compiled_rules: list, combination: str) -> "pd.DataFrame":
+    """Apply combination rules to prices and return signal DataFrame."""
+    import numpy as np
+    import pandas as pd
+
+    signals = pd.DataFrame(0, index=prices.index, columns=prices.columns)
+    n = len(compiled_rules)
+    for col in prices.columns:
+        vote = pd.concat([fn(prices[col]) for fn in compiled_rules], axis=1).sum(axis=1)
+        if combination == "all":
+            signals[col] = (vote == n).astype(int) - (vote == -n).astype(int)
+        elif combination == "any":
+            signals[col] = np.sign(vote)
+        else:
+            threshold = n / 2
+            signals[col] = vote.apply(lambda v: 1 if v > threshold else (-1 if v < -threshold else 0))
+    return signals
+
+
 def build_custom_strategy(definition: dict[str, Any]) -> Strategy:
     """Compile a JSON strategy definition into a Strategy instance.
 
@@ -139,24 +158,7 @@ def build_custom_strategy(definition: dict[str, Any]) -> Strategy:
     compiled_rules = [_compile_rule(r) for r in rules_def]
 
     def _generate_signals(prices: pd.DataFrame, params: StrategyParams) -> pd.DataFrame:
-        import numpy as np
-
-        signals = pd.DataFrame(0, index=prices.index, columns=prices.columns)
-        for col in prices.columns:
-            rule_sigs = [fn(prices[col]) for fn in compiled_rules]
-            stacked = pd.concat(rule_sigs, axis=1)
-            vote = stacked.sum(axis=1)
-            n = len(compiled_rules)
-            if combination == "all":
-                signals[col] = (vote == n).astype(int) + (vote == -n).astype(int) * -1
-            elif combination == "any":
-                signals[col] = np.sign(vote)
-            else:  # majority
-                threshold = n / 2
-                signals[col] = vote.apply(
-                    lambda v: 1 if v > threshold else (-1 if v < -threshold else 0)
-                )
-        return signals
+        return _apply_combination_rules(prices, compiled_rules, combination)
 
     # Build class dynamically
     strat_cls = type(

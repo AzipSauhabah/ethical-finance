@@ -244,6 +244,56 @@ class BacktestEngine:
 
     # ── Order execution ──────────────────────────────────────────────────
 
+
+    def _sell_overweight(self, portfolio, dt, prices_eur, target_weights, nav) -> None:
+        """Sell positions that are overweight vs target."""
+        for ticker, pos in list(portfolio._positions.items()):
+            if pos.shares == 0:
+                continue
+            price = prices_eur.get(ticker, 0.0)
+            if price <= 0:
+                continue
+            target_v = target_weights.get(ticker, 0.0) * nav
+            current_v = pos.shares * price
+            if current_v > target_v:
+                shares_to_sell = int((current_v - target_v) // price)
+                if shares_to_sell > 0:
+                    portfolio.sell(
+                        dt, ticker, shares_to_sell, price,
+                        self.currencies.get(ticker, "USD"),
+                        cap_size=cap_size_from_market_cap(
+                            self.params.custom.get("market_caps", {}).get(ticker, 2_000_000_000)
+                        ),
+                        country=country_from_ticker(ticker),
+                    )
+
+    def _buy_underweight(self, portfolio, dt, prices_eur, target_weights, params, past_prices) -> None:
+        """Buy positions that are underweight vs target."""
+        for ticker, target_w in target_weights.items():
+            price = prices_eur.get(ticker, 0.0)
+            if price <= 0:
+                continue
+            if (params.use_var_constraint and past_prices is not None
+                    and ticker in past_prices.columns):
+                rets = past_prices[ticker].pct_change(fill_method=None).dropna()
+                if len(rets) >= 20 and float(rets.quantile(0.05)) < -0.05:
+                    target_w = target_w * 0.5
+            pos = portfolio._positions.get(ticker)
+            cur_shares = pos.shares if pos else 0
+            target_shares = _target_shares(
+                target_w, portfolio.market_value(prices_eur), price, params.max_position_pct
+            )
+            diff = target_shares - cur_shares
+            if diff > 0:
+                portfolio.buy(
+                    dt, ticker, diff, price,
+                    self.currencies.get(ticker, "USD"),
+                    cap_size=cap_size_from_market_cap(
+                        self.params.custom.get("market_caps", {}).get(ticker, 2_000_000_000)
+                    ),
+                    country=country_from_ticker(ticker),
+                )
+
     def _execute_rebalance(
         self,
         portfolio: Portfolio,
@@ -257,78 +307,8 @@ class BacktestEngine:
         if nav <= 0:
             return
 
-        # 1) SELL first to free up cash, in order: tickers absent or
-        #    over-weighted vs target
-        for ticker, pos in list(portfolio._positions.items()):
-            if pos.shares == 0:
-                continue
-            price = prices_eur.get(ticker, 0.0)
-            if price <= 0:
-                continue
-            target_w = target_weights.get(ticker, 0.0)
-            target_v = target_w * nav
-            current_v = pos.shares * price
-
-            if current_v > target_v:
-                excess_v = current_v - target_v
-                shares_to_sell = int(excess_v // price)
-                if shares_to_sell > 0:
-                    portfolio.sell(
-                        dt,
-                        ticker,
-                        shares_to_sell,
-                        price,
-                        self.currencies.get(ticker, "USD"),
-                        cap_size=cap_size_from_market_cap(
-                            self.params.custom.get("market_caps", {}).get(ticker, 2_000_000_000)
-                        ),
-                        country=country_from_ticker(ticker),
-                    )
-
-        # 2) BUY under-weighted tickers
-        for ticker, target_w in target_weights.items():
-            price = prices_eur.get(ticker, 0.0)
-            if price <= 0:
-                continue
-
-            # Contrainte VaR : si activee et VaR journaliere > 5%, reduit le poids de 50%
-            if (
-                params.use_var_constraint
-                and past_prices is not None
-                and ticker in past_prices.columns
-            ):
-                rets = past_prices[ticker].pct_change(fill_method=None).dropna()
-                if len(rets) >= 20:
-                    var_95 = float(rets.quantile(0.05))
-                    if var_95 < -0.05:  # VaR > 5% par jour
-                        target_w = target_w * 0.5
-                        log.debug(
-                            "VaR constraint applied to %s: weight reduced to %.2f", ticker, target_w
-                        )
-
-            pos = portfolio._positions.get(ticker)
-            cur_shares = pos.shares if pos else 0
-            target_shares = _target_shares(
-                target_w,
-                portfolio.market_value(prices_eur),
-                price,
-                params.max_position_pct,
-            )
-            diff = target_shares - cur_shares
-            if diff > 0:
-                _country = country_from_ticker(ticker)
-                _cap = cap_size_from_market_cap(
-                    self.params.custom.get("market_caps", {}).get(ticker, 2_000_000_000)
-                )
-                portfolio.buy(
-                    dt,
-                    ticker,
-                    diff,
-                    price,
-                    self.currencies.get(ticker, "USD"),
-                    cap_size=_cap,
-                    country=_country,
-                )
+        self._sell_overweight(portfolio, dt, prices_eur, target_weights, nav)
+        self._buy_underweight(portfolio, dt, prices_eur, target_weights, params, past_prices)
 
     def _apply_stop_loss(
         self,
