@@ -309,6 +309,16 @@ def analyze_market_sentiment() -> dict:
 # ─── Analyse bulk ─────────────────────────────────────────────────────────────
 
 
+
+def _corr_comment(corr: float, p_value: float) -> str:
+    """Return correlation narrative comment."""
+    if corr > 0.3 and p_value < 0.05:
+        return "Corrélation positive significative : le sentiment prédit les rendements."
+    if corr < -0.3 and p_value < 0.05:
+        return "Corrélation négative : sentiment contrarian."
+    return "Pas de corrélation significative sur la période."
+
+
 def analyze_portfolio_sentiment(
     tickers: list[str],
     delay: float = 0.3,
@@ -381,10 +391,7 @@ def sentiment_return_correlation(
             "significant": p_value < 0.05,
             "n_tickers": n,
             "interpretation": (
-                "Corrélation positive significative : le sentiment prédit les rendements."
-                if corr > 0.3 and p_value < 0.05
-                else "Corrélation négative : sentiment contrarian." if corr < -0.3 and p_value < 0.05
-                else "Pas de corrélation significative sur la période."
+                _corr_comment(corr, p_value)
             ),
         }
     except Exception as e:

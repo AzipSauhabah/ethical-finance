@@ -85,7 +85,7 @@ def _compute_ticker_signal(
         },
         "sentiment": {
             "score": round(sent_score, 3),
-            "signal": "bullish" if sent_sig == 1 else "bearish" if sent_sig == -1 else "neutral",
+            "signal": "bullish" if sent_sig == 1 else ("bearish" if sent_sig == -1 else "neutral"),
         },
         "date": str(end),
     }
