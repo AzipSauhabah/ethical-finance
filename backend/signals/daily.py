@@ -31,6 +31,15 @@ def _sentiment_signal(score: float) -> int:
     return 0
 
 
+def _sent_label(sent_sig: int) -> str:
+    """Convert sentiment signal to label."""
+    if sent_sig == 1:
+        return "bullish"
+    if sent_sig == -1:
+        return "bearish"
+    return "neutral"
+
+
 def _compute_ticker_signal(
     ticker: str,
     prices,
@@ -85,7 +94,7 @@ def _compute_ticker_signal(
         },
         "sentiment": {
             "score": round(sent_score, 3),
-            "signal": "bullish" if sent_sig == 1 else ("bearish" if sent_sig == -1 else "neutral"),
+            "signal": _sent_label(sent_sig),
         },
         "date": str(end),
     }
