@@ -266,13 +266,15 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
         <div><Label>Position max (%)</Label>
           <input type="number" step="0.05" value={params.max_position_pct} onChange={e => setParams({ ...params, max_position_pct: +e.target.value })} style={inputStyle} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingTop: '1.2rem' }}>
-          <input type="checkbox" id="ethical" checked={params.require_ethical} onChange={e => setParams({ ...params, require_ethical: e.target.checked })} />
-          <label htmlFor="ethical" style={{ fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>Éthique uniquement</label>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingTop: '1.2rem' }}>
-          <input type="checkbox" id="var" checked={params.use_var_constraint} onChange={e => setParams({ ...params, use_var_constraint: e.target.checked })} />
-          <label htmlFor="var" style={{ fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>Contrainte VaR</label>
+        <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '2rem', paddingTop: '1.2rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>
+            <input type="checkbox" id="ethical" checked={params.require_ethical} onChange={e => setParams({ ...params, require_ethical: e.target.checked })} />
+            Éthique uniquement
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>
+            <input type="checkbox" id="var" checked={params.use_var_constraint} onChange={e => setParams({ ...params, use_var_constraint: e.target.checked })} />
+            Contrainte VaR
+          </label>
         </div>
       </div>
 
