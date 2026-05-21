@@ -1,5 +1,9 @@
 ![Tests](https://github.com/AzipSauhabah/ethical-finance/actions/workflows/tests.yml/badge.svg)
 
+![Tests](https://github.com/AzipSauhabah/ethical-finance/actions/workflows/tests.yml/badge.svg)
+
+![Tests](https://github.com/AzipSauhabah/ethical-finance/actions/workflows/tests.yml/badge.svg)
+
 # ☪️ Sauhabah Ethical Finance — Plateforme d'analyse quantitative
 
 > Plateforme d'investissement éthique auto-hébergée, combinant backtesting event-driven, signaux ML/sentiment/fondamentaux, suivi de portefeuille en temps réel et analyse technique avancée. Gratuite, compréhensible, auto-critique.
