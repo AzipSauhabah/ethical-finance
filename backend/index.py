@@ -468,25 +468,25 @@ async def screener(payload: ScreenerIn):
     loop = asyncio.get_event_loop()
 
     def _run_screener():
-            import sqlalchemy as sa
-            database_url = os.environ.get("DATABASE_URL", "")
-            sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
-            engine = sa.create_engine(sync_url, pool_pre_ping=True)
-            df = _screener_load_fundamentals(engine, payload)
-            if df.empty:
-                return []
-            df = _screener_apply_filters(df, payload)
-            if df.empty:
-                return []
-            tickers = df["ticker"].tolist()
-            price_pivot = _screener_load_prices(engine, tickers)
-            scores_df = _screener_compute_scores(df, price_pivot)
-            if scores_df.empty:
-                return []
-            scores_df = _screener_rank(scores_df, payload.method, payload.top_n)
-            return scores_df.to_dict(orient="records")
+        import sqlalchemy as sa
+        database_url = os.environ.get("DATABASE_URL", "")
+        sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
+        engine = sa.create_engine(sync_url, pool_pre_ping=True)
+        df = _screener_load_fundamentals(engine, payload)
+        if df.empty:
+            return []
+        df = _screener_apply_filters(df, payload)
+        if df.empty:
+            return []
+        tickers = df["ticker"].tolist()
+        price_pivot = _screener_load_prices(engine, tickers)
+        scores_df = _screener_compute_scores(df, price_pivot)
+        if scores_df.empty:
+            return []
+        scores_df = _screener_rank(scores_df, payload.method, payload.top_n)
+        return scores_df.to_dict(orient="records")
 
-        results = await loop.run_in_executor(None, _run_screener)
+    results = await loop.run_in_executor(None, _run_screener)
     return {"results": results, "method": payload.method, "count": len(results)}
 
 

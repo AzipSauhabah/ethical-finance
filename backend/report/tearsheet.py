@@ -237,7 +237,7 @@ def build_tearsheet(
     cost_breakdown = _build_cost_breakdown(result)
     risk_by_position = _build_risk_by_position(result, prices)
 
-        import math
+    import math
 
     def _clean(obj):
         """Remplace inf et NaN par None pour la sérialisation JSON."""
