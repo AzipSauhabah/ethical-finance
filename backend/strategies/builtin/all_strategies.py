@@ -540,14 +540,14 @@ class MLEnsembleStrategy(Strategy):
                 continue
             fwd = past_prices[col].shift(-5).pct_change(5).reindex(X.index)
             y = np.where(fwd > 0.01, 1, np.where(fwd < -0.01, -1, 0))
-            X_train = X.iloc[:-5]
+            x_train = X.iloc[:-5]
             y_train = y[:-5]
-            if len(X_train) < 50:
+            if len(x_train) < 50:
                 continue
             rf = LGBMClassifier(max_iter=100, max_depth=4, random_state=42)
             gbm = LGBMClassifier(max_iter=100, max_depth=4, random_state=42)
-            rf.fit(X_train, y_train)
-            gbm.fit(X_train, y_train)
+            rf.fit(x_train, y_train)
+            gbm.fit(x_train, y_train)
             models[col] = (rf, gbm)
 
         state["last_fit_idx"] = cur_idx

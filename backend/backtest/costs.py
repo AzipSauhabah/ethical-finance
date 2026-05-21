@@ -199,7 +199,7 @@ def total_trade_cost(
 def market_impact_cost(
     notional_eur: float,
     cap_size: str = "mid_cap",
-    participation_rate: float = 0.05,
+    _participation_rate: float = 0.05,
 ) -> float:
     """
     Coût d'impact marché — modèle linéaire.
@@ -211,7 +211,7 @@ def market_impact_cost(
     Args:
         notional_eur: taille de l'ordre en EUR
         cap_size: catégorie de capitalisation
-        participation_rate: fraction du volume journalier (défaut 5%)
+        _participation_rate: fraction du volume journalier (défaut 5%)
 
     Returns:
         coût en EUR

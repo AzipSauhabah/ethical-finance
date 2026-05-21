@@ -25,6 +25,7 @@
 """
 
 from __future__ import annotations
+import math
 
 import logging
 from dataclasses import dataclass
@@ -84,7 +85,7 @@ def _target_shares(
     - Fortuneo / Boursorama / default : actions entières uniquement (floor)
     - Revolut : fractions permises (allow_fractional=True)
     """
-    if not price_eur or price_eur <= 0 or price_eur != price_eur:
+    if not price_eur or price_eur <= 0 or math.isnan(price_eur):
         return 0
     capped = min(weight, cap)
     raw = (nav_eur * capped) / price_eur

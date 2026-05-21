@@ -164,7 +164,7 @@ def calibrate_strategy(
         from skopt.space import Categorical, Integer, Real
     except ImportError:
         log.warning("scikit-optimize not installed — returning default params")
-        return {k: (v[0] if isinstance(v, list) else v[0]) for k, v in param_space.items()}
+        return {k: v[0] for k, v in param_space.items()}
 
     from backend.quant.metrics import calmar_ratio, sharpe_ratio, sortino_ratio
 

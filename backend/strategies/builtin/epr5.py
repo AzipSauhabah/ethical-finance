@@ -215,7 +215,7 @@ def _build_features(prices: pd.Series) -> np.ndarray | None:
         return None
 
 
-def _train_ml_model(state: dict, past_prices: pd.DataFrame) -> Any:
+def _train_ml_model(_state: dict, past_prices: pd.DataFrame) -> Any:
     """Train or retrain a RandomForest classifier on available price data."""
     try:
         from sklearn.ensemble import RandomForestClassifier
@@ -239,11 +239,11 @@ def _train_ml_model(state: dict, past_prices: pd.DataFrame) -> Any:
         if len(X) < 50:
             return None, None
 
-        X_arr = np.array(X)
+        x_arr = np.array(X)
         y_arr = np.array(y)
 
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X_arr)
+        x_scaled = scaler.fit_transform(x_arr)
 
         clf = RandomForestClassifier(
             n_estimators=50,
@@ -252,7 +252,7 @@ def _train_ml_model(state: dict, past_prices: pd.DataFrame) -> Any:
             n_jobs=-1,
             class_weight="balanced",
         )
-        clf.fit(X_scaled, y_arr)
+        clf.fit(x_scaled, y_arr)
         log.info("EPR5 ML model trained on %d samples", len(X))
         return clf, scaler
 

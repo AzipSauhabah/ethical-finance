@@ -37,7 +37,6 @@ def _norm_cdf(x: float) -> float:
 
 def _t_cdf(t: float, df: int) -> float:
     """Approximation of the Student-t CDF using regularized incomplete beta."""
-    df / (df + t * t)
     # Use scipy-free approximation via continued fraction
     if df <= 0:
         return 0.5

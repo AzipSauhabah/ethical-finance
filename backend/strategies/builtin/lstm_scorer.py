@@ -106,8 +106,8 @@ def _build_feature_matrix(prices: pd.Series) -> np.ndarray | None:
         return None
 
 
-def _normalize(X: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
-    return (X - mean) / (std + 1e-9)
+def _normalize(x_arr: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
+    return (x_arr - mean) / (std + 1e-9)
 
 
 # ─── Dataset builder ──────────────────────────────────────────────────────────
@@ -115,7 +115,7 @@ def _normalize(X: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
 
 def _build_ticker_sequences(series, feat_mat) -> tuple[list, list]:
     """Build X/y sequences for a single ticker."""
-    X_list, y_list = [], []
+    x_list, y_list = [], []
     price_series = series.dropna()
     n = len(feat_mat)
     for i in range(SEQ_LEN, n - FORECAST_DAYS):
@@ -126,11 +126,11 @@ def _build_ticker_sequences(series, feat_mat) -> tuple[list, list]:
             cur_price = float(price_series.iloc[i])
             fut_price = float(price_series.iloc[i + FORECAST_DAYS])
             label = 1 if fut_price / cur_price - 1 > THRESHOLD else 0
-            X_list.append(seq)
+            x_list.append(seq)
             y_list.append(label)
         except Exception:
             continue
-    return X_list, y_list
+    return x_list, y_list
 
 
 def _build_dataset(
@@ -140,7 +140,7 @@ def _build_dataset(
     Construit X (séquences) et y (labels) pour entraînement LSTM.
     Retourne (X_train, y_train, mean, std) ou None.
     """
-    all_X, all_y = [], []
+    all_x, all_y = [], []
 
     for ticker, series in past_prices.items():
         if ticker.startswith("^"):
@@ -148,15 +148,15 @@ def _build_dataset(
         feat_mat = _build_feature_matrix(series)
         if feat_mat is None or len(feat_mat) < SEQ_LEN + FORECAST_DAYS:
             continue
-        X_t, y_t = _build_ticker_sequences(series, feat_mat)
-        all_X.extend(X_t)
+        x_t, y_t = _build_ticker_sequences(series, feat_mat)
+        all_x.extend(x_t)
         all_y.extend(y_t)
 
-    if len(all_X) < MIN_SAMPLES:
-        log.info("LSTM: pas assez d'exemples (%d < %d)", len(all_X), MIN_SAMPLES)
+    if len(all_x) < MIN_SAMPLES:
+        log.info("LSTM: pas assez d'exemples (%d < %d)", len(all_x), MIN_SAMPLES)
         return None
 
-    X = np.array(all_X, dtype=np.float32)  # (N, SEQ_LEN, features)
+    X = np.array(all_x, dtype=np.float32)  # (N, SEQ_LEN, features)
     y = np.array(all_y, dtype=np.float32)
 
     # Normalisation sur l'axe temporel + features

@@ -94,7 +94,7 @@ def narrative_executive_summary(m: dict, meta: dict) -> str:
     )
 
 
-def narrative_performance(m: dict, meta: dict) -> str:
+def narrative_performance(m: dict, _meta: dict) -> str:
     """Commentaire sur la performance et le benchmark."""
     alpha = m.get("alpha_jensen")
     ir = m.get("information_ratio")

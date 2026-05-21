@@ -490,9 +490,9 @@ async def screener(payload: ScreenerIn):
                 ]
                 X = scores_df[features].fillna(0).values
                 scaler = StandardScaler()
-                X_scaled = scaler.fit_transform(X)
+                x_scaled = scaler.fit_transform(X)
                 ideal = np.array([1, 1, 1, 1, 1, -1, -1], dtype=float)
-                ml_scores = X_scaled @ ideal
+                ml_scores = x_scaled @ ideal
                 scores_df["score"] = ml_scores
                 scores_df = scores_df.sort_values("score", ascending=False)
             except Exception:

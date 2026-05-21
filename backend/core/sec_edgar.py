@@ -299,7 +299,6 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
     capex = raw.get("capex", 0) or 0
     current_assets = raw.get("current_assets")
     current_liabilities = raw.get("current_liabilities")
-    inventory = raw.get("inventory", 0) or 0
 
     total_debt = long_term_debt + short_term_debt
     ebitda = (operating_income or 0) + raw.get("depreciation", 0) or 0

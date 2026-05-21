@@ -182,14 +182,14 @@ def ml_signal_rf(
     if n_train < 50:
         return pd.Series(0, index=prices.index)
 
-    X_tr, X_te = X.iloc[:n_train], X.iloc[n_train:]
+    x_tr, x_te = X.iloc[:n_train], X.iloc[n_train:]
     y_tr = y[:n_train]
 
     clf = lgb.LGBMClassifier(
         n_estimators=200, max_depth=5, random_state=42, n_jobs=1, num_threads=1, verbose=-1
     )
-    clf.fit(X_tr.values, y_tr)
-    preds = clf.predict(X_te.values)
+    clf.fit(x_tr.values, y_tr)
+    preds = clf.predict(x_te.values)
 
     sig = pd.Series(0, index=prices.index)
     sig.iloc[n_train:] = preds
