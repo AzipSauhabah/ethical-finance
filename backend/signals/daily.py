@@ -58,8 +58,18 @@ def _compute_ticker_signal(
         vote += sent_sig
 
     max_vote = 5 if include_sentiment else 4
-    signal = 1 if vote >= 2 else (-1 if vote <= -2 else 0)
-    label = "BUY" if signal == 1 else ("SELL" if signal == -1 else "HOLD")
+    if vote >= 2:
+        signal = 1
+    elif vote <= -2:
+        signal = -1
+    else:
+        signal = 0
+    if signal == 1:
+        label = "BUY"
+    elif signal == -1:
+        label = "SELL"
+    else:
+        label = "HOLD"
 
     return {
         "ticker": ticker,
@@ -75,7 +85,7 @@ def _compute_ticker_signal(
         },
         "sentiment": {
             "score": round(sent_score, 3),
-            "signal": "bullish" if sent_sig == 1 else ("bearish" if sent_sig == -1 else "neutral"),
+            "signal": "bullish" if sent_sig == 1 else "bearish" if sent_sig == -1 else "neutral",
         },
         "date": str(end),
     }

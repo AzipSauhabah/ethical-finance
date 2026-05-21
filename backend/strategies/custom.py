@@ -132,7 +132,13 @@ def _apply_combination_rules(prices: pd.DataFrame, compiled_rules: list, combina
             signals[col] = np.sign(vote)
         else:
             threshold = n / 2
-            signals[col] = vote.apply(lambda v, th=threshold: 1 if v > th else (-1 if v < -th else 0))
+            def _vote_to_signal(v, th=threshold):
+                if v > th:
+                    return 1
+                if v < -th:
+                    return -1
+                return 0
+            signals[col] = vote.apply(_vote_to_signal)
     return signals
 
 

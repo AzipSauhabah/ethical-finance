@@ -109,9 +109,12 @@ class Portfolio:
     ) -> Trade | None:
         if shares <= 0 or price_eur <= 0:
             return None
-        asset_type = (
-            "etf" if ticker.endswith(".ETF") else ("stock_eu" if currency == "EUR" else "stock_us")
-        )
+        if ticker.endswith(".ETF"):
+            asset_type = "etf"
+        elif currency == "EUR":
+            asset_type = "stock_eu"
+        else:
+            asset_type = "stock_us"
 
         notional = shares * price_eur
         costs = total_trade_cost(
@@ -169,9 +172,12 @@ class Portfolio:
         if shares <= 0 or price_eur <= 0:
             return None
 
-        asset_type = (
-            "etf" if ticker.endswith(".ETF") else ("stock_eu" if currency == "EUR" else "stock_us")
-        )
+        if ticker.endswith(".ETF"):
+            asset_type = "etf"
+        elif currency == "EUR":
+            asset_type = "stock_eu"
+        else:
+            asset_type = "stock_us"
         notional = shares * price_eur
         costs = total_trade_cost(
             notional, self.broker, asset_type, cap_size, currency, market_cap_eur, "sell", country

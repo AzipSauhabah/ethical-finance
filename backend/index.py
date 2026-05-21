@@ -699,7 +699,12 @@ async def daily_signals(payload: TickerListIn, strategy: str = "epr5"):
             + norm(ind.get("sentiment", 0)) * weights["sentiment"]
         )
         composite = round(technical, 4)
-        signal = "BUY" if composite >= 0.60 else ("SELL" if composite <= 0.40 else "HOLD")
+        if composite >= 0.60:
+            signal = "BUY"
+        elif composite <= 0.40:
+            signal = "SELL"
+        else:
+            signal = "HOLD"
         results.append(
             {
                 "ticker": s["ticker"],

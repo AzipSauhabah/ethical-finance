@@ -29,10 +29,7 @@ def _stress_result(key: str, scenario: dict, window, metrics: dict, bench_metric
         "volatility": metrics["annualised_volatility"],
         "var_95": metrics["var_95"],
         "sharpe": metrics["sharpe_ratio"],
-        "benchmark": {
-            "total_return": bench_metrics["total_return"] if bench_metrics else None,
-            "max_drawdown": bench_metrics["max_drawdown"] if bench_metrics else None,
-        } if bench_metrics else None,
+        "benchmark": {"total_return": bench_metrics["total_return"], "max_drawdown": bench_metrics["max_drawdown"]} if bench_metrics else None,
     }
 
 
@@ -53,10 +50,7 @@ def _stress_result(key: str, scenario: dict, window, metrics: dict, bench_metric
         "volatility": metrics["annualised_volatility"],
         "var_95": metrics["var_95"],
         "sharpe": metrics["sharpe_ratio"],
-        "benchmark": {
-            "total_return": bench_metrics["total_return"] if bench_metrics else None,
-            "max_drawdown": bench_metrics["max_drawdown"] if bench_metrics else None,
-        } if bench_metrics else None,
+        "benchmark": {"total_return": bench_metrics["total_return"], "max_drawdown": bench_metrics["max_drawdown"]} if bench_metrics else None,
     }
 
 

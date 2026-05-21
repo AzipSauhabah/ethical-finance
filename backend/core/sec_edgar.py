@@ -266,7 +266,7 @@ def _compute_leverage_ratios(total_debt: float, equity, ebitda: float, current_a
     return ratios
 
 
-def _compute_magic_formula(ev: float, operating_income, equity, total_debt: float, cash: float) -> dict:
+def _compute_magic_formula(ev: float, operating_income, equity, total_debt: float, _cash: float) -> dict:
     """Compute Magic Formula ratios: earning yield and ROIC."""
     ratios = {}
     if ev > 0 and operating_income:

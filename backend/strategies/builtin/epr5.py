@@ -458,39 +458,6 @@ class EPR5Strategy(Strategy):
             return None
         return (ticker, ey, roic)
 
-    def _rank_candidates(
-        self,
-        past_prices: pd.DataFrame,
-        funds: dict,
-        clf, scaler,
-        state: dict,
-        ma_window: int,
-        ml_min_score: float,
-        top_pct: float,
-    ) -> list[str]:
-        """Rank tickers by Magic Formula + ML score. Returns list of winners."""
-        candidates = []
-        for ticker, ser in past_prices.items():
-            c = self._is_candidate(ticker, ser, funds, ma_window)
-            if c is None:
-                continue
-            ticker, ey, roic = c
-            score = self._ml_score(ser.dropna(), clf, scaler, state, ticker, past_prices)
-            if score < ml_min_score:
-                continue
-            candidates.append((ticker, ey, roic, score))
-
-        if not candidates:
-            return []
-        df = pd.DataFrame(candidates, columns=["ticker", "ey", "roic", "ml_score"])
-        df["rank_ey"] = df["ey"].rank(ascending=False)
-        df["rank_roic"] = df["roic"].rank(ascending=False)
-        df["combined"] = (df["rank_ey"] + df["rank_roic"]) / df["ml_score"]
-        df = df.sort_values("combined")
-        n_keep = max(1, int(len(df) * top_pct))
-        return df.head(n_keep)["ticker"].tolist()
-
-    # ── Main on_bar ──────────────────────────────────────────────────────
 
     def on_bar(
         self,

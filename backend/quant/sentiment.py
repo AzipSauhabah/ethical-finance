@@ -383,11 +383,8 @@ def sentiment_return_correlation(
             "interpretation": (
                 "Corrélation positive significative : le sentiment prédit les rendements."
                 if corr > 0.3 and p_value < 0.05
-                else (
-                    "Corrélation négative : sentiment contrarian."
-                    if corr < -0.3 and p_value < 0.05
-                    else "Pas de corrélation significative sur la période."
-                )
+                else "Corrélation négative : sentiment contrarian." if corr < -0.3 and p_value < 0.05
+                else "Pas de corrélation significative sur la période."
             ),
         }
     except Exception as e:
