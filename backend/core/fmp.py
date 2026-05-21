@@ -122,6 +122,30 @@ def _fmp_magic_formula(ev, ebit, total_assets, current_assets, current_liabiliti
     return r
 
 
+def _merge_fmp_ratios(computed: dict, ratios: dict) -> dict:
+    """Merge FMP API ratios into computed ratios (no overwrite)."""
+    keys = {
+        "pe_ratio": "priceEarningsRatio",
+        "pb_ratio": "priceToBookRatio",
+        "ev_ebitda": "enterpriseValueMultiple",
+        "roe": "returnOnEquity",
+        "roa": "returnOnAssets",
+        "roic_fmp": "returnOnCapitalEmployed",
+        "net_margin": "netProfitMargin",
+        "current_ratio": "currentRatio",
+        "debt_equity": "debtEquityRatio",
+        "dividend_yield": "dividendYield",
+    }
+    for k, fmp_key in keys.items():
+        v = ratios.get(fmp_key)
+        if v is not None and k not in computed:
+            try:
+                computed[k] = round(float(v), 4)
+            except Exception:
+                pass
+    return computed
+
+
 def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
     """
     Récupère les fondamentaux complets depuis FMP.
@@ -175,25 +199,7 @@ def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
     computed_ratios.update(_fmp_magic_formula(ev, ebit, total_assets, current_assets, current_liabilities))
     computed_ratios.update(_fmp_leverage_ratios(total_debt, equity, ebitda, cash, current_assets, current_liabilities))
 
-    # Compléter avec les ratios FMP si disponibles
-    fmp_ratios = {
-        "pe_ratio": ratios.get("priceEarningsRatio"),
-        "pb_ratio": ratios.get("priceToBookRatio"),
-        "ev_ebitda": ratios.get("enterpriseValueMultiple"),
-        "roe": ratios.get("returnOnEquity"),
-        "roa": ratios.get("returnOnAssets"),
-        "roic_fmp": ratios.get("returnOnCapitalEmployed"),
-        "net_margin": ratios.get("netProfitMargin"),
-        "current_ratio": ratios.get("currentRatio"),
-        "debt_equity": ratios.get("debtEquityRatio"),
-        "dividend_yield": ratios.get("dividendYield"),
-    }
-    for k, v in fmp_ratios.items():
-        if v is not None and k not in computed_ratios:
-            try:
-                computed_ratios[k] = round(float(v), 4)
-            except Exception:
-                pass
+    computed_ratios = _merge_fmp_ratios(computed_ratios, ratios)
 
     # Données de base pour ticker_fundamentals
     return {

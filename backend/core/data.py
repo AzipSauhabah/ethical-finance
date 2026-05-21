@@ -320,6 +320,29 @@ async def get_prices(
     return df
 
 
+def _build_empty_quote(ticker: str) -> dict:
+    """Return an empty quote dict."""
+    return {
+        "ticker": ticker, "last": 0.0, "bid": 0.0, "ask": 0.0,
+        "volume": 0, "change_pct": 0.0,
+        "timestamp": pd.Timestamp.utcnow().isoformat(), "currency": "USD",
+    }
+
+
+def _build_quote_from_rows(ticker: str, rows) -> dict:
+    """Build quote dict from DB rows."""
+    last_row = rows[0]
+    price = float(last_row[1] or last_row[2] or 0)
+    prev_price = float(rows[1][1] or rows[1][2] or price) if len(rows) > 1 else price
+    change_pct = ((price - prev_price) / prev_price * 100) if prev_price else 0.0
+    return {
+        "ticker": ticker, "last": price, "bid": price, "ask": price,
+        "volume": int(last_row[3] or 0),
+        "change_pct": round(change_pct, 2),
+        "timestamp": pd.Timestamp.utcnow().isoformat(), "currency": "USD",
+    }
+
+
 async def get_live_quote(ticker: str) -> dict:
     """Return latest quote from local PostgreSQL ohlcv table."""
     import asyncio
@@ -333,52 +356,22 @@ async def get_live_quote(ticker: str) -> dict:
     if hit:
         return hit
 
-    empty = {
-        "ticker": ticker,
-        "last": 0.0,
-        "bid": 0.0,
-        "ask": 0.0,
-        "volume": 0,
-        "change_pct": 0.0,
-        "timestamp": pd.Timestamp.utcnow().isoformat(),
-        "currency": "USD",
-    }
+    empty = _build_empty_quote(ticker)
 
     def _fetch():
         from sqlalchemy.orm import Session
-
         with Session(engine) as session:
-            rows = session.execute(
-                sa.text("""
-                    SELECT date, adj_close, close, volume
-                    FROM ohlcv
-                    WHERE ticker = :ticker
-                    ORDER BY date DESC
-                    LIMIT 2
-                """),
+            return session.execute(
+                sa.text("SELECT date, adj_close, close, volume FROM ohlcv WHERE ticker = :ticker ORDER BY date DESC LIMIT 2"),
                 {"ticker": ticker},
             ).fetchall()
-        return rows
 
     try:
         loop = asyncio.get_event_loop()
         rows = await loop.run_in_executor(None, _fetch)
         if not rows:
             return empty
-        last_row = rows[0]
-        price = float(last_row[1] or last_row[2] or 0)
-        prev_price = float(rows[1][1] or rows[1][2] or price) if len(rows) > 1 else price
-        change_pct = ((price - prev_price) / prev_price * 100) if prev_price else 0.0
-        result = {
-            "ticker": ticker,
-            "last": price,
-            "bid": price,
-            "ask": price,
-            "volume": int(last_row[3] or 0),
-            "change_pct": round(change_pct, 2),
-            "timestamp": pd.Timestamp.utcnow().isoformat(),
-            "currency": "USD",
-        }
+        result = _build_quote_from_rows(ticker, rows)
         await cache.set(cache_key, result, ttl=300)
         return result
     except Exception as exc:
