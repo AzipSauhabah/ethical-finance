@@ -306,49 +306,18 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
     ev = market_cap + total_debt - cash
     fcf = (operating_cf or 0) - capex
 
-    # Ratios de valorisation
-    if ev > 0 and revenue:
-        ratios["ev_revenue"] = round(ev / revenue, 2)
-    if ev > 0 and ebitda > 0:
-        ratios["ev_ebitda"] = round(ev / ebitda, 2)
-    if market_cap > 0 and net_income and net_income > 0:
-        ratios["pe_ratio"] = round(market_cap / net_income, 2)
-    if market_cap > 0 and equity and equity > 0:
-        ratios["pb_ratio"] = round(market_cap / equity, 2)
-    if market_cap > 0 and fcf > 0:
-        ratios["price_fcf"] = round(market_cap / fcf, 2)
-
-    # Ratios de rentabilité
-    if revenue and revenue > 0:
-        if net_income is not None:
-            ratios["net_margin"] = round(net_income / revenue, 4)
-        if operating_income is not None:
-            ratios["operating_margin"] = round(operating_income / revenue, 4)
-    if total_assets and total_assets > 0 and net_income is not None:
-        ratios["roa"] = round(net_income / total_assets, 4)
-    if equity and equity > 0 and net_income is not None:
-        ratios["roe"] = round(net_income / equity, 4)
+    ratios.update(_compute_valuation_ratios(ev, market_cap, revenue, net_income, ebitda, equity, fcf))
+    ratios.update(_compute_profitability_ratios(revenue, net_income, operating_income, total_assets, equity, operating_cf))
 
     # Ratios de levier et liquidité
     ratios.update(_compute_leverage_ratios(total_debt, equity, ebitda, current_assets, current_liabilities))
 
-    # Magic Formula
-    if ev > 0 and operating_income:
-        net_working_capital = (current_assets or 0) - (current_liabilities or 0)
-        net_fixed_assets = (total_assets or 0) - (current_assets or 0)
-        invested_capital = net_working_capital + net_fixed_assets
-        ratios["earning_yield_sec"] = round(operating_income / ev, 4)
-        ratios["roic_sec"] = round(operating_income / max(invested_capital, 1), 4) if invested_capital > 0 else 0
-
-    # FCF yield et données brutes
+    ratios.update(_compute_magic_formula(ev, operating_income, equity, total_debt, cash))
     if market_cap > 0 and fcf > 0:
         ratios["fcf_yield"] = round(fcf / market_cap, 4)
-    if revenue:
-        ratios["revenue_ttm"] = revenue
-    if net_income is not None:
-        ratios["net_income_ttm"] = net_income
-    if fcf:
-        ratios["fcf_ttm"] = fcf
+    for k, v in [("revenue_ttm", revenue), ("net_income_ttm", net_income), ("fcf_ttm", fcf if fcf else None)]:
+        if v is not None:
+            ratios[k] = v
     ratios.update({"total_debt": total_debt, "cash": cash, "ev": ev, "ebitda": ebitda})
 
     return ratios
