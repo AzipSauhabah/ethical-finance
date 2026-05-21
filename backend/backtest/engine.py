@@ -162,56 +162,68 @@ class BacktestEngine:
         )
 
         for ts in prices.index:
-            dt = ts.date() if hasattr(ts, "date") else ts
-            row_native = prices.loc[ts].to_dict()
-            # Taux FX historique du jour si disponible
-            fx_today = dict(self.fx_rates)
-            eurusd = row_native.pop("EURUSD=X", None)
-            if eurusd and eurusd > 0:
-                fx_today["USDEUR"] = 1.0 / eurusd
-                fx_today["EURUSD"] = eurusd
-            prices_eur = _fx_convert(row_native, self.currencies, fx_today)
+            _, last_contribution_month = self._process_bar(
+                ts, portfolio, prices, params, state,
+                rebalance_days, last_contribution_month
+            )
 
-            # ── Monthly contribution (first trading day of month) ─────────
-            cur_month = ts.month
-            if last_contribution_month != cur_month and params.monthly_contribution > 0:
-                portfolio.cash += params.monthly_contribution
-                last_contribution_month = cur_month
+        return self._assemble_result(portfolio, prices, params)
 
-            # ── Stop-loss on today's close (path-dependent) ───────────────
-            if params.stop_loss_pct is not None:
-                self._apply_stop_loss(portfolio, dt, prices_eur, params.stop_loss_pct)
 
-            # ── Rebalance: ask strategy for target weights ────────────────
-            if ts in rebalance_days and len(prices.loc[:ts]) >= self.strategy.requires_warmup_days:
-                past_view = prices.loc[:ts]  # IMPORTANT: only past + current bar
-                try:
-                    target_weights = self.strategy.on_bar(dt, past_view, params, state)
-                except Exception as exc:
-                    log.warning("on_bar error at %s: %s", dt, exc)
-                    target_weights = {}
-                if target_weights:
-                    self._execute_rebalance(
-                        portfolio, dt, prices_eur, target_weights, params, past_prices=past_view
-                    )
+    def _process_bar(
+        self,
+        ts,
+        portfolio,
+        prices,
+        params,
+        state: dict,
+        rebalance_days,
+        last_contribution_month: int,
+    ) -> tuple:
+        """Process a single price bar. Returns (target_weights, last_contribution_month)."""
+        dt = ts.date() if hasattr(ts, "date") else ts
+        row_native = prices.loc[ts].to_dict()
+        fx_today = dict(self.fx_rates)
+        eurusd = row_native.pop("EURUSD=X", None)
+        if eurusd and eurusd > 0:
+            fx_today["USDEUR"] = 1.0 / eurusd
+            fx_today["EURUSD"] = eurusd
+        prices_eur = _fx_convert(row_native, self.currencies, fx_today)
 
-            # ── Snapshot ─────────────────────────────────────────────────
-            portfolio.snapshot(dt, prices_eur)
+        cur_month = ts.month
+        if last_contribution_month != cur_month and params.monthly_contribution > 0:
+            portfolio.cash += params.monthly_contribution
+            last_contribution_month = cur_month
 
-        # ── Assemble result ──────────────────────────────────────────────
+        if params.stop_loss_pct is not None:
+            self._apply_stop_loss(portfolio, dt, prices_eur, params.stop_loss_pct)
+
+        target_weights = {}
+        if ts in rebalance_days and len(prices.loc[:ts]) >= self.strategy.requires_warmup_days:
+            past_view = prices.loc[:ts]
+            try:
+                target_weights = self.strategy.on_bar(dt, past_view, params, state)
+            except Exception as exc:
+                log.warning("on_bar error at %s: %s", dt, exc)
+                target_weights = {}
+            if target_weights:
+                self._execute_rebalance(portfolio, dt, prices_eur, target_weights, params, past_prices=past_view)
+
+        portfolio.snapshot(dt, prices_eur)
+        return target_weights, last_contribution_month
+
+    def _assemble_result(self, portfolio, prices, params) -> "BacktestResult":
+        """Assemble BacktestResult from completed portfolio."""
         nav = portfolio.nav_series()
         rets = nav.pct_change(fill_method=None).dropna()
         dd = pd.Series(drawdown_series(rets.values), index=rets.index)
-
         last_prices = {t: prices[t].iloc[-1] for t in prices.columns}
         last_eur = _fx_convert(last_prices, self.currencies, self.fx_rates)
         metrics = all_metrics(rets.values)
-
         bench_nav = None
         if self.benchmark_prices is not None and not self.benchmark_prices.empty:
             bp = self.benchmark_prices.dropna()
             bench_nav = (bp / bp.iloc[0]) * params.initial_capital
-
         return BacktestResult(
             strategy_name=self.strategy.name,
             nav_series=nav,
