@@ -342,6 +342,62 @@ class EPR5Strategy(Strategy):
         ret = prices.pct_change().dropna().iloc[-n:].abs()
         return float(prices.iloc[-1] * ret.mean())
 
+
+    # ── Private helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _regime_ok(past_prices: pd.DataFrame, spx_col: str, ma_window: int) -> bool:
+        """Check if market regime is favorable (SPX above 200MA)."""
+        if spx_col not in past_prices.columns:
+            return True
+        spx = past_prices[spx_col].dropna()
+        if len(spx) < ma_window:
+            return True
+        return float(spx.iloc[-1]) > float(spx.iloc[-ma_window:].mean())
+
+    @staticmethod
+    def _vix_ok(past_prices: pd.DataFrame, vix_col: str, vix_ma: int) -> bool:
+        """Check VIX timing filter — VIX crossed below its MA."""
+        if vix_col not in past_prices.columns:
+            return True
+        vix = past_prices[vix_col].dropna()
+        if len(vix) < vix_ma + 1:
+            return True
+        vix_ma_val = float(vix.iloc[-vix_ma:].mean())
+        prev_vix = float(vix.iloc[-2]) if len(vix) >= 2 else float(vix.iloc[-1])
+        curr_vix = float(vix.iloc[-1])
+        return prev_vix >= vix_ma_val and curr_vix < vix_ma_val
+
+    def _apply_stops(
+        self,
+        weights: dict,
+        prev: dict,
+        state: dict,
+        profit_target: float,
+        atr_mult: float,
+        past_prices: pd.DataFrame,
+        initial_capital: float,
+    ) -> dict:
+        """Apply profit-target and ATR stops to existing positions."""
+        for ticker, prev_w in prev.items():
+            if ticker not in past_prices.columns:
+                continue
+            ser = past_prices[ticker].dropna()
+            if ser.empty:
+                continue
+            entry = state.get("entry_prices", {}).get(ticker)
+            if entry is None:
+                continue
+            cur = float(ser.iloc[-1])
+            ret = cur / entry - 1
+            atr = self._atr(ser, 14)
+            stop_dollar_pct = -1_000.0 / (initial_capital * prev_w) if prev_w > 0 else -1
+            stop_atr_pct = -atr_mult * atr / entry if entry > 0 else -1
+            stop_pct = max(stop_dollar_pct, stop_atr_pct)
+            if ret >= profit_target or ret <= stop_pct:
+                weights.pop(ticker, None)
+        return weights
+
     # ── Main on_bar ──────────────────────────────────────────────────────
 
     def on_bar(
@@ -381,38 +437,11 @@ class EPR5Strategy(Strategy):
         clf = state.get("ml_model")
         scaler = state.get("ml_scaler")
 
-        # ── Market regime filter — SPX above 200MA ───────────────────────
-        spx_col = "^GSPC"
-        spx_ok = True
-        if spx_col in past_prices.columns:
-            spx_series = past_prices[spx_col].dropna()
-            if len(spx_series) >= ma_window:
-                spx_ok = float(spx_series.iloc[-1]) > self._sma(spx_series, ma_window)
-            else:
-                spx_ok = False
-
-        if not spx_ok:
+        # ── Market regime + VIX filters ──────────────────────────────────
+        if not self._regime_ok(past_prices, "^GSPC", ma_window):
             state["weights"] = {}
             return {}
-
-        # ── VIX timing filter — FIXED: VIX crossed below 10MA ───────────
-        vix_col = "^VIX"
-        vix_cross_down = True  # default: allow entries if no VIX data
-        if vix_col in past_prices.columns:
-            v = past_prices[vix_col].dropna()
-            if len(v) >= vix_ma + 1:
-                vix_today = float(v.iloc[-1])
-                vix_yesterday = float(v.iloc[-2])
-                vix_ma_today = float(v.iloc[-vix_ma:].mean())
-                vix_ma_yesterday = float(v.iloc[-(vix_ma + 1) : -1].mean())
-                # Cross DOWN: yesterday above MA, today below MA
-                vix_cross_down = (vix_yesterday >= vix_ma_yesterday) and (vix_today < vix_ma_today)
-                # Also allow if VIX is already below MA (not just on the cross)
-                vix_below_ma = vix_today < vix_ma_today
-                vix_cross_down = vix_cross_down or vix_below_ma
-
-        if not vix_cross_down:
-            # Keep existing positions but don't add new ones
+        if not self._vix_ok(past_prices, "^VIX", vix_ma):
             return state.get("weights", {})
 
         # ── Rank candidates by Magic Formula + ML score ──────────────────
@@ -480,24 +509,7 @@ class EPR5Strategy(Strategy):
 
         # ── Apply profit-target / ATR stops ─────────────────────────────
         prev = state.get("weights", {})
-        for ticker, prev_w in prev.items():
-            if ticker not in past_prices.columns:
-                continue
-            ser = past_prices[ticker].dropna()
-            if ser.empty:
-                continue
-            entry = state.get("entry_prices", {}).get(ticker)
-            if entry is None:
-                continue
-            cur = float(ser.iloc[-1])
-            ret = cur / entry - 1
-            atr = self._atr(ser, 14)
-            stop_dollar_pct = -1_000.0 / (params.initial_capital * prev_w) if prev_w > 0 else -1
-            stop_atr_pct = -atr_mult * atr / entry if entry > 0 else -1
-            stop_pct = max(stop_dollar_pct, stop_atr_pct)
-
-            if ret >= profit_target or ret <= stop_pct:
-                weights.pop(ticker, None)
+        weights = self._apply_stops(weights, prev, state, profit_target, atr_mult, past_prices, params.initial_capital)
 
         # ── Track entry prices ───────────────────────────────────────────
         entry_prices = state.setdefault("entry_prices", {})
