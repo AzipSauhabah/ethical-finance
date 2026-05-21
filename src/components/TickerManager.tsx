@@ -242,6 +242,10 @@ export default function TickerManager({ tickers, setTickers }: Props) {
               onBlur={() => setTimeout(() => setShowSugg(false), 150)}
               onFocus={() => input.length > 0 && setShowSugg(true)}
               placeholder="Rechercher un ticker…"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               style={{ width: 280, padding: '0.6rem 1rem', background: '#1a2035', border: '1px solid #2a3555', borderRadius: 4, color: '#e8e8e8', fontSize: '0.85rem' }}
             />
             {showSugg && suggestions.length > 0 && (
