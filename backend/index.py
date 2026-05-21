@@ -386,34 +386,50 @@ def _screener_compute_scores(df, price_pivot):
     return pd.DataFrame(list(scores.values()))
 
 
+
+def _rank_magic_formula(df):
+    df["score"] = df["earning_yield"].rank(ascending=False) + df["roic"].rank(ascending=False)
+    return df.sort_values("score")
+
+def _rank_momentum(df):
+    df["score"] = df["ret_12m"]*0.5 + df["ret_6m"]*0.3 + df["ret_1m"]*0.2
+    return df.sort_values("score", ascending=False)
+
+def _rank_low_vol(df):
+    df["score"] = df["vol_20"]
+    return df.sort_values("score")
+
+def _rank_ml(df):
+    try:
+        from sklearn.preprocessing import StandardScaler
+        features = ["earning_yield","roic","ret_1m","ret_6m","ret_12m","vol_20","beta"]
+        x_scaled = StandardScaler().fit_transform(df[features].fillna(0).values)
+        df["score"] = x_scaled @ np.array([1,1,1,1,1,-1,-1], dtype=float)
+        return df.sort_values("score", ascending=False)
+    except Exception:
+        df["score"] = df["earning_yield"]
+        return df.sort_values("score", ascending=False)
+
+def _rank_combined(df):
+    df["score"] = (
+        df["earning_yield"].rank(ascending=False)
+        + df["roic"].rank(ascending=False)
+        + (df["ret_6m"] + df["ret_12m"]).rank(ascending=False) * 0.5
+        + df["vol_20"].rank(ascending=True) * 0.3
+    )
+    return df.sort_values("score")
+
+_RANKERS = {
+    "magic_formula": _rank_magic_formula,
+    "momentum": _rank_momentum,
+    "low_vol": _rank_low_vol,
+    "ml": _rank_ml,
+    "combined": _rank_combined,
+}
+
 def _screener_rank(scores_df, method, top_n):
-    if method == "magic_formula":
-        scores_df["score"] = scores_df["earning_yield"].rank(ascending=False) + scores_df["roic"].rank(ascending=False)
-        scores_df = scores_df.sort_values("score")
-    elif method == "momentum":
-        scores_df["score"] = scores_df["ret_12m"]*0.5 + scores_df["ret_6m"]*0.3 + scores_df["ret_1m"]*0.2
-        scores_df = scores_df.sort_values("score", ascending=False)
-    elif method == "low_vol":
-        scores_df["score"] = scores_df["vol_20"]
-        scores_df = scores_df.sort_values("score")
-    elif method == "ml":
-        try:
-            from sklearn.preprocessing import StandardScaler
-            features = ["earning_yield","roic","ret_1m","ret_6m","ret_12m","vol_20","beta"]
-            x_scaled = StandardScaler().fit_transform(scores_df[features].fillna(0).values)
-            scores_df["score"] = x_scaled @ np.array([1,1,1,1,1,-1,-1], dtype=float)
-            scores_df = scores_df.sort_values("score", ascending=False)
-        except Exception:
-            scores_df["score"] = scores_df["earning_yield"]
-            scores_df = scores_df.sort_values("score", ascending=False)
-    elif method == "combined":
-        scores_df["score"] = (
-            scores_df["earning_yield"].rank(ascending=False)
-            + scores_df["roic"].rank(ascending=False)
-            + (scores_df["ret_6m"] + scores_df["ret_12m"]).rank(ascending=False) * 0.5
-            + scores_df["vol_20"].rank(ascending=True) * 0.3
-        )
-        scores_df = scores_df.sort_values("score")
+    ranker = _RANKERS.get(method, _rank_magic_formula)
+    scores_df = ranker(scores_df)
     scores_df = scores_df.head(top_n).reset_index(drop=True)
     scores_df["rank"] = scores_df.index + 1
     scores_df["score"] = scores_df["score"].round(2)
