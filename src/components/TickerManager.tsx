@@ -71,7 +71,8 @@ export default function TickerManager({ tickers, setTickers }: Props) {
       .then(r => r.json())
       .then(data => {
         const map = new Map<string, Position>();
-        (data || []).forEach((p: any) => {
+        const list = Array.isArray(data) ? data : [];
+        list.forEach((p: any) => {
           map.set(p.ticker, { ticker: p.ticker, qty: parseFloat(p.qty), avg_price: parseFloat(p.avg_price), currency: p.currency });
         });
         setPositions(map);
