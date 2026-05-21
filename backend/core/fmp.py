@@ -146,6 +146,33 @@ def _merge_fmp_ratios(computed: dict, ratios: dict) -> dict:
     return computed
 
 
+def _extract_fmp_metrics(profile: dict, income: dict, balance: dict, cf: dict, market_cap: float) -> dict:
+    """Extract and compute key metrics from FMP API responses."""
+    mc = float(profile.get("marketCap") or market_cap or 0)
+    total_debt = float(balance.get("totalDebt") or balance.get("longTermDebt") or 0)
+    cash = float(balance.get("cashAndCashEquivalents") or 0)
+    ev = mc + total_debt - cash
+    revenue = float(income.get("revenue") or 0)
+    ebit = float(income.get("operatingIncome") or income.get("ebit") or 0)
+    net_income = float(income.get("netIncome") or 0)
+    depreciation = float(cf.get("depreciationAndAmortization") or 0)
+    ebitda = ebit + depreciation
+    capex = abs(float(cf.get("capitalExpenditure") or 0))
+    operating_cf = float(cf.get("operatingCashFlow") or 0)
+    fcf = operating_cf - capex
+    equity = float(balance.get("totalEquity") or balance.get("stockholdersEquity") or 0)
+    total_assets = float(balance.get("totalAssets") or 0)
+    current_assets = float(balance.get("totalCurrentAssets") or 0)
+    current_liabilities = float(balance.get("totalCurrentLiabilities") or 0)
+    return dict(
+        mc=mc, total_debt=total_debt, cash=cash, ev=ev,
+        revenue=revenue, ebit=ebit, net_income=net_income,
+        ebitda=ebitda, fcf=fcf, equity=equity,
+        total_assets=total_assets, current_assets=current_assets,
+        current_liabilities=current_liabilities,
+    )
+
+
 def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
     """
     Récupère les fondamentaux complets depuis FMP.
@@ -173,24 +200,12 @@ def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
     cf = {}
 
     # ── Extraire les métriques clés ───────────────────────────────────────────
-    mc = float(profile.get("marketCap") or market_cap or 0)
-    total_debt = float(balance.get("totalDebt") or balance.get("longTermDebt") or 0)
-    cash = float(balance.get("cashAndCashEquivalents") or 0)
-    ev = mc + total_debt - cash
-
-    revenue = float(income.get("revenue") or 0)
-    ebit = float(income.get("operatingIncome") or income.get("ebit") or 0)
-    net_income = float(income.get("netIncome") or 0)
-    depreciation = float(cf.get("depreciationAndAmortization") or 0)
-    ebitda = ebit + depreciation
-    capex = abs(float(cf.get("capitalExpenditure") or 0))
-    operating_cf = float(cf.get("operatingCashFlow") or 0)
-    fcf = operating_cf - capex
-
-    equity = float(balance.get("totalEquity") or balance.get("stockholdersEquity") or 0)
-    total_assets = float(balance.get("totalAssets") or 0)
-    current_assets = float(balance.get("totalCurrentAssets") or 0)
-    current_liabilities = float(balance.get("totalCurrentLiabilities") or 0)
+    _m = _extract_fmp_metrics(profile, income, balance, cf, market_cap)
+    mc = _m["mc"]; total_debt = _m["total_debt"]; cash = _m["cash"]; ev = _m["ev"]
+    revenue = _m["revenue"]; ebit = _m["ebit"]; net_income = _m["net_income"]
+    ebitda = _m["ebitda"]; fcf = _m["fcf"]; equity = _m["equity"]
+    total_assets = _m["total_assets"]; current_assets = _m["current_assets"]
+    current_liabilities = _m["current_liabilities"]
 
     # ── Ratios calculés ───────────────────────────────────────────────────────
     computed_ratios = {}

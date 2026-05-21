@@ -113,6 +113,26 @@ def _normalize(X: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
 # ─── Dataset builder ──────────────────────────────────────────────────────────
 
 
+def _build_ticker_sequences(series, feat_mat) -> tuple[list, list]:
+    """Build X/y sequences for a single ticker."""
+    X_list, y_list = [], []
+    price_series = series.dropna()
+    n = len(feat_mat)
+    for i in range(SEQ_LEN, n - FORECAST_DAYS):
+        seq = feat_mat[i - SEQ_LEN: i]
+        if i >= len(price_series):
+            continue
+        try:
+            cur_price = float(price_series.iloc[i])
+            fut_price = float(price_series.iloc[i + FORECAST_DAYS])
+            label = 1 if fut_price / cur_price - 1 > THRESHOLD else 0
+            X_list.append(seq)
+            y_list.append(label)
+        except Exception:
+            continue
+    return X_list, y_list
+
+
 def _build_dataset(
     past_prices: pd.DataFrame,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None:
@@ -125,32 +145,12 @@ def _build_dataset(
     for ticker, series in past_prices.items():
         if ticker.startswith("^"):
             continue
-
         feat_mat = _build_feature_matrix(series)
         if feat_mat is None or len(feat_mat) < SEQ_LEN + FORECAST_DAYS:
             continue
-
-        series.dropna().values
-        # Aligner prix avec feat_mat (dropna peut décaler)
-        price_series = series.dropna()
-        pd.Series(range(len(feat_mat)))  # index proxy
-
-        n = len(feat_mat)
-        for i in range(SEQ_LEN, n - FORECAST_DAYS):
-            seq = feat_mat[i - SEQ_LEN : i]  # (SEQ_LEN, N_features)
-            # Prix correspondant dans la série originale
-            price_idx = price_series.index[i] if i < len(price_series) else None
-            if price_idx is None:
-                continue
-            try:
-                cur_price = float(price_series.iloc[i])
-                fut_price = float(price_series.iloc[i + FORECAST_DAYS])
-                future_ret = fut_price / cur_price - 1
-                label = 1 if future_ret > THRESHOLD else 0
-                all_X.append(seq)
-                all_y.append(label)
-            except Exception:
-                continue
+        X_t, y_t = _build_ticker_sequences(series, feat_mat)
+        all_X.extend(X_t)
+        all_y.extend(y_t)
 
     if len(all_X) < MIN_SAMPLES:
         log.info("LSTM: pas assez d'exemples (%d < %d)", len(all_X), MIN_SAMPLES)
