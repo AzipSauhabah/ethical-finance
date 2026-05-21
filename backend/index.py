@@ -141,6 +141,32 @@ async def screen_tickers(payload: TickerListIn):
     return {"tickers": [ticker_to_dict(r) for r in records]}
 
 
+
+@app.get("/api/tickers/search")
+async def search_tickers(q: str = Query("", min_length=1)):
+    """Search tickers by symbol or name from the database."""
+    import sqlalchemy as sa
+    import os
+    database_url = os.environ.get("DATABASE_URL", "")
+    sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
+    loop = asyncio.get_event_loop()
+
+    def _search():
+        engine = sa.create_engine(sync_url, pool_pre_ping=True)
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text("""
+                SELECT ticker, name, sector, universe
+                FROM ticker_fundamentals
+                WHERE ticker ILIKE :q OR name ILIKE :q
+                ORDER BY market_cap DESC NULLS LAST
+                LIMIT 20
+            """), {"q": f"%{q}%"}).fetchall()
+        return [{"ticker": r[0], "name": r[1], "sector": r[2], "universe": r[3]} for r in rows]
+
+    results = await loop.run_in_executor(None, _search)
+    return {"results": results}
+
+
 @app.get("/api/tickers/{ticker}/screening")
 async def screening_detail(ticker: str):
     """Detailed breakdown for one ticker."""
@@ -330,15 +356,74 @@ def _screener_load_fundamentals(engine, payload) -> "pd.DataFrame":
         "net_margin","fcf_yield","debt_equity","current_ratio"])
 
 
+# ─── Sharia screening constants (AAOIFI / MSCI Islamic Index) ───────────────
+
+# Secteurs exclus (haram par nature)
+_SHARIA_SECTOR_BLACKLIST = [
+    "bank", "insurance", "financial services", "diversified financial",
+    "alcohol", "beverage", "distiller", "brewer", "winery",
+    "casino", "gambling", "gaming", "lottery",
+    "tobacco",
+    "adult entertainment", "pornograph",
+    "weapon", "defense", "aerospace & defense",
+    "pork", "swine",
+]
+
+# Entreprises explicitement non-conformes (revenues haram > 5%)
+# Sources : MSCI Islamic, Dow Jones Islamic Market Index
+_SHARIA_TICKER_BLACKLIST = {
+    # Alcool
+    "MC.PA",   # LVMH — Moët Hennessy (alcool > 5% CA)
+    "RI.PA",   # Pernod Ricard
+    "BN.PA",   # Danone (alcool dans certaines filiales)
+    "ABI",     # AB InBev
+    "SAB",     # SABMiller
+    "HNZ",     # Heineken
+    "DEO",     # Diageo
+    "BF.B",    # Brown-Forman
+    # Banques / finance intérêt
+    "JPM", "BAC", "WFC", "C", "GS", "MS",
+    "BNP.PA", "SAN.PA", "ACA.PA", "GLE.PA", "BNPP.PA",
+    # Tabac
+    "PM", "MO", "BTI", "IMBBY",
+    # Casinos / jeux
+    "LVS", "WYNN", "MGM", "CZR",
+    # Défense/armes
+    "LMT", "RTX", "NOC", "GD", "BA",
+    "AIR.PA", "HO.PA",
+}
+
+
 def _screener_apply_filters(df, payload):
     if payload.require_ethical:
-        bl = ["weapons","tobacco","gambling","fossil","coal","oil"]
-        df = df[~df["sector"].str.lower().apply(lambda s: any(b in s for b in bl))]
+        ethical_bl = ["weapons","tobacco","gambling","fossil","coal","oil","defense","arms"]
+        df = df[~df["sector"].str.lower().apply(
+            lambda s: any(b in s for b in ethical_bl)
+        )]
     if payload.require_sharia:
-        bl = ["bank","insurance","financial","alcohol","casino","tobacco"]
-        df = df[~df["sector"].str.lower().apply(lambda s: any(b in s for b in bl))]
-        df["debt_ratio"] = df["total_debt"] / (df["market_cap"] + 1)
-        df = df[df["debt_ratio"] <= 0.33]
+        # Critère 1 — Exclusion sectorielle (haram par nature)
+        df = df[~df["sector"].str.lower().apply(
+            lambda s: any(b in s for b in _SHARIA_SECTOR_BLACKLIST)
+        )]
+        df = df[~df["industry"].str.lower().apply(
+            lambda s: any(b in s for b in _SHARIA_SECTOR_BLACKLIST)
+        )]
+
+        # Critère 2 — Blacklist explicite (revenus haram > 5%)
+        df = df[~df["ticker"].isin(_SHARIA_TICKER_BLACKLIST)]
+
+        # Critère 3 — Ratio dette / market cap ≤ 33% (AAOIFI)
+        df["_debt_ratio"] = df["total_debt"] / (df["market_cap"] + 1)
+        df = df[df["_debt_ratio"] <= 0.33]
+
+        # Critère 4 — Ratio revenus / market cap (proxy liquidité) ≤ 70%
+        # Filtre les holdings financières déguisées
+        df["_rev_ratio"] = df["total_revenue"] / (df["market_cap"] + 1)
+        df = df[df["_rev_ratio"] <= 0.70]
+
+        # Nettoyage colonnes temporaires
+        df = df.drop(columns=["_debt_ratio", "_rev_ratio"], errors="ignore")
+
     return df
 
 

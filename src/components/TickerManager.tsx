@@ -30,6 +30,9 @@ function clearToken() {
 
 export default function TickerManager({ tickers, setTickers }: Props) {
   const [input, setInput]     = useState('');
+  const [suggestions, setSuggestions] = useState<{ticker: string, name: string, sector: string}[]>([]);
+  const [showSugg, setShowSugg]       = useState(false);
+  const [suggLoad, setSuggLoad]       = useState(false);
   const [loading, setLoad]    = useState(false);
   const [screened, setScrn]   = useState<TickerScreenResult[]>([]);
   const quotes                = useLiveQuotes(tickers);
@@ -143,6 +146,38 @@ export default function TickerManager({ tickers, setTickers }: Props) {
     finally { setLoad(false); setInput(''); }
   };
 
+  const searchTickers = async (q: string) => {
+    setInput(q);
+    if (q.length < 1) { setSuggestions([]); setShowSugg(false); return; }
+    setSuggLoad(true);
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/tickers/search?q=${encodeURIComponent(q)}`);
+      const data = await r.json();
+      setSuggestions(data.results || []);
+      setShowSugg(true);
+    } catch(e) { setSuggestions([]); }
+    finally { setSuggLoad(false); }
+  };
+
+  const selectTicker = async (ticker: string) => {
+    setInput('');
+    setSuggestions([]);
+    setShowSugg(false);
+    if (tickers.includes(ticker)) return;
+    setLoad(true);
+    try {
+      const all = [...tickers, ticker];
+      setTickers(all);
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/tickers/screen`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tickers: all }),
+      });
+      const data = await r.json();
+      setScrn(data.tickers);
+    } catch(e) { console.error(e); }
+    finally { setLoad(false); }
+  };
+
   const remove = (t: string) => {
     setTickers(tickers.filter(x => x !== t));
     setScrn(screened.filter(x => x.ticker !== t));
@@ -202,17 +237,39 @@ export default function TickerManager({ tickers, setTickers }: Props) {
               🔒 Se connecter
             </button>
           )}
-          <input value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && add()}
-            placeholder="AAPL, MC.PA, MSFT…"
-            style={{ width: 280, padding: '0.6rem 1rem', background: '#1a2035', border: '1px solid #2a3555', borderRadius: 4, color: '#e8e8e8', fontSize: '0.85rem' }}
-          />
-          <button onClick={add} disabled={loading} style={{
-            padding: '0.6rem 1.5rem', background: GOLD, color: '#000',
-            border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
-          }}>
-            {loading ? '…' : 'AJOUTER'}
-          </button>
+          <div style={{ position: 'relative' }}>
+            <input value={input} onChange={e => searchTickers(e.target.value)}
+              onBlur={() => setTimeout(() => setShowSugg(false), 150)}
+              onFocus={() => input.length > 0 && setShowSugg(true)}
+              placeholder="Rechercher un ticker…"
+              style={{ width: 280, padding: '0.6rem 1rem', background: '#1a2035', border: '1px solid #2a3555', borderRadius: 4, color: '#e8e8e8', fontSize: '0.85rem' }}
+            />
+            {showSugg && suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, width: 360,
+                background: '#0d1528', border: '1px solid #2a3555', borderRadius: 4,
+                zIndex: 1000, maxHeight: 280, overflowY: 'auto', marginTop: 2,
+              }}>
+                {suggestions.map(s => (
+                  <div key={s.ticker} onMouseDown={() => selectTicker(s.ticker)}
+                    style={{
+                      padding: '8px 14px', cursor: 'pointer', display: 'flex',
+                      justifyContent: 'space-between', alignItems: 'center',
+                      borderBottom: '1px solid #1a2035',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#1a2035')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#e8e8e8', fontSize: 13 }}>{s.ticker}</span>
+                    <span style={{ color: '#666', fontSize: 11, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {suggLoad && (
+              <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#666', fontSize: 12 }}>…</div>
+            )}
+          </div>
         </div>
       </div>
 
