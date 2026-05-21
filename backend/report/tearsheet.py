@@ -20,6 +20,113 @@ from backend.quant.metrics import all_metrics
 from backend.quant.significance import alpha_ttest, bootstrap_ci, jobson_korkie
 
 
+
+# ─── Private helpers ─────────────────────────────────────────────────────────
+
+def _build_significance(r, bench) -> dict:
+    """Compute significance tests between strategy and benchmark returns."""
+    if bench is None or len(bench) < 30:
+        return {}
+    n = min(len(r), len(bench))
+    jk = jobson_korkie(r[:n], bench[:n])
+    at = alpha_ttest(r[:n], bench[:n])
+    sb = bootstrap_ci(
+        r,
+        lambda x: float(np.mean(x) / (np.std(x, ddof=1) + 1e-9) * np.sqrt(252)),
+    )
+    return {
+        "jobson_korkie": {"z": jk.statistic, "p": jk.p_value, "significant": jk.significant},
+        "alpha_ttest": {"t": at.statistic, "p": at.p_value, "significant": at.significant},
+        "sharpe_bootstrap_95ci": [sb.ci_lower, sb.ci_upper],
+    }
+
+
+def _build_nav_charts(result, prices, benchmark_returns) -> tuple:
+    """Build NAV, benchmark, drawdown and allocation chart data."""
+    nav = result.nav_series
+    nav_monthly = nav.resample("ME").last()
+    nav_chart = [{"date": str(idx.date()), "nav": float(v)} for idx, v in nav_monthly.items()]
+
+    nav_multiccy = {"EUR": nav_chart}
+    fx_pairs = {"USD": "EURUSD=X", "GBP": "EURGBP=X", "CHF": "EURCHF=X", "JPY": "EURJPY=X"}
+    for ccy, fx_ticker in fx_pairs.items():
+        if prices is not None and fx_ticker in prices.columns:
+            fx = prices[fx_ticker].dropna().reindex(nav.index, method="ffill")
+            nav_ccy_monthly = (nav * fx).resample("ME").last()
+            nav_multiccy[ccy] = [
+                {"date": str(idx.date()), "nav": round(float(v), 2)}
+                for idx, v in nav_ccy_monthly.items() if not np.isnan(v)
+            ]
+
+    if prices is not None and "GLD" in prices.columns:
+        gld = prices["GLD"].dropna().reindex(nav.index, method="ffill")
+        eurusd = prices.get("EURUSD=X", pd.Series(dtype=float)).dropna().reindex(nav.index, method="ffill")
+        if not eurusd.empty:
+            nav_gold_monthly = (nav * eurusd / gld).resample("ME").last()
+            nav_multiccy["XAU"] = [
+                {"date": str(idx.date()), "nav": round(float(v), 4)}
+                for idx, v in nav_gold_monthly.items() if not np.isnan(v)
+            ]
+
+    benchmark_chart = []
+    if result.benchmark_nav is not None and not result.benchmark_nav.empty:
+        bn = result.benchmark_nav.resample("ME").last()
+        benchmark_chart = [{"date": str(idx.date()), "nav": float(v)} for idx, v in bn.items()]
+
+    dd_chart = [
+        {"date": str(idx.date()), "drawdown": float(v)}
+        for idx, v in result.drawdown_series.resample("ME").min().items()
+    ]
+
+    allocation_chart = []
+    if not result.cash_invested.empty:
+        ci = result.cash_invested.resample("ME").last()
+        allocation_chart = [
+            {"date": str(idx.date()), "cash": float(row["cash_eur"]), "invested": float(row["invested_eur"])}
+            for idx, row in ci.iterrows()
+        ]
+
+    return nav_chart, nav_multiccy, benchmark_chart, dd_chart, allocation_chart
+
+
+def _build_cost_breakdown(result) -> dict:
+    """Compute cost breakdown from trades dataframe."""
+    if result.trades_df.empty:
+        return {"commission": 0.0, "slippage": 0.0, "fx_spread": 0.0, "ttf": 0.0}
+    td = result.trades_df
+    return {
+        "commission": float(td["commission"].sum()),
+        "slippage": float(td["slippage"].sum()),
+        "market_impact": float(td["market_impact"].sum() if "market_impact" in td.columns else 0.0),
+        "fx_spread": float(td["fx_spread"].sum() if "fx_spread" in td.columns else 0.0),
+        "ttf": float(td["ttf"].sum() if "ttf" in td.columns else 0.0),
+        "stamp_duty": float(td["stamp_duty"].sum() if "stamp_duty" in td.columns else 0.0),
+    }
+
+
+def _build_risk_by_position(result, prices) -> dict:
+    """Compute per-position VaR and CVaR."""
+    risk_by_position = {}
+    if prices is None or prices.empty or not result.positions_final.get("positions"):
+        return risk_by_position
+    for ticker, pos_info in result.positions_final["positions"].items():
+        if ticker not in prices.columns:
+            continue
+        ticker_rets = prices[ticker].pct_change(fill_method=None).dropna()
+        if len(ticker_rets) <= 20:
+            continue
+        var_95 = float(np.percentile(ticker_rets, 5))
+        below = ticker_rets[ticker_rets <= var_95]
+        cvar_95 = float(below.mean()) if len(below) > 0 else var_95
+        weight = pos_info.get("weight", 0)
+        value_eur = pos_info.get("value_eur", 0)
+        risk_by_position[ticker] = {
+            "weight": weight, "value_eur": value_eur,
+            "var_95_daily": var_95, "cvar_95_daily": cvar_95,
+            "var_95_eur": var_95 * value_eur, "contribution_pct": weight * var_95,
+        }
+    return risk_by_position
+
 def build_tearsheet(
     result: BacktestResult,
     benchmark_returns: pd.Series | None = None,
@@ -33,20 +140,7 @@ def build_tearsheet(
     metrics = all_metrics(r, benchmark_r=bench, rf=RISK_FREE_RATE)
 
     # Significance tests
-    sig: dict = {}
-    if bench is not None and len(bench) >= 30:
-        n = min(len(r), len(bench))
-        jk = jobson_korkie(r[:n], bench[:n])
-        at = alpha_ttest(r[:n], bench[:n])
-        sb = bootstrap_ci(
-            r,
-            lambda x: float(np.mean(x) / (np.std(x, ddof=1) + 1e-9) * np.sqrt(252)),
-        )
-        sig = {
-            "jobson_korkie": {"z": jk.statistic, "p": jk.p_value, "significant": jk.significant},
-            "alpha_ttest": {"t": at.statistic, "p": at.p_value, "significant": at.significant},
-            "sharpe_bootstrap_95ci": [sb.ci_lower, sb.ci_upper],
-        }
+    sig = _build_significance(r, bench)
 
     # Stress tests
     stress = run_stress_tests(result.returns_series, benchmark_returns)
@@ -111,60 +205,9 @@ def build_tearsheet(
         "hit_rate": round(len(wins) / max(len(r_series), 1) * 100, 2),
     }
 
-    # NAV chart (monthly sampled to keep payload light)
-    nav_monthly = nav.resample("ME").last()
-    nav_chart = [{"date": str(idx.date()), "nav": float(v)} for idx, v in nav_monthly.items()]
+    nav_chart, nav_multiccy, benchmark_chart, dd_chart, allocation_chart = _build_nav_charts(result, prices, benchmark_returns)
 
-    # NAV multi-devises — conversion via paires FX historiques
-    nav_multiccy = {"EUR": nav_chart}
-    fx_pairs = {
-        "USD": "EURUSD=X",
-        "GBP": "EURGBP=X",
-        "CHF": "EURCHF=X",
-        "JPY": "EURJPY=X",
-    }
-    for ccy, fx_ticker in fx_pairs.items():
-        if prices is not None and fx_ticker in prices.columns:
-            fx = prices[fx_ticker].dropna().reindex(nav.index, method="ffill")
-            nav_ccy = nav * fx
-            nav_ccy_monthly = nav_ccy.resample("ME").last()
-            nav_multiccy[ccy] = [
-                {"date": str(idx.date()), "nav": round(float(v), 2)}
-                for idx, v in nav_ccy_monthly.items()
-                if not np.isnan(v)
-            ]
-
-    # NAV en équivalent OR
-    if prices is not None and "GLD" in prices.columns:
-        gld = prices["GLD"].dropna().reindex(nav.index, method="ffill")
-        eurusd = (
-            prices.get("EURUSD=X", pd.Series(dtype=float))
-            .dropna()
-            .reindex(nav.index, method="ffill")
-        )
-        if not eurusd.empty:
-            nav_usd = nav * eurusd
-            nav_gold_oz = nav_usd / gld  # NAV en onces d'or
-            nav_gold_monthly = nav_gold_oz.resample("ME").last()
-            nav_multiccy["XAU"] = [
-                {"date": str(idx.date()), "nav": round(float(v), 4)}
-                for idx, v in nav_gold_monthly.items()
-                if not np.isnan(v)
-            ]
-
-    # Benchmark NAV chart
-    benchmark_chart = []
-    if result.benchmark_nav is not None and not result.benchmark_nav.empty:
-        bn = result.benchmark_nav.resample("ME").last()
-        benchmark_chart = [{"date": str(idx.date()), "nav": float(v)} for idx, v in bn.items()]
-
-    # Drawdown chart
-    dd_chart = [
-        {"date": str(idx.date()), "drawdown": float(v)}
-        for idx, v in result.drawdown_series.resample("ME").min().items()
-    ]
-
-    # COST CHART — cumulative costs + taxes over time
+        # COST CHART — cumulative costs + taxes over time
     cost_chart = []
     if not result.costs_series.empty:
         cs = result.costs_series.resample("ME").last()
@@ -191,46 +234,10 @@ def build_tearsheet(
             for idx, row in ci.iterrows()
         ]
 
-    # Trade cost breakdown
-    cost_breakdown = {"commission": 0.0, "slippage": 0.0, "fx_spread": 0.0, "ttf": 0.0}
-    # VaR par position
-    risk_by_position = {}
-    if not prices.empty and result.positions_final.get("positions"):
-        for ticker, pos_info in result.positions_final["positions"].items():
-            if ticker in prices.columns:
-                ticker_rets = prices[ticker].pct_change(fill_method=None).dropna()
-                if len(ticker_rets) > 20:
-                    var_95 = float(np.percentile(ticker_rets, 5))
-                    cvar_95 = (
-                        float(ticker_rets[ticker_rets <= var_95].mean())
-                        if len(ticker_rets[ticker_rets <= var_95]) > 0
-                        else var_95
-                    )
-                    weight = pos_info.get("weight", 0)
-                    value_eur = pos_info.get("value_eur", 0)
-                    risk_by_position[ticker] = {
-                        "weight": weight,
-                        "value_eur": value_eur,
-                        "var_95_daily": var_95,
-                        "cvar_95_daily": cvar_95,
-                        "var_95_eur": var_95 * value_eur,
-                        "contribution_pct": weight * var_95,
-                    }
+    cost_breakdown = _build_cost_breakdown(result)
+    risk_by_position = _build_risk_by_position(result, prices)
 
-    if not result.trades_df.empty:
-        td = result.trades_df
-        cost_breakdown = {
-            "commission": float(td["commission"].sum()),
-            "slippage": float(td["slippage"].sum()),
-            "market_impact": float(
-                td["market_impact"].sum() if "market_impact" in td.columns else 0.0
-            ),
-            "fx_spread": float(td["fx_spread"].sum() if "fx_spread" in td.columns else 0.0),
-            "ttf": float(td["ttf"].sum() if "ttf" in td.columns else 0.0),
-            "stamp_duty": float(td["stamp_duty"].sum() if "stamp_duty" in td.columns else 0.0),
-        }
-
-    import math
+        import math
 
     def _clean(obj):
         """Remplace inf et NaN par None pour la sérialisation JSON."""
