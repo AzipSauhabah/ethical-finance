@@ -107,7 +107,7 @@ class TestTotalTradeCost:
 
     def test_total_equals_sum_of_parts(self):
         c = total_trade_cost(10_000, broker="degiro", side="buy")
-        manual_total = c["commission"] + c["slippage"] + c["fx_spread"] + c["ttf"]
+        manual_total = c["commission"] + c["slippage"] + c["fx_spread"] + c["ttf"] + c.get("stamp_duty", 0.0) + c.get("market_impact", 0.0)
         assert math.isclose(c["total"], manual_total, rel_tol=1e-9)
 
     def test_sell_side_no_ttf(self):

@@ -203,14 +203,14 @@ class Portfolio:
     def nav_series(self) -> pd.Series:
         if not self._snapshots:
             return pd.Series(dtype=float)
-        idx, nav, *_ = zip(*self._snapshots, strict=False)
+        idx, nav, *_ = zip(*self._snapshots)
         return pd.Series(nav, index=pd.DatetimeIndex(idx), name="NAV")
 
     def costs_series(self) -> pd.DataFrame:
         """Cumulative costs + taxes time series."""
         if not self._snapshots:
             return pd.DataFrame()
-        idx, _nav, costs, taxes, _cash, _inv = zip(*self._snapshots, strict=False)
+        idx, _nav, costs, taxes, _cash, _inv = zip(*self._snapshots)
         return pd.DataFrame(
             {"costs_eur": costs, "taxes_eur": taxes},
             index=pd.DatetimeIndex(idx),
@@ -219,7 +219,7 @@ class Portfolio:
     def cash_invested_series(self) -> pd.DataFrame:
         if not self._snapshots:
             return pd.DataFrame()
-        idx, _nav, _c, _t, cash, inv = zip(*self._snapshots, strict=False)
+        idx, _nav, _c, _t, cash, inv = zip(*self._snapshots)
         return pd.DataFrame(
             {"cash_eur": cash, "invested_eur": inv},
             index=pd.DatetimeIndex(idx),
