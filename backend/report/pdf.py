@@ -599,8 +599,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
     meta = tearsheet["meta"]
     narratives = generate_all_narratives(tearsheet)
-    interpretations = generate_metric_interpretations(m)
     m = tearsheet["metrics"]
+    interpretations = generate_metric_interpretations(m)
     sig = tearsheet.get("significance", {})
     st_ = tearsheet.get("stress_tests", [])
     cs = tearsheet.get("cost_summary", {})
