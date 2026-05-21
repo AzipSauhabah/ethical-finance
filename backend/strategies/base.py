@@ -101,6 +101,37 @@ class PositionManager:
         weight = risk_pct / max(stop_pct, 0.001)
         return min(weight, max_weight)
 
+
+    def _check_stop(
+        self,
+        ticker: str,
+        prices,
+        entry: float,
+        stop_loss_pct: float,
+        profit_target_pct,
+        use_trailing: bool,
+        trailing_pct: float,
+        stop_atr_mult,
+        high_prices: dict,
+    ) -> bool:
+        """Return True if position should be closed."""
+        current = float(prices.iloc[-1])
+        pnl = current / entry - 1
+
+        if pnl <= -stop_loss_pct:
+            return True
+        if profit_target_pct is not None and pnl >= profit_target_pct:
+            return True
+        if use_trailing:
+            peak = max(high_prices.get(ticker, current), current)
+            high_prices[ticker] = peak
+            if current / peak - 1 <= -trailing_pct:
+                return True
+        if stop_atr_mult is not None and len(prices) >= 15:
+            if current < entry - stop_atr_mult * self.atr(prices):
+                return True
+        return False
+
     # ── Stops par position ────────────────────────────────────────────────
 
     def apply_stops(
@@ -146,48 +177,17 @@ class PositionManager:
             if ticker not in past_prices.columns:
                 to_close.append(ticker)
                 continue
-
             prices = past_prices[ticker].dropna()
             if prices.empty:
                 continue
-
             current = float(prices.iloc[-1])
             entry = entry_prices.get(ticker)
-
             if entry is None or entry <= 0:
-                # Pas d'entrée enregistrée → enregistrer maintenant
                 entry_prices[ticker] = current
                 entry = current
-
-            pnl = current / entry - 1
-
-            # 1. Stop loss fixe
-            if pnl <= -stop_loss_pct:
+            if self._check_stop(ticker, prices, entry, stop_loss_pct, profit_target_pct,
+                                 use_trailing, trailing_pct, stop_atr_mult, high_prices):
                 to_close.append(ticker)
-                continue
-
-            # 2. Profit target
-            if profit_target_pct is not None and pnl >= profit_target_pct:
-                to_close.append(ticker)
-                continue
-
-            # 3. Trailing stop
-            if use_trailing:
-                peak = high_prices.get(ticker, current)
-                peak = max(peak, current)
-                high_prices[ticker] = peak
-                drawdown_from_peak = current / peak - 1
-                if drawdown_from_peak <= -trailing_pct:
-                    to_close.append(ticker)
-                    continue
-
-            # 4. Stop ATR
-            if stop_atr_mult is not None and len(prices) >= 15:
-                atr_val = self.atr(prices)
-                stop_price = entry - stop_atr_mult * atr_val
-                if current < stop_price:
-                    to_close.append(ticker)
-                    continue
 
         # Fermer les positions touchées
         for ticker in set(to_close):

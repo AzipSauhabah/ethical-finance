@@ -22,6 +22,65 @@ from backend.quant.signals import (
 log = logging.getLogger(__name__)
 
 
+def _sentiment_signal(score: float) -> int:
+    """Convert sentiment score to -1/0/+1 signal."""
+    if score >= 0.15:
+        return 1
+    if score <= -0.15:
+        return -1
+    return 0
+
+
+def _compute_ticker_signal(
+    ticker: str,
+    prices,
+    sentiment_scores: dict,
+    include_sentiment: bool,
+    end,
+) -> dict | None:
+    """Compute signal for a single ticker. Returns None if insufficient data."""
+    if ticker not in prices.columns:
+        return None
+    p = prices[ticker].dropna()
+    if len(p) < 20:
+        return None
+
+    sma_sig = int(sma_crossover_signal(p).iloc[-1])
+    rsi_sig = int(rsi_signal(p).iloc[-1])
+    macd_sig = int(macd_signal(p).iloc[-1])
+    mom_sig = int(momentum_signal(p).iloc[-1])
+
+    sent_score = sentiment_scores.get(ticker, 0.0)
+    sent_sig = _sentiment_signal(sent_score)
+
+    vote = sma_sig + rsi_sig + macd_sig + mom_sig
+    if include_sentiment:
+        vote += sent_sig
+
+    max_vote = 5 if include_sentiment else 4
+    signal = 1 if vote >= 2 else (-1 if vote <= -2 else 0)
+    label = "BUY" if signal == 1 else ("SELL" if signal == -1 else "HOLD")
+
+    return {
+        "ticker": ticker,
+        "signal": signal,
+        "label": label,
+        "strength": round(abs(vote) / max_vote, 2),
+        "indicators": {
+            "sma_crossover": sma_sig,
+            "rsi": rsi_sig,
+            "macd": macd_sig,
+            "momentum": mom_sig,
+            "sentiment": sent_sig,
+        },
+        "sentiment": {
+            "score": round(sent_score, 3),
+            "signal": "bullish" if sent_sig == 1 else ("bearish" if sent_sig == -1 else "neutral"),
+        },
+        "date": str(end),
+    }
+
+
 async def compute_daily_signals(
     tickers: list[str],
     lookback_days: int = 60,
@@ -67,59 +126,8 @@ async def compute_daily_signals(
             log.warning("Sentiment fetch error: %s", e)
 
     results = []
-    max_vote = 5 if include_sentiment else 4
-
     for ticker in tickers:
-        if ticker not in prices.columns:
-            continue
-        p = prices[ticker].dropna()
-        if len(p) < 20:
-            continue
-
-        sma_sig = int(sma_crossover_signal(p).iloc[-1])
-        rsi_sig = int(rsi_signal(p).iloc[-1])
-        macd_sig = int(macd_signal(p).iloc[-1])
-        mom_sig = int(momentum_signal(p).iloc[-1])
-
-        # Signal sentiment : bullish > 0.15 → +1, bearish < -0.15 → -1
-        sent_score = sentiment_scores.get(ticker, 0.0)
-        if sent_score >= 0.15:
-            sent_sig = 1
-        elif sent_score <= -0.15:
-            sent_sig = -1
-        else:
-            sent_sig = 0
-
-        vote = sma_sig + rsi_sig + macd_sig + mom_sig
-        if include_sentiment:
-            vote += sent_sig
-
-        # Seuil adapté au nombre de signaux
-        threshold = 2
-        signal = 1 if vote >= threshold else (-1 if vote <= -threshold else 0)
-        label = "BUY" if signal == 1 else ("SELL" if signal == -1 else "HOLD")
-
-        results.append(
-            {
-                "ticker": ticker,
-                "signal": signal,
-                "label": label,
-                "strength": round(abs(vote) / max_vote, 2),
-                "indicators": {
-                    "sma_crossover": sma_sig,
-                    "rsi": rsi_sig,
-                    "macd": macd_sig,
-                    "momentum": mom_sig,
-                    "sentiment": sent_sig,
-                },
-                "sentiment": {
-                    "score": round(sent_score, 3),
-                    "signal": (
-                        "bullish" if sent_sig == 1 else ("bearish" if sent_sig == -1 else "neutral")
-                    ),
-                },
-                "date": str(end),
-            }
-        )
-
+        result = _compute_ticker_signal(ticker, prices, sentiment_scores, include_sentiment, end)
+        if result is not None:
+            results.append(result)
     return results

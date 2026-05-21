@@ -219,6 +219,70 @@ def _extract_latest_annual(facts: dict, concept_names: list[str]) -> float | Non
 # ─── Ratios calculés ──────────────────────────────────────────────────────────
 
 
+def _compute_valuation_ratios(ev: float, market_cap: float, revenue, net_income, ebitda: float, equity, fcf: float) -> dict:
+    """Compute valuation ratios: EV/Sales, EV/EBITDA, P/E, P/B, P/FCF."""
+    ratios = {}
+    if ev > 0 and revenue:
+        ratios["ev_sales"] = round(ev / revenue, 3)
+    if ev > 0 and ebitda > 0:
+        ratios["ev_ebitda"] = round(ev / ebitda, 3)
+    if market_cap > 0 and net_income and net_income > 0:
+        ratios["pe_ratio"] = round(market_cap / net_income, 3)
+    if market_cap > 0 and equity and equity > 0:
+        ratios["pb_ratio"] = round(market_cap / equity, 3)
+    if market_cap > 0 and fcf > 0:
+        ratios["price_fcf"] = round(market_cap / fcf, 3)
+    return ratios
+
+
+def _compute_profitability_ratios(revenue, net_income, operating_income, total_assets, equity, operating_cf) -> dict:
+    """Compute profitability ratios: margins, ROA, ROE."""
+    ratios = {}
+    if revenue and revenue > 0:
+        if net_income is not None:
+            ratios["net_margin"] = round(net_income / revenue, 4)
+        if operating_income is not None:
+            ratios["operating_margin"] = round(operating_income / revenue, 4)
+        if operating_cf is not None:
+            ratios["ocf_margin"] = round(operating_cf / revenue, 4)
+    if total_assets and total_assets > 0 and net_income is not None:
+        ratios["roa"] = round(net_income / total_assets, 4)
+    if equity and equity > 0 and net_income is not None:
+        ratios["roe"] = round(net_income / equity, 4)
+    return ratios
+
+
+def _compute_leverage_ratios(total_debt: float, equity, ebitda: float, current_assets, current_liabilities) -> dict:
+    """Compute leverage and liquidity ratios."""
+    ratios = {}
+    if equity and equity > 0:
+        ratios["debt_to_equity"] = round(total_debt / equity, 3)
+    if ebitda > 0:
+        ratios["debt_to_ebitda"] = round(total_debt / ebitda, 3)
+    if current_assets and current_liabilities and current_liabilities > 0:
+        ratios["current_ratio"] = round(current_assets / current_liabilities, 3)
+        current_debt = current_liabilities
+        ratios["quick_ratio"] = round((current_assets - (current_assets * 0.3)) / current_debt, 3)
+    return ratios
+
+
+def _compute_magic_formula(ev: float, operating_income, equity, total_debt: float, cash: float) -> dict:
+    """Compute Magic Formula ratios: earning yield and ROIC."""
+    ratios = {}
+    if ev > 0 and operating_income:
+        earning_yield = operating_income / ev
+        ratios["earning_yield"] = round(earning_yield, 4)
+        net_working_capital = max(0, (equity or 0) - total_debt) if equity else 0
+        net_fixed_assets = max(0, (equity or 0) * 0.5) if equity else 0
+        invested_capital = net_working_capital + net_fixed_assets
+        if invested_capital > 0:
+            ratios["roic"] = round(operating_income / invested_capital, 4)
+        else:
+            ratios["roic"] = 0.0
+        ratios["magic_formula_rank"] = round(earning_yield * 100, 2)
+    return ratios
+
+
 def _compute_ratios(raw: dict, market_cap: float) -> dict:
     """Calcule les ratios financiers à partir des données brutes SEC."""
     ratios = {}
@@ -233,17 +297,13 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
     cash = raw.get("cash", 0) or 0
     operating_cf = raw.get("operating_cashflow")
     capex = raw.get("capex", 0) or 0
-    depreciation = raw.get("depreciation", 0) or 0
-    raw.get("shares_outstanding")
-    raw.get("eps_basic")
+    current_assets = raw.get("current_assets")
+    current_liabilities = raw.get("current_liabilities")
+    inventory = raw.get("inventory", 0) or 0
 
     total_debt = long_term_debt + short_term_debt
-    ev = market_cap + total_debt - cash if market_cap > 0 else 0
-
-    # EBITDA proxy
-    ebitda = (operating_income or 0) + (depreciation or 0)
-
-    # Free Cash Flow
+    ebitda = (operating_income or 0) + raw.get("depreciation", 0) or 0
+    ev = market_cap + total_debt - cash
     fcf = (operating_cf or 0) - capex
 
     # Ratios de valorisation
@@ -269,53 +329,29 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
     if equity and equity > 0 and net_income is not None:
         ratios["roe"] = round(net_income / equity, 4)
 
-    # Ratios de levier
-    if equity and equity > 0:
-        ratios["debt_equity"] = round(total_debt / equity, 2)
-    if ebitda > 0:
-        ratios["net_debt_ebitda"] = round((total_debt - cash) / ebitda, 2)
-
-    # Liquidité
-    current_assets = raw.get("current_assets")
-    current_liabilities = raw.get("current_liabilities")
-    if current_assets and current_liabilities and current_liabilities > 0:
-        ratios["current_ratio"] = round(current_assets / current_liabilities, 2)
-        inventory = raw.get("inventory", 0) or 0
-        ratios["quick_ratio"] = round((current_assets - inventory) / current_liabilities, 2)
+    # Ratios de levier et liquidité
+    ratios.update(_compute_leverage_ratios(total_debt, equity, ebitda, current_assets, current_liabilities))
 
     # Magic Formula
     if ev > 0 and operating_income:
-        ebit = operating_income
         net_working_capital = (current_assets or 0) - (current_liabilities or 0)
         net_fixed_assets = (total_assets or 0) - (current_assets or 0)
         invested_capital = net_working_capital + net_fixed_assets
-        ratios["earning_yield_sec"] = round(ebit / ev, 4) if ev > 0 else 0
-        ratios["roic_sec"] = (
-            round(ebit / max(invested_capital, 1), 4) if invested_capital > 0 else 0
-        )
+        ratios["earning_yield_sec"] = round(operating_income / ev, 4)
+        ratios["roic_sec"] = round(operating_income / max(invested_capital, 1), 4) if invested_capital > 0 else 0
 
-    # FCF yield
+    # FCF yield et données brutes
     if market_cap > 0 and fcf > 0:
         ratios["fcf_yield"] = round(fcf / market_cap, 4)
-
-    # Croissance revenue (si dispo)
     if revenue:
         ratios["revenue_ttm"] = revenue
     if net_income is not None:
         ratios["net_income_ttm"] = net_income
     if fcf:
         ratios["fcf_ttm"] = fcf
-
-    # Données brutes utiles
-    ratios["total_debt"] = total_debt
-    ratios["cash"] = cash
-    ratios["ev"] = ev
-    ratios["ebitda"] = ebitda
+    ratios.update({"total_debt": total_debt, "cash": cash, "ev": ev, "ebitda": ebitda})
 
     return ratios
-
-
-# ─── API principale ──────────────────────────────────────────────────────────
 
 
 def fetch_fundamentals_sec(ticker: str, market_cap: float = 0) -> dict | None:
