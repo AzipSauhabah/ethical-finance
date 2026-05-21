@@ -34,6 +34,46 @@ def _eur(v):
 # ─── Narratives par section ───────────────────────────────────────────────────
 
 
+def _perf_label_comment(sharpe: float, cagr: float) -> tuple:
+    """Return (perf_label, perf_comment) based on Sharpe and CAGR."""
+    if sharpe >= 2.0 and cagr >= 0.15:
+        return ("des performances exceptionnelles",
+                "Ce niveau de rendement ajusté au risque se situe dans le premier décile "
+                "des stratégies quantitatives documentées dans la littérature académique.")
+    if sharpe >= 1.5 and cagr >= 0.10:
+        return ("des performances solides et régulières",
+                "Ce profil rendement/risque est comparable aux meilleurs fonds "
+                "systématiques long-only de la place.")
+    if sharpe >= 1.0 and cagr >= 0.05:
+        return ("des performances satisfaisantes",
+                "La stratégie délivre un rendement ajusté au risque positif, "
+                "surpassant la majorité des allocations passives sur la période.")
+    if sharpe >= 0.5:
+        return ("des performances modestes mais positives",
+                "Le profil de risque reste maîtrisé malgré un rendement "
+                "en deçà des objectifs institutionnels standards (Sharpe > 1).")
+    return ("des performances en deçà des attentes",
+            "Le ratio rendement/risque insuffisant suggère une révision "
+            "des paramètres de la stratégie ou de l'univers d'investissement.")
+
+
+def _dd_comment(max_dd: float) -> str:
+    """Return drawdown narrative comment."""
+    pct = _pct(max_dd)
+    if abs(max_dd) <= 0.10:
+        return (f"Le drawdown maximum de {pct} témoigne d'une protection "
+                "remarquable du capital en période de stress.")
+    if abs(max_dd) <= 0.20:
+        return (f"Le drawdown maximum de {pct} reste dans les limites "
+                "acceptables pour une stratégie long-only.")
+    if abs(max_dd) <= 0.35:
+        return (f"Le drawdown maximum de {pct} reflète une exposition "
+                "significative aux phases de correction de marché.")
+    return (f"Le drawdown maximum de {pct} constitue le principal "
+            "point de vigilance de cette stratégie, nécessitant une gestion "
+            "active des risques extrêmes.")
+
+
 def narrative_executive_summary(m: dict, meta: dict) -> str:
     """Paragraphe d'ouverture — résumé exécutif."""
     strategy = meta.get("strategy", "la stratégie")
@@ -43,60 +83,8 @@ def narrative_executive_summary(m: dict, meta: dict) -> str:
     max_dd = m.get("max_drawdown", 0) or 0
     total_ret = m.get("total_return", 0) or 0
 
-    # Évaluation globale
-    if sharpe >= 2.0 and cagr >= 0.15:
-        perf_label = "des performances exceptionnelles"
-        perf_comment = (
-            "Ce niveau de rendement ajusté au risque se situe dans le premier décile "
-            "des stratégies quantitatives documentées dans la littérature académique."
-        )
-    elif sharpe >= 1.5 and cagr >= 0.10:
-        perf_label = "des performances solides et régulières"
-        perf_comment = (
-            "Ce profil rendement/risque est comparable aux meilleurs fonds "
-            "systématiques long-only de la place."
-        )
-    elif sharpe >= 1.0 and cagr >= 0.05:
-        perf_label = "des performances satisfaisantes"
-        perf_comment = (
-            "La stratégie délivre un rendement ajusté au risque positif, "
-            "surpassant la majorité des allocations passives sur la période."
-        )
-    elif sharpe >= 0.5:
-        perf_label = "des performances modestes mais positives"
-        perf_comment = (
-            "Le profil de risque reste maîtrisé malgré un rendement "
-            "en deçà des objectifs institutionnels standards (Sharpe > 1)."
-        )
-    else:
-        perf_label = "des performances en deçà des attentes"
-        perf_comment = (
-            "Le ratio rendement/risque insuffisant suggère une révision "
-            "des paramètres de la stratégie ou de l'univers d'investissement."
-        )
-
-    # Commentaire drawdown
-    if abs(max_dd) <= 0.10:
-        dd_comment = (
-            f"Le drawdown maximum de {_pct(max_dd)} témoigne d'une protection "
-            "remarquable du capital en période de stress."
-        )
-    elif abs(max_dd) <= 0.20:
-        dd_comment = (
-            f"Le drawdown maximum de {_pct(max_dd)} reste dans les limites "
-            "acceptables pour une stratégie long-only."
-        )
-    elif abs(max_dd) <= 0.35:
-        dd_comment = (
-            f"Le drawdown maximum de {_pct(max_dd)} reflète une exposition "
-            "significative aux phases de correction de marché."
-        )
-    else:
-        dd_comment = (
-            f"Le drawdown maximum de {_pct(max_dd)} constitue le principal "
-            "point de vigilance de cette stratégie, nécessitant une gestion "
-            "active des risques extrêmes."
-        )
+    perf_label, perf_comment = _perf_label_comment(sharpe, cagr)
+    dd_comment = _dd_comment(max_dd)
 
     return (
         f"Sur la période d'analyse, {strategy} a enregistré {perf_label}, "
@@ -289,6 +277,46 @@ def narrative_risk(m: dict) -> str:
     return " ".join(parts)
 
 
+def _stress_passed_comment(scenarios_passed: list) -> str:
+    """Narrative for passed stress scenarios."""
+    if not scenarios_passed:
+        return ""
+    labels = ", ".join(f"{label} ({_pct(ret)})" for label, ret in scenarios_passed)
+    return (f"La stratégie a démontré une résilience remarquable lors des crises suivantes, "
+            f"enregistrant des performances positives : {labels}. "
+            "Cette capacité à générer des rendements positifs en période de stress "
+            "constitue un avantage compétitif majeur pour les allocateurs institutionnels.")
+
+
+def _stress_failed_comment(scenarios_failed: list) -> str:
+    """Narrative for failed stress scenarios."""
+    if not scenarios_failed:
+        return ""
+    labels = ", ".join(f"{label} ({_pct(ret)})" for label, ret in scenarios_failed)
+    if len(scenarios_failed) <= 2:
+        return (f"Des pertes ont été enregistrées lors des épisodes : {labels}. "
+                "Ces drawdowns reflètent l'exposition résiduelle au risque systémique, "
+                "inhérente à toute stratégie long-only non couverte.")
+    return (f"La stratégie s'est révélée vulnérable lors de plusieurs crises majeures : {labels}. "
+            "Une couverture dynamique ou une allocation aux actifs refuges (or, obligations d'État) "
+            "pourrait améliorer le profil risque en période de stress.")
+
+
+def _stress_covid_comment(stress_tests: list) -> str:
+    """Narrative for COVID stress test."""
+    covid = next((s for s in stress_tests if "covid" in s.get("label", "").lower()), None)
+    if not covid:
+        return ""
+    ret = covid.get("total_return", 0) or 0
+    if ret > 0:
+        return ("Lors de la crise COVID-19 (mars 2020), la stratégie a su tirer parti "
+                "de la volatilité exceptionnelle des marchés, démontrant l'efficacité "
+                "du modèle de sélection en environnement de stress extrême.")
+    return ("La crise COVID-19 a représenté le principal défi pour la stratégie, "
+            "avec une chute de marché sans précédent en termes de vitesse (-34% en 23 jours "
+            "pour le S&P 500). Cette période teste la robustesse de tout système quantitatif.")
+
+
 def narrative_stress_tests(stress_tests: list) -> str:
     """Commentaire sur les stress tests historiques."""
     if not stress_tests:
@@ -305,50 +333,12 @@ def narrative_stress_tests(stress_tests: list) -> str:
         else:
             scenarios_failed.append((label, ret))
 
-    parts = []
-
-    if scenarios_passed:
-        labels = ", ".join(f"{label} ({_pct(ret)})" for label, ret in scenarios_passed)
-        parts.append(
-            f"La stratégie a démontré une résilience remarquable lors des crises suivantes, "
-            f"enregistrant des performances positives : {labels}. "
-            "Cette capacité à générer des rendements positifs en période de stress "
-            "constitue un avantage compétitif majeur pour les allocateurs institutionnels."
-        )
-
-    if scenarios_failed:
-        labels = ", ".join(f"{label} ({_pct(ret)})" for label, ret in scenarios_failed)
-        if len(scenarios_failed) <= 2:
-            parts.append(
-                f"Des pertes ont été enregistrées lors des épisodes : {labels}. "
-                "Ces drawdowns reflètent l'exposition résiduelle au risque systémique, "
-                "inhérente à toute stratégie long-only non couverte."
-            )
-        else:
-            parts.append(
-                f"La stratégie s'est révélée vulnérable lors de plusieurs crises majeures : {labels}. "
-                "Une couverture dynamique ou une allocation aux actifs refuges (or, obligations d'État) "
-                "pourrait améliorer le profil risque en période de stress."
-            )
-
-    # Commentaire COVID spécifique
-    covid = next((s for s in stress_tests if "covid" in s.get("label", "").lower()), None)
-    if covid:
-        ret = covid.get("total_return", 0) or 0
-        if ret > 0:
-            parts.append(
-                "Lors de la crise COVID-19 (mars 2020), la stratégie a su tirer parti "
-                "de la volatilité exceptionnelle des marchés, démontrant l'efficacité "
-                "du modèle de sélection en environnement de stress extrême."
-            )
-        else:
-            parts.append(
-                "La crise COVID-19 a représenté le principal défi pour la stratégie, "
-                "avec une chute de marché sans précédent en termes de vitesse (-34% en 23 jours "
-                "pour le S&P 500). Cette période teste la robustesse de tout système quantitatif."
-            )
-
-    return " ".join(parts)
+    parts = [
+        _stress_passed_comment(scenarios_passed),
+        _stress_failed_comment(scenarios_failed),
+        _stress_covid_comment(stress_tests),
+    ]
+    return " ".join(p for p in parts if p)
 
 
 def narrative_costs(cost_summary: dict, cost_breakdown: dict) -> str:

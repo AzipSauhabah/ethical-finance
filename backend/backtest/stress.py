@@ -13,6 +13,54 @@ from backend.config import STRESS_SCENARIOS
 from backend.quant.metrics import all_metrics
 
 
+def _stress_result(key: str, scenario: dict, window, metrics: dict, bench_metrics) -> dict:
+    """Build a stress test result dict."""
+    return {
+        "scenario": key,
+        "label": scenario["label"],
+        "start": scenario["start"],
+        "end": scenario["end"],
+        "n_days": len(window),
+        "context": scenario.get("context", ""),
+        "trigger": scenario.get("trigger", ""),
+        "peak_vix": scenario.get("peak_vix", 0),
+        "total_return": metrics["total_return"],
+        "max_drawdown": metrics["max_drawdown"],
+        "volatility": metrics["annualised_volatility"],
+        "var_95": metrics["var_95"],
+        "sharpe": metrics["sharpe_ratio"],
+        "benchmark": {
+            "total_return": bench_metrics["total_return"] if bench_metrics else None,
+            "max_drawdown": bench_metrics["max_drawdown"] if bench_metrics else None,
+        } if bench_metrics else None,
+    }
+
+
+
+def _stress_result(key: str, scenario: dict, window, metrics: dict, bench_metrics) -> dict:
+    """Build a stress test result dict."""
+    return {
+        "scenario": key,
+        "label": scenario["label"],
+        "start": scenario["start"],
+        "end": scenario["end"],
+        "n_days": len(window),
+        "context": scenario.get("context", ""),
+        "trigger": scenario.get("trigger", ""),
+        "peak_vix": scenario.get("peak_vix", 0),
+        "total_return": metrics["total_return"],
+        "max_drawdown": metrics["max_drawdown"],
+        "volatility": metrics["annualised_volatility"],
+        "var_95": metrics["var_95"],
+        "sharpe": metrics["sharpe_ratio"],
+        "benchmark": {
+            "total_return": bench_metrics["total_return"] if bench_metrics else None,
+            "max_drawdown": bench_metrics["max_drawdown"] if bench_metrics else None,
+        } if bench_metrics else None,
+    }
+
+
+
 def run_stress_tests(
     returns: pd.Series,
     benchmark_returns: pd.Series | None = None,
@@ -47,30 +95,6 @@ def run_stress_tests(
             if len(bw) >= 5:
                 bench_metrics = all_metrics(bw.values)
 
-        results.append(
-            {
-                "scenario": key,
-                "label": label,
-                "start": start,
-                "end": end,
-                "n_days": len(window),
-                "context": scenario.get("context", ""),
-                "trigger": scenario.get("trigger", ""),
-                "peak_vix": scenario.get("peak_vix", 0),
-                "total_return": metrics["total_return"],
-                "max_drawdown": metrics["max_drawdown"],
-                "volatility": metrics["annualised_volatility"],
-                "var_95": metrics["var_95"],
-                "sharpe": metrics["sharpe_ratio"],
-                "benchmark": (
-                    {
-                        "total_return": bench_metrics["total_return"] if bench_metrics else None,
-                        "max_drawdown": bench_metrics["max_drawdown"] if bench_metrics else None,
-                    }
-                    if bench_metrics
-                    else None
-                ),
-            }
-        )
+        results.append(_stress_result(key, scenario, window, metrics, bench_metrics))
 
     return results
