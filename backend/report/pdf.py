@@ -521,7 +521,7 @@ def _pages_cover_summary(tearsheet: dict, styles: dict, narratives: dict, interp
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -606,7 +606,7 @@ def _pages_performance_charts(tearsheet: dict, styles: dict, narratives: dict, i
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -813,7 +813,7 @@ def _pages_costs_allocation(tearsheet: dict, styles: dict, narratives: dict, int
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -880,7 +880,7 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -1348,7 +1348,7 @@ def _pages_methodology(tearsheet: dict, styles: dict, narratives: dict, interpre
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; section_s = styles['section']; hr = styles['hr']; p2 = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -1444,10 +1444,50 @@ def generate_pdf(tearsheet: dict) -> bytes:
     kpi_s = st("K", fontSize=22, textColor=colors.HexColor(GOLD), fontName="Helvetica-Bold", spaceAfter=0)
     kpi_label_s = st("KL", fontSize=7, textColor=colors.HexColor(GREY), fontName="Helvetica", spaceAfter=2)
 
+
+
+
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=2 * cm,
+        rightMargin=2 * cm,
+        topMargin=1.5 * cm,
+        bottomMargin=1.5 * cm,
+        title=f"Sauhabah — {tearsheet['meta']['strategy']}",
+        author="Sauhabah Ethical Finance Platform",
+    )
+
+
+
+
+
+
+    buf = io.BytesIO()
+
+
     _base_styles = getSampleStyleSheet()
 
     def st(name, **kw):
         return ParagraphStyle(name, parent=_base_styles["Normal"], **kw)
+
+    def hr():
+        return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
+
+    def p(v):
+        return "N/A" if v is None else f"{v*100:+.2f}%"
+
+    def f(v, d=2):
+        return "N/A" if v is None else f"{v:.{d}f}"
+
+    def e(v):
+        return "N/A" if v is None else f"{v:,.2f} €".replace(",", " ")
+
+    def chart(fig, width_cm: float = 17.0, aspect: float = 0.40):
+        """Convertit une figure matplotlib en Flowable ReportLab."""
+        if fig is None:
+            return Spacer(1, 0.1 * cm)
+        return _fig_to_image_flowable(fig, width_cm)
 
     def tbl_style():
         return TableStyle(
@@ -1468,38 +1508,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
 
 
-
-
-    doc = SimpleDocTemplate(
-        buf,
-        pagesize=A4,
-        leftMargin=2 * cm,
-        rightMargin=2 * cm,
-        topMargin=1.5 * cm,
-        bottomMargin=1.5 * cm,
-        title=f"Sauhabah — {tearsheet['meta']['strategy']}",
-        author="Sauhabah Ethical Finance Platform",
-    )
-
-    def hr():
-        return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
-
-    def p(v):
-        return "N/A" if v is None else f"{v*100:+.2f}%"
-
-    def f(v, d=2):
-        return "N/A" if v is None else f"{v:.{d}f}"
-
-    def e(v):
-        return "N/A" if v is None else f"{v:,.2f} €".replace(",", " ")
-
-    def chart(fig, width_cm: float = 17.0, aspect: float = 0.40):
-        """Convertit une figure matplotlib en Flowable ReportLab."""
-        if fig is None:
-            return Spacer(1, 0.1 * cm)
-        return _fig_to_image_flowable(fig, width_cm)
-
-    buf = io.BytesIO()
 
 
     # Dict custom passe aux sous-fonctions _pages_*
