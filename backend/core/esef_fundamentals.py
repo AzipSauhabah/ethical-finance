@@ -107,7 +107,7 @@ _CONCEPT_MAP: dict[str, str] = {
 
 # Concepts qui peuvent avoir plusieurs valeurs (années N et N-1) — on prend le max period
 _FLOW_CONCEPTS = {
-    "ifrs-full:Revenue", "ifrs-full:GrossProfit", "ifrs-full:ProfitLoss",
+    "ifrs-full:Revenue", "ifrs-full:RevenueFromContractsWithCustomers", "ifrs-full:GrossProfit", "ifrs-full:ProfitLoss",
     "ifrs-full:ProfitLossAttributableToOwnersOfParent",
     "ifrs-full:CashFlowsFromUsedInOperatingActivities",
     "ifrs-full:CashFlowsFromUsedInInvestingActivities",
