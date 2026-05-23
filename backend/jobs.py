@@ -91,6 +91,62 @@ async def job_fmp_fundamentals() -> None:
         log.warning("FMP job error: %s", e)
 
 
+# ─── ESEF fundamentals (CAC40 + EU) ─────────────────────────────────────────
+
+async def job_esef_fundamentals() -> None:
+    """Update EU fundamentals from ESEF filings weekly (Monday 04h00 UTC).
+    Peuple interest_bearing_debt, total_assets, total_equity depuis filings.xbrl.org.
+    """
+    try:
+        import asyncpg, os
+        from backend.core.esef_fundamentals import fetch_fundamentals_esef
+        from backend.core.loader import CAC40_TICKERS
+        import sqlalchemy as sa
+
+        db = await asyncpg.connect(os.environ["DATABASE_URL"])
+        engine = sa.create_engine(
+            os.environ["DATABASE_URL"].replace("postgresql://", "postgresql+psycopg2://")
+        )
+        updated = 0
+        for ticker in CAC40_TICKERS:
+            try:
+                d = await fetch_fundamentals_esef(ticker, db_conn=db)
+                if not d or not d.get("interest_bearing_debt"):
+                    continue
+                with engine.begin() as conn:
+                    conn.execute(sa.text("""
+                        UPDATE ticker_fundamentals SET
+                            interest_bearing_debt = :ibd,
+                            short_term_debt       = :std,
+                            long_term_debt        = :ltd,
+                            total_assets          = COALESCE(NULLIF(total_assets, 0), :ta),
+                            total_equity          = COALESCE(NULLIF(total_equity, 0), :te),
+                            interest_expense      = COALESCE(NULLIF(interest_expense, 0), :ie),
+                            interest_income       = COALESCE(NULLIF(interest_income, 0), :ii),
+                            total_revenue         = COALESCE(NULLIF(total_revenue, 0), :tr),
+                            total_debt            = COALESCE(NULLIF(total_debt, 0), :td)
+                        WHERE ticker = :ticker
+                    """), {
+                        "ticker": ticker,
+                        "ibd": d.get("interest_bearing_debt", 0),
+                        "std": d.get("short_term_debt", 0),
+                        "ltd": d.get("long_term_debt", 0),
+                        "ta":  d.get("total_assets", 0),
+                        "te":  d.get("total_equity", 0),
+                        "ie":  d.get("interest_expense", 0),
+                        "ii":  d.get("interest_income", 0),
+                        "tr":  d.get("total_revenue", 0),
+                        "td":  d.get("total_debt", 0),
+                    })
+                updated += 1
+            except Exception as e:
+                log.warning("ESEF job error for %s: %s", ticker, e)
+        await db.close()
+        log.info("ESEF job complete — %d tickers updated", updated)
+    except Exception as e:
+        log.warning("ESEF job error: %s", e)
+
+
 # ─── Daily signals ───────────────────────────────────────────────────────────
 
 def _norm(v: float) -> float:
