@@ -374,11 +374,21 @@ def fetch_fundamentals_sec(ticker: str, market_cap: float = 0) -> dict | None:
     ratios = _compute_ratios(raw, market_cap)
 
     return {
-        "ticker": ticker,
-        "cik": cik,
-        "source": "SEC_EDGAR",
-        "raw": raw,
-        "ratios": ratios,
+        "ticker":                ticker,
+        "cik":                   cik,
+        "source":                "SEC_EDGAR",
+        "total_revenue":         int(raw.get("revenue", 0) or 0),
+        "total_debt":            int(ratios.get("total_debt", 0) or 0),
+        "total_cash":            int(raw.get("cash", 0) or 0),
+        "total_assets":          int(raw.get("total_assets", 0) or 0),
+        "total_equity":          int(raw.get("equity", 0) or 0),
+        "short_term_debt":       int(raw.get("short_term_debt", 0) or 0),
+        "long_term_debt":        int(raw.get("long_term_debt", 0) or 0),
+        "interest_bearing_debt": int(ratios.get("interest_bearing_debt", 0) or 0),
+        "interest_expense":      int(ratios.get("interest_expense") or 0),
+        "interest_income":       int(ratios.get("interest_income") or 0),
+        "raw":                   raw,
+        "ratios":                ratios,
     }
 
 
