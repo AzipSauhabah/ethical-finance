@@ -40,6 +40,8 @@ from typing import Optional
 
 import httpx
 
+from backend.core.lei_resolver import resolve_lei
+
 log = logging.getLogger(__name__)
 
 _XBRL_BASE  = "https://filings.xbrl.org"
@@ -120,76 +122,6 @@ _FLOW_CONCEPTS = {
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fetch LEI depuis info-financiere.gouv.fr
-# ─────────────────────────────────────────────────────────────────────────────
-
-# LEI hardcodés pour éviter les ambiguïtés du lookup par nom
-_TICKER_TO_LEI: dict[str, str] = {
-    "MC.PA":   "IOG4E947OATN0KJYSD45",  # LVMH
-    "TTE.PA":  "529900S21EQ1BO4ESM68",  # TotalEnergies
-    "SAN.PA":  "ZU21BBDW5TWS5BHMSD60",  # Sanofi
-    "OR.PA":   "529900JI1GG6F7RKVI53",  # L'Oréal
-    "AIR.PA":  "VNN1OYBB7298VLHH5P36",  # Airbus
-    "BNP.PA":  "R0MUWSFPU8MPRO8K5P83",  # BNP Paribas
-    "SU.PA":   "969500A1YF1XUYYXS284",  # Schneider Electric
-    "AI.PA":   "969500MMPQVHK671GT54",  # Air Liquide
-    "RMS.PA":  "969500Y4IJGHJE2MTJ13",  # Hermès
-    "KER.PA":  "549300VGEJKB7SVUZR78",  # Kering
-    "SAF.PA":  "969500UIC89GT3UL7L24",  # Safran
-    "HO.PA":   "529900FNDVTQJOVVPZ19",  # Thales
-    "DSY.PA":  "96950065LBWY0APQIM86",  # Dassault Systèmes
-    "EL.PA":   "9695005W553B1E61P457",  # EssilorLuxottica (no ESEF filing)
-    "DG.PA":   "213800WFQ334R8UXUG83",  # Vinci
-    "CS.PA":   "9695007ZQTEMPGIL5N67",  # AXA (no ESEF filing)
-    "GLE.PA":  "O2RNE8IBXP4R0TD8PU41",  # Société Générale
-    "ACA.PA":  "969500TJ5KRTCJQWXH05",  # Crédit Agricole
-    "ORA.PA":  "969500MCOONR8990S771",  # Orange
-    "ENGI.PA": "LAXUQCHT4FH58LRZDY46",  # Engie
-    "VIE.PA":  "969500LENY69X51OOT31",  # Veolia
-    "BN.PA":   "969500KMUQ2B6CBAF162",  # Danone
-    "CA.PA":   "549300B8P6MUJ1YWTS08",  # Carrefour
-    "SGO.PA":  "NFONVGN05Z0FMN5PEC35",  # Saint-Gobain
-    "ML.PA":   "549300SOSI58J6VIW052",  # Michelin
-    "RNO.PA":  "969500F7JLTX36OUI695",  # Renault
-    "RI.PA":   "52990097YFPX9J0H5D87",  # Pernod Ricard
-    "PUB.PA":  "969500PU6DNXRDGZAZ98",  # Publicis (no ESEF filing)
-    "VIV.PA":  "969500FU4DRAEVJW7U54",  # Vivendi
-    "EN.PA":   "969500MOCLNQFNZN0D63",  # Bouygues
-    "CAP.PA":  "96950077L0TN7BAROX36",  # Capgemini
-    "LR.PA":   "969500XXRPGD7HCAFA90",  # Legrand
-    "TEP.PA":  "9695004GI61FHFFNRG61",  # Teleperformance
-    "WLN.PA":  "549300CJMQNCA0U4TS33",  # Worldline
-    "URW.PA":  "969500SHQITWXSIS7N89",  # Unibail-Rodamco
-}
-
-async def get_lei(ticker: str, client: httpx.AsyncClient) -> Optional[str]:
-    """Résout ticker .PA → LEI. Utilise le dict hardcodé en priorité."""
-    # Priorité 1 : dict hardcodé (évite les ambiguïtés du lookup par nom)
-    if ticker.upper() in _TICKER_TO_LEI:
-        return _TICKER_TO_LEI[ticker.upper()]
-
-    fragment = ticker.upper().replace(".PA", "").replace(".FP", "")
-    try:
-        r = await client.get(
-            "https://www.info-financiere.gouv.fr/api/explore/v2.1/catalog/datasets/codes-lei/records",
-            params={
-                "where": f'identificationsociete_iso_nom_soc like "%{fragment}%"',
-                "limit": 1,
-                "select": "identificationsociete_iso_cd_lei,identificationsociete_iso_nom_soc",
-            },
-        )
-        results = r.json().get("results", [])
-        if results:
-            lei = results[0].get("identificationsociete_iso_cd_lei")
-            name = results[0].get("identificationsociete_iso_nom_soc")
-            log.debug("LEI resolved: %s → %s (%s)", ticker, lei, name)
-            return lei
-    except Exception as exc:
-        log.warning("LEI lookup failed for %s: %s", ticker, exc)
-    return None
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Fetch filing ESEF le plus récent
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def get_latest_filing(lei: str, client: httpx.AsyncClient) -> Optional[dict]:
@@ -397,6 +329,7 @@ async def fetch_fundamentals_esef(
     ticker:     str,
     lei:        Optional[str] = None,
     market_cap: float = 0,
+    db_conn = None,
 ) -> Optional[dict]:
     """
     Récupère les fondamentaux financiers depuis filings.xbrl.org pour un ticker FR.
@@ -417,7 +350,7 @@ async def fetch_fundamentals_esef(
 
         # ── 1. Résolution LEI ────────────────────────────────────────────────
         if not lei:
-            lei = await get_lei(ticker, client)
+            lei = await resolve_lei(ticker, db_conn)
         if not lei:
             log.info("No LEI found for %s — ESEF fundamentals unavailable", ticker)
             return None
