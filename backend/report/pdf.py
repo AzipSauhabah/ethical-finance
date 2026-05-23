@@ -1275,6 +1275,9 @@ def generate_pdf(tearsheet: dict) -> bytes:
     disclm_s = st("D", fontSize=7, textColor=colors.HexColor(GREY), leading=10)
     bold_s = st("Bd", fontSize=9, textColor=colors.black, fontName="Helvetica-Bold", leading=12)
 
+    kpi_s = st("K", fontSize=22, textColor=colors.HexColor(GOLD), fontName="Helvetica-Bold", spaceAfter=0)
+    kpi_label_s = st("KL", fontSize=7, textColor=colors.HexColor(GREY), fontName="Helvetica", spaceAfter=2)
+
     # Dict custom passe aux sous-fonctions _pages_*
     styles = {
         "title":      title_s,
@@ -1284,6 +1287,8 @@ def generate_pdf(tearsheet: dict) -> bytes:
         "small":      small_s,
         "disclaimer": disclm_s,
         "bold":       bold_s,
+        "kpi":        kpi_s,
+        "kpi_label":  kpi_label_s,
     }
 
     def tbl_style():
