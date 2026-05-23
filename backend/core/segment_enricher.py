@@ -2,17 +2,11 @@
 :file: backend/core/segment_enricher.py
 :brief: Orchestrateur pour l'enrichissement des revenus par segment.
 
-        Pipeline :
-        1. Tente FMP /revenue-product-segmentation (meilleure couverture, labels lisibles)
-        2. Si vide → tente SEC EDGAR (bon pour tickers US 10-K)
-        3. Si vide → retourne {} (critère 4 utilisera le proxy interest_expense)
-        4. Persiste dans ticker_fundamentals.revenue_segments (JSONB)
-        5. Calcule et persiste haram_revenue_ratio
-
-        Appelé depuis :
-        - daily_update() → enrichit les tickers mis à jour
-        - POST /api/screener/enrich-segments → enrichissement manuel via UI
-        - run_sharia_screen() → en temps réel si segments manquants
+        Pipeline par priorité de source :
+        1. FMP /revenue-product-segmentation     (meilleure couverture, labels lisibles)
+        2. info-financiere.gouv.fr ESEF/iXBRL    (tickers .PA — gratuit, officiel)
+        3. SEC EDGAR 10-K                        (tickers US)
+        4. Fallback proxy interest_expense        (si toutes sources vides)
 
 :copyright: 2024 Sauhabah — Ethical Finance Platform
 """
@@ -25,47 +19,50 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from backend.core.fmp_segments  import fetch_product_segments
-from backend.core.sec_segments  import fetch_segments_from_edgar
+from backend.core.fmp_segments    import fetch_product_segments
+from backend.core.esef_segments   import fetch_segments_from_esef
+from backend.core.sec_segments    import fetch_segments_from_edgar
 from backend.quant.halal_classifier import classify_segments
 
 log = logging.getLogger(__name__)
+
+_CACHE_DAYS = 90
+
+
+def _is_french_ticker(ticker: str) -> bool:
+    return ticker.upper().endswith((".PA", ".FP"))
+
+
+def _is_us_ticker(ticker: str) -> bool:
+    return "." not in ticker
 
 
 async def enrich_ticker_segments(
     ticker:   str,
     fmp_key:  str,
-    db_conn,                        # asyncpg connection ou pool
+    db_conn,
     *,
     force_refresh: bool = False,
 ) -> dict[str, float]:
     """
     Enrichit un ticker avec ses revenus par segment.
-
-    Args:
-        ticker:        Ticker (ex: "MC.PA", "AAPL")
-        fmp_key:       Clé API FMP
-        db_conn:       Connection asyncpg (ou pool)
-        force_refresh: Si True, ignore le cache et re-fetche
+    Pipeline : FMP → ESEF (tickers FR) → EDGAR (tickers US) → {}
 
     Returns:
-        Dict {segment_name: fraction} (peut être vide si aucune source).
+        Dict {segment_name: fraction} (peut être vide).
     """
-    # ── Cache : si déjà dans la DB et récent (< 90 jours), skip ──────────────
+    # ── Cache ────────────────────────────────────────────────────────────────
     if not force_refresh:
         row = await db_conn.fetchrow(
-            """
-            SELECT revenue_segments, segments_fetched_at
-            FROM ticker_fundamentals
-            WHERE ticker = $1
-            """,
+            "SELECT revenue_segments, segments_fetched_at FROM ticker_fundamentals WHERE ticker = $1",
             ticker,
         )
         if row and row["revenue_segments"] and row["segments_fetched_at"]:
             age_days = (
-                datetime.now(timezone.utc) - row["segments_fetched_at"].replace(tzinfo=timezone.utc)
+                datetime.now(timezone.utc)
+                - row["segments_fetched_at"].replace(tzinfo=timezone.utc)
             ).days
-            if age_days < 90:
+            if age_days < _CACHE_DAYS:
                 try:
                     cached = json.loads(row["revenue_segments"])
                     log.debug("Segments cache hit for %s (%d days old)", ticker, age_days)
@@ -73,13 +70,27 @@ async def enrich_ticker_segments(
                 except (json.JSONDecodeError, TypeError):
                     pass
 
-    # ── Source 1 : FMP ────────────────────────────────────────────────────────
-    segments = await fetch_product_segments(ticker, fmp_key)
+    segments: dict[str, float] = {}
+    source_used = "none"
 
-    # ── Source 2 : EDGAR (fallback US tickers) ────────────────────────────────
-    if not segments:
-        log.info("FMP segments empty for %s — trying EDGAR", ticker)
+    # ── Source 1 : FMP ───────────────────────────────────────────────────────
+    segments = await fetch_product_segments(ticker, fmp_key)
+    if segments:
+        source_used = "fmp"
+
+    # ── Source 2 : ESEF / info-financiere.gouv.fr (tickers FR) ───────────────
+    if not segments and _is_french_ticker(ticker):
+        log.info("FMP empty for %s — trying ESEF (info-financiere.gouv.fr)", ticker)
+        segments = await fetch_segments_from_esef(ticker)
+        if segments:
+            source_used = "esef"
+
+    # ── Source 3 : SEC EDGAR (tickers US) ────────────────────────────────────
+    if not segments and _is_us_ticker(ticker):
+        log.info("FMP empty for %s — trying SEC EDGAR", ticker)
         segments = await fetch_segments_from_edgar(ticker)
+        if segments:
+            source_used = "edgar"
 
     # ── Calcul ratio haram ───────────────────────────────────────────────────
     halal_result = classify_segments(segments) if segments else None
@@ -89,8 +100,7 @@ async def enrich_ticker_segments(
     await db_conn.execute(
         """
         UPDATE ticker_fundamentals
-        SET
-            revenue_segments    = $1::jsonb,
+        SET revenue_segments    = $1::jsonb,
             haram_revenue_ratio = $2,
             segments_fetched_at = $3
         WHERE ticker = $4
@@ -103,11 +113,11 @@ async def enrich_ticker_segments(
 
     if segments:
         log.info(
-            "Segments persisted for %s: %d segments, haram_ratio=%.1f%%",
-            ticker, len(segments), (haram_ratio or 0) * 100,
+            "Segments persisted for %s (source: %s): %d segments, haram=%.1f%%",
+            ticker, source_used, len(segments), (haram_ratio or 0) * 100,
         )
     else:
-        log.info("No segments found for %s — proxy will be used", ticker)
+        log.info("No segments found for %s — proxy will be used for Sharia criterion 4", ticker)
 
     return segments
 
@@ -120,20 +130,7 @@ async def enrich_universe_segments(
     force_refresh: bool = False,
     concurrency:   int = 5,
 ) -> dict[str, dict[str, float]]:
-    """
-    Enrichit tous les tickers d'un univers (ou tous si universe=None).
-
-    Args:
-        fmp_key:       Clé API FMP
-        db_conn:       Connection asyncpg
-        universe:      Filtre univers (ex: "sp500", "cac40") ou None pour tous
-        force_refresh: Re-fetch même si données récentes
-        concurrency:   Nombre de requêtes parallèles (attention aux rate limits FMP)
-
-    Returns:
-        Dict {ticker: segments}
-    """
-    # Récupère la liste des tickers
+    """Enrichit tous les tickers d'un univers."""
     if universe:
         rows = await db_conn.fetch(
             "SELECT ticker FROM ticker_fundamentals WHERE universe = $1", universe
@@ -154,7 +151,6 @@ async def enrich_universe_segments(
                     ticker, fmp_key, db_conn, force_refresh=force_refresh
                 )
                 results[ticker] = segs
-                # Délai léger pour respecter les rate limits FMP (300 req/min)
                 await asyncio.sleep(0.2)
             except Exception as exc:
                 log.error("Segment enrichment failed for %s: %s", ticker, exc)
@@ -163,8 +159,5 @@ async def enrich_universe_segments(
     await asyncio.gather(*[_enrich_one(t) for t in tickers])
 
     covered = sum(1 for s in results.values() if s)
-    log.info(
-        "Segment enrichment complete: %d/%d tickers covered",
-        covered, len(tickers),
-    )
+    log.info("Segment enrichment complete: %d/%d covered", covered, len(tickers))
     return results
