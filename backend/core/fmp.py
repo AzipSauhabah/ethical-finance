@@ -149,7 +149,14 @@ def _merge_fmp_ratios(computed: dict, ratios: dict) -> dict:
 def _extract_fmp_metrics(profile: dict, income: dict, balance: dict, cf: dict, market_cap: float) -> dict:
     """Extract and compute key metrics from FMP API responses."""
     mc = float(profile.get("marketCap") or market_cap or 0)
-    total_debt = float(balance.get("totalDebt") or balance.get("longTermDebt") or 0)
+    total_debt            = float(balance.get("totalDebt") or balance.get("longTermDebt") or 0)
+    short_term_debt       = float(balance.get("shortTermDebt") or balance.get("shortTermBorrowings") or 0)
+    long_term_debt_val    = float(balance.get("longTermDebt") or balance.get("longTermBorrowings") or 0)
+    interest_bearing_debt = short_term_debt + long_term_debt_val
+    total_assets          = float(balance.get("totalAssets") or 0)
+    total_equity          = float(balance.get("totalStockholdersEquity") or balance.get("totalEquity") or 0)
+    interest_expense      = float(abs(float(income.get("interestExpense") or income.get("interestAndDebtExpense") or 0)))
+    interest_income       = float(abs(float(income.get("interestIncome") or income.get("netInterestIncome") or 0)))
     cash = float(balance.get("cashAndCashEquivalents") or 0)
     ev = mc + total_debt - cash
     revenue = float(income.get("revenue") or 0)
@@ -228,8 +235,15 @@ def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
         "market_cap": int(mc),
         "beta": float(profile.get("beta") or 1.0),
         "dividend_yield": float(profile.get("lastDividend") or 0),
-        "total_debt": int(total_debt),
-        "total_revenue": int(revenue),
+        "total_debt":            int(total_debt),
+        "total_revenue":         int(revenue),
+        "short_term_debt":       int(short_term_debt),
+        "long_term_debt":        int(long_term_debt_val),
+        "interest_bearing_debt": int(interest_bearing_debt),
+        "interest_expense":      int(interest_expense),
+        "interest_income":       int(interest_income),
+        "total_assets":          int(total_assets),
+        "total_equity":          int(total_equity),
         "source": "FMP",
         "ratios": computed_ratios,
         "raw": {
@@ -315,12 +329,16 @@ async def upsert_fmp_fundamentals(tickers: list[str]) -> int:
                         INSERT INTO ticker_fundamentals
                         (ticker, name, sector, industry, country, currency, exchange,
                          market_cap, beta, dividend_yield, total_debt, total_revenue,
+                         short_term_debt, long_term_debt, interest_bearing_debt,
+                         interest_expense, interest_income, total_assets, total_equity,
                          updated_at, universe,
                          earning_yield_sec, roic_sec, pe_ratio, ev_ebitda,
                          net_margin, fcf_yield, debt_equity, current_ratio, sec_updated_at)
                         VALUES
                         (:ticker, :name, :sector, :industry, :country, :currency, :exchange,
                          :market_cap, :beta, :dividend_yield, :total_debt, :total_revenue,
+                         :short_term_debt, :long_term_debt, :interest_bearing_debt,
+                         :interest_expense, :interest_income, :total_assets, :total_equity,
                          :updated_at, :universe,
                          :earning_yield, :roic, :pe_ratio, :ev_ebitda,
                          :net_margin, :fcf_yield, :debt_equity, :current_ratio, :sec_updated_at)
@@ -328,8 +346,15 @@ async def upsert_fmp_fundamentals(tickers: list[str]) -> int:
                             name = EXCLUDED.name,
                             sector = EXCLUDED.sector,
                             market_cap = EXCLUDED.market_cap,
-                            total_debt = EXCLUDED.total_debt,
-                            total_revenue = EXCLUDED.total_revenue,
+                            total_debt            = EXCLUDED.total_debt,
+                            total_revenue         = EXCLUDED.total_revenue,
+                            short_term_debt       = EXCLUDED.short_term_debt,
+                            long_term_debt        = EXCLUDED.long_term_debt,
+                            interest_bearing_debt = EXCLUDED.interest_bearing_debt,
+                            interest_expense      = EXCLUDED.interest_expense,
+                            interest_income       = EXCLUDED.interest_income,
+                            total_assets          = EXCLUDED.total_assets,
+                            total_equity          = EXCLUDED.total_equity,
                             beta = EXCLUDED.beta,
                             earning_yield_sec = EXCLUDED.earning_yield_sec,
                             roic_sec = EXCLUDED.roic_sec,
@@ -353,8 +378,15 @@ async def upsert_fmp_fundamentals(tickers: list[str]) -> int:
                         "market_cap": int(data.get("market_cap", 0)),
                         "beta": float(data.get("beta", 1.0)),
                         "dividend_yield": float(data.get("dividend_yield", 0)),
-                        "total_debt": int(data.get("total_debt", 0)),
-                        "total_revenue": int(data.get("total_revenue", 0)),
+                        "total_debt":            int(data.get("total_debt", 0)),
+                        "total_revenue":         int(data.get("total_revenue", 0)),
+                        "short_term_debt":       int(data.get("short_term_debt", 0)),
+                        "long_term_debt":        int(data.get("long_term_debt", 0)),
+                        "interest_bearing_debt": int(data.get("interest_bearing_debt", 0)),
+                        "interest_expense":      int(data.get("interest_expense", 0)),
+                        "interest_income":       int(data.get("interest_income", 0)),
+                        "total_assets":          int(data.get("total_assets", 0)),
+                        "total_equity":          int(data.get("total_equity", 0)),
                         "updated_at": today,
                         "universe": _detect_universe(ticker),
                         "earning_yield": ratios.get("earning_yield_fmp"),

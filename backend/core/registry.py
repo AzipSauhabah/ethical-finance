@@ -235,16 +235,22 @@ def run_sharia_screen(info: dict) -> ShariaScreen:
         ),
     ))
 
-    # Critère 2 : Ratio dette / capitalisation ≤ 33 %
-    cap        = float(info.get("market_cap", 0) or 0)
-    debt       = float(info.get("total_debt", 0) or 0)
-    debt_ratio = (debt / cap) if cap > 0 else 0.0
+    # Critère 2 : Ratio dette portant intérêts / capitalisation ≤ 33% (AAOIFI)
+    cap = float(info.get("market_cap", 0) or 0)
+    ibd = float(
+        info.get("interest_bearing_debt")
+        or ((info.get("short_term_debt") or 0) + (info.get("long_term_debt") or 0))
+        or info.get("total_debt")
+        or 0
+    )
+    debt_ratio = (ibd / cap) if cap > 0 else 0.0
+    debt_src = "ibd" if info.get("interest_bearing_debt") else "total_debt (fallback)"
     checks.append(ScreenCheck(
-        name="2. Ratio dette à intérêts (≤ 33 %)",
+        name="2. Ratio dette a interets (<=33%)",
         passed=debt_ratio <= SHARIA_DEBT_RATIO_MAX,
         value=debt_ratio,
         threshold=SHARIA_DEBT_RATIO_MAX,
-        description=f"Dette portant intérêts / capitalisation = {debt_ratio:.1%}",
+        description=f"Dette portant interets / cap = {debt_ratio:.1%} [{debt_src}]",
     ))
 
     # Critère 3 : Ratio liquidités / capitalisation ≤ 33 %
