@@ -542,11 +542,11 @@ def _screener_rank(scores_df, method, top_n):
     for col in ["haram_revenue_ratio", "sharia_debt_ratio", "sharia_income_ratio"]:
         if col not in scores_df.columns:
             scores_df[col] = None
-    scores_df["is_sharia"] = (
-        scores_df["sharia_income_ratio"].fillna(1.0) <= 0.05
-    ) & (
-        scores_df["sharia_debt_ratio"].fillna(1.0) <= 0.33
-    )
+    import numpy as np
+    has_data = scores_df["sharia_debt_ratio"].notna() | scores_df["sharia_income_ratio"].notna()
+    debt_ok   = scores_df["sharia_debt_ratio"].fillna(0.0) <= 0.33
+    income_ok = scores_df["sharia_income_ratio"].fillna(0.0) <= 0.05
+    scores_df["is_sharia"] = np.where(has_data, debt_ok & income_ok, None)
     return scores_df
 
 
