@@ -1452,6 +1452,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
 
 
+    buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
         pagesize=A4,
@@ -1462,13 +1463,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
         title=f"Sauhabah — {tearsheet['meta']['strategy']}",
         author="Sauhabah Ethical Finance Platform",
     )
-
-
-
-
-
-
-    buf = io.BytesIO()
 
 
     def hr():
