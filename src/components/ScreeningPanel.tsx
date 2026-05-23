@@ -484,6 +484,7 @@ export default function ScreeningPanel({
                 </thead>
                 <tbody>
                   {results.map((r) => (
+                    <>
                     <tr
                       key={r.ticker}
                       onClick={() => { toggleTicker(r.ticker); setExpandedTicker(expandedTicker === r.ticker ? null : r.ticker); }}
@@ -544,8 +545,8 @@ export default function ScreeningPanel({
                       </td>
                     </tr>
                     {expandedTicker === r.ticker && <IslamicFinancePanel r={r} />}
-                  </>) }
-                  )}
+                  </>
+                  ))}
                 </tbody>
               </table>
             </div>
