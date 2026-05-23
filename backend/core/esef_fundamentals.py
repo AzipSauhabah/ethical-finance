@@ -56,6 +56,7 @@ _USER_AGENT = "ethical-finance-platform contact@sauhabah-advisory.eu"
 _CONCEPT_MAP: dict[str, str] = {
     # P&L
     "ifrs-full:Revenue":                                          "total_revenue",
+    "ifrs-full:RevenueFromContractsWithCustomers":              "total_revenue",
     "ifrs-full:GrossProfit":                                      "gross_profit",
     "ifrs-full:ProfitLoss":                                       "net_income",
     "ifrs-full:ProfitLossAttributableToOwnersOfParent":           "net_income_group",
