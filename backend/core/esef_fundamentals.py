@@ -62,6 +62,12 @@ _CONCEPT_MAP: dict[str, str] = {
     "ifrs-full:ProfitLossAttributableToOwnersOfParent":           "net_income_group",
     "ifrs-full:IncomeTaxExpenseContinuingOperations":             "income_tax",
     "ifrs-full:FinanceIncomeCost":                                "net_finance_cost",
+    "ifrs-full:FinanceCosts":                                     "interest_expense",
+    "ifrs-full:FinanceIncome":                                    "interest_income",
+    "ifrs-full:InterestExpense":                                  "interest_expense",
+    "ifrs-full:InterestIncome":                                   "interest_income",
+    "ifrs-full:InterestExpenseOnBorrowings":                      "interest_expense",
+    "ifrs-full:InterestIncomeOnLoansAndReceivables":              "interest_income",
     "ifrs-full:DistributionCosts":                                "distribution_costs",
     "ifrs-full:AdministrativeExpense":                            "admin_expense",
     "ifrs-full:OtherOperatingIncomeExpense":                      "other_operating",
@@ -397,7 +403,9 @@ async def fetch_fundamentals_esef(
         # ── 5. Calcul ratios ─────────────────────────────────────────────────
         ratios = _compute_ratios(metrics, market_cap)
 
-        total_debt = metrics.get("long_term_debt", 0) + metrics.get("short_term_debt", 0)
+        lt_debt    = metrics.get("long_term_debt", 0)
+        st_debt    = metrics.get("short_term_debt", 0)
+        total_debt = lt_debt + st_debt
 
         log.info(
             "ESEF fundamentals OK for %s: revenue=%.1fB, net_income=%.1fB, ratios=%d",
@@ -414,8 +422,13 @@ async def fetch_fundamentals_esef(
             "total_revenue":  int(metrics.get("total_revenue", 0)),
             "total_debt":     int(total_debt),
             "total_cash":     int(metrics.get("cash", 0)),
-            "total_equity":   int(metrics.get("total_equity", 0)),
-            "total_assets":   int(metrics.get("total_assets", 0)),
+            "total_equity":          int(metrics.get("total_equity", 0)),
+            "total_assets":          int(metrics.get("total_assets", 0)),
+            "short_term_debt":       int(st_debt),
+            "long_term_debt":        int(lt_debt),
+            "interest_bearing_debt": int(lt_debt + st_debt),
+            "interest_expense":      int(metrics.get("interest_expense", 0)),
+            "interest_income":       int(metrics.get("interest_income", 0)),
             "net_income":     int(metrics.get("net_income", 0)),
             "operating_cf":   int(metrics.get("operating_cash_flow", 0)),
             "ratios":         ratios,
