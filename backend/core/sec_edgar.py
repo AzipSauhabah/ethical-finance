@@ -88,6 +88,16 @@ FACTS_MAP = {
         "LongTermDebtCurrent",
         "NotesPayableCurrent",
     ],
+    "interest_expense": [
+        "InterestExpense",
+        "InterestAndDebtExpense",
+        "InterestExpenseDebt",
+    ],
+    "interest_income": [
+        "InvestmentIncomeInterest",
+        "InterestAndDividendIncomeOperating",
+        "InterestIncomeOperatingPaid",
+    ],
     "cash": [
         "CashAndCashEquivalentsAtCarryingValue",
         "CashCashEquivalentsAndShortTermInvestments",
@@ -300,7 +310,10 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
     current_assets = raw.get("current_assets")
     current_liabilities = raw.get("current_liabilities")
 
-    total_debt = long_term_debt + short_term_debt
+    total_debt            = long_term_debt + short_term_debt
+    interest_bearing_debt = total_debt
+    interest_expense_val  = raw.get("interest_expense")
+    interest_income_val   = raw.get("interest_income")
     ebitda = (operating_income or 0) + raw.get("depreciation", 0) or 0
     ev = market_cap + total_debt - cash
     fcf = (operating_cf or 0) - capex
@@ -317,7 +330,10 @@ def _compute_ratios(raw: dict, market_cap: float) -> dict:
     for k, v in [("revenue_ttm", revenue), ("net_income_ttm", net_income), ("fcf_ttm", fcf if fcf else None)]:
         if v is not None:
             ratios[k] = v
-    ratios.update({"total_debt": total_debt, "cash": cash, "ev": ev, "ebitda": ebitda})
+    ratios.update({"total_debt": total_debt, "cash": cash, "ev": ev, "ebitda": ebitda,
+                   "interest_bearing_debt": interest_bearing_debt,
+                   "interest_expense": interest_expense_val,
+                   "interest_income": interest_income_val})
 
     return ratios
 
@@ -471,7 +487,14 @@ async def upsert_sec_fundamentals(tickers: list[str]) -> int:
                     """),
                     {
                         "ticker": ticker,
-                        "total_debt": int(ratios.get("total_debt", 0) or 0),
+                        "total_debt":            int(ratios.get("total_debt", 0) or 0),
+        "interest_bearing_debt": int(ratios.get("interest_bearing_debt", 0) or 0),
+        "short_term_debt":       int(raw.get("short_term_debt", 0) or 0),
+        "long_term_debt":        int(raw.get("long_term_debt", 0) or 0),
+        "interest_expense":      int(ratios.get("interest_expense") or 0),
+        "interest_income":       int(ratios.get("interest_income") or 0),
+        "total_assets":          int(raw.get("total_assets", 0) or 0),
+        "total_equity":          int(raw.get("equity", 0) or 0),
                         "total_revenue": int(raw.get("revenue", 0) or 0),
                         "earning_yield_sec": ratios.get("earning_yield_sec"),
                         "roic_sec": ratios.get("roic_sec"),
