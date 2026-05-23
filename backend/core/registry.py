@@ -117,6 +117,11 @@ class TickerInfo:
     # Two independent screens
     ethical: EthicalScreen | None = None
     sharia: ShariaScreen | None = None
+    # Ratios bruts Finance Islamique
+    haram_revenue_ratio: float | None = None
+    sharia_debt_ratio:   float | None = None
+    sharia_income_ratio: float | None = None
+    revenue_segments:    dict  | None = None
 
     # convenience flags
     @property
@@ -389,6 +394,10 @@ class TickerRegistry:
             dividend_yield=float(info.get("dividend_yield", 0.0) or 0.0),
             ethical=run_ethical_screen(info),
             sharia=run_sharia_screen(info),
+            haram_revenue_ratio=info.get("haram_revenue_ratio"),
+            sharia_debt_ratio=info.get("sharia_debt_ratio"),
+            sharia_income_ratio=info.get("sharia_income_ratio"),
+            revenue_segments=info.get("revenue_segments"),
         )
         self._records[ticker] = record
         log.info("Loaded %s — ethical=%s sharia=%s", ticker, record.is_ethical, record.is_sharia)
@@ -438,4 +447,8 @@ def ticker_to_dict(t: TickerInfo) -> dict:
             "score": t.sharia.score if t.sharia else 0,
             "checks": [asdict(c) for c in t.sharia.checks] if t.sharia else [],
         },
+        "haram_revenue_ratio": t.haram_revenue_ratio,
+        "sharia_debt_ratio":   t.sharia_debt_ratio,
+        "sharia_income_ratio": t.sharia_income_ratio,
+        "revenue_segments":    t.revenue_segments,
     }

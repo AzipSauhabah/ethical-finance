@@ -26,9 +26,13 @@ export interface TickerScreenResult {
   beta: number;
   dividend_yield: number;
   is_ethical: boolean;
-  is_sharia: boolean;
+  is_sharia: boolean | null;
   ethical: ScreenResult;
   sharia:  ScreenResult;
+  haram_revenue_ratio?: number | null;
+  sharia_debt_ratio?: number | null;
+  sharia_income_ratio?: number | null;
+  revenue_segments?: Record<string, number> | null;
 }
 
 export interface LiveQuote {

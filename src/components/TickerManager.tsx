@@ -35,6 +35,7 @@ export default function TickerManager({ tickers, setTickers }: Props) {
   const [suggLoad, setSuggLoad]       = useState(false);
   const [loading, setLoad]    = useState(false);
   const [screened, setScrn]   = useState<TickerScreenResult[]>([]);
+  const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const quotes                = useLiveQuotes(tickers);
 
   // Auth
@@ -327,7 +328,7 @@ export default function TickerManager({ tickers, setTickers }: Props) {
           {[
             { label: 'TITRES',   value: tickers.length },
             { label: 'ÉTHIQUES', value: screened.filter(s => s.is_ethical).length },
-            { label: 'CHARIA',   value: screened.filter(s => s.is_sharia).length },
+            { label: 'FIN. ISL.',   value: screened.filter(s => s.is_sharia).length },
             { label: 'EXCLUS',   value: screened.filter(s => !s.is_ethical).length },
           ].map(stat => (
             <div key={stat.label} style={{ flex: 1, padding: '1rem 1.5rem', background: '#1a2035', borderRadius: 6, border: '1px solid #2a3555' }}>
@@ -357,7 +358,7 @@ export default function TickerManager({ tickers, setTickers }: Props) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
           <thead>
             <tr style={{ background: '#0d1528' }}>
-              {['TICKER', 'NOM', 'DERNIER', 'BID', 'ASK', 'VOLUME', 'VAR. %', 'ÉTHIQUE', 'CHARIA', ''].map(h => (
+              {['TICKER', 'NOM', 'DERNIER', 'BID', 'ASK', 'VOLUME', 'VAR. %', 'ÉTHIQUE', 'FIN. ISL.', ''].map(h => (
                 <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.65rem', letterSpacing: '2px', color: '#666', fontWeight: 600, borderBottom: '1px solid #1e2d4a' }}>{h}</th>
               ))}
             </tr>
@@ -369,7 +370,8 @@ export default function TickerManager({ tickers, setTickers }: Props) {
               const last = q?.last && q.last > 0 ? q.last : undefined;
               const chg = q?.change_pct && q.last > 0 ? q.change_pct : undefined;
               return (
-                <tr key={t} style={{ borderBottom: '1px solid #1a2035', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
+                <>
+                <tr key={t} onClick={() => setExpandedTicker(expandedTicker === t ? null : t)} style={{ borderBottom: '1px solid #1a2035', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)', cursor: 'pointer' }}>
                   <td style={{ padding: '0.85rem 1rem' }}>
                     <span style={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 600, color: '#e8e8e8', fontSize: '0.85rem' }}>{t}</span>
                   </td>
@@ -388,11 +390,15 @@ export default function TickerManager({ tickers, setTickers }: Props) {
                     ) : <span style={{ color: '#444' }}>—</span>}
                   </td>
                   <td style={{ padding: '0.85rem 1rem' }}><Badge passed={s?.is_ethical} /></td>
-                  <td style={{ padding: '0.85rem 1rem' }}><Badge passed={s?.is_sharia} /></td>
+                  <td style={{ padding: '0.85rem 1rem' }}><IslamicBadgeMini passed={s?.is_sharia} /></td>
                   <td style={{ padding: '0.85rem 1rem' }}>
                     <button onClick={() => remove(t)} style={{ background: 'none', border: '1px solid #2a3555', color: '#666', cursor: 'pointer', borderRadius: 3, padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>✕</button>
                   </td>
                 </tr>
+                {expandedTicker === t && s && (
+                  <IslamicFinancePanelPortfolio s={s} colSpan={10} />
+                )}
+                </>
               );
             })}
           </tbody>
