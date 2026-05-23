@@ -177,6 +177,12 @@ def _extract_fmp_metrics(profile: dict, income: dict, balance: dict, cf: dict, m
         ebitda=ebitda, fcf=fcf, equity=equity,
         total_assets=total_assets, current_assets=current_assets,
         current_liabilities=current_liabilities,
+        short_term_debt=short_term_debt,
+        long_term_debt=long_term_debt_val,
+        interest_bearing_debt=interest_bearing_debt,
+        interest_expense=interest_expense,
+        interest_income=interest_income,
+        total_equity=total_equity,
     )
 
 
@@ -209,6 +215,12 @@ def fetch_fundamentals_fmp(ticker: str, market_cap: float = 0) -> dict | None:
     # ── Extraire les métriques clés ───────────────────────────────────────────
     _m = _extract_fmp_metrics(profile, income, balance, cf, market_cap)
     mc = _m["mc"]; total_debt = _m["total_debt"]; cash = _m["cash"]; ev = _m["ev"]
+    short_term_debt       = _m.get("short_term_debt", 0)
+    long_term_debt_val    = _m.get("long_term_debt", 0)
+    interest_bearing_debt = _m.get("interest_bearing_debt", 0)
+    interest_expense      = _m.get("interest_expense", 0)
+    interest_income       = _m.get("interest_income", 0)
+    total_equity          = _m.get("total_equity", 0)
     revenue = _m["revenue"]; ebit = _m["ebit"]; net_income = _m["net_income"]
     ebitda = _m["ebitda"]; fcf = _m["fcf"]; equity = _m["equity"]
     total_assets = _m["total_assets"]; current_assets = _m["current_assets"]
