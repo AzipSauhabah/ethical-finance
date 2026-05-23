@@ -473,6 +473,22 @@ def generate_all_narratives(tearsheet: dict) -> dict:
 # ─── Interprétation dynamique des métriques ──────────────────────────────────
 
 
+
+_METRIC_INTERPRETERS = {
+    "sharpe_ratio": lambda v: f"Ratio de Sharpe de {v:.2f} — " + ("excellent" if v>=2 else "solide" if v>=1 else "acceptable" if v>=0.5 else "faible" if v>=0 else "negatif"),
+    "sharpe":       lambda v: f"Ratio de Sharpe de {v:.2f} — " + ("excellent" if v>=2 else "solide" if v>=1 else "acceptable" if v>=0.5 else "faible" if v>=0 else "negatif"),
+    "sortino_ratio":lambda v: f"Ratio de Sortino de {v:.2f} — " + ("excellent" if v>=2 else "satisfaisant" if v>=1 else "a surveiller"),
+    "sortino":      lambda v: f"Ratio de Sortino de {v:.2f} — " + ("excellent" if v>=2 else "satisfaisant" if v>=1 else "a surveiller"),
+    "max_drawdown": lambda v: f"Drawdown maximum de {abs(v)*100:.1f}% — " + ("contenu" if abs(v)<0.1 else "modere" if abs(v)<0.2 else "eleve" if abs(v)<0.35 else "severe"),
+    "cagr":         lambda v: f"CAGR de {v*100:.1f}%/an — " + ("exceptionnel" if v>=0.2 else "solide" if v>=0.1 else "modere" if v>=0.05 else "faible" if v>=0 else "negatif"),
+    "annual_return":lambda v: f"Rendement annuel de {v*100:.1f}%",
+    "volatility":   lambda v: f"Volatilite de {v*100:.1f}% — " + ("tres faible" if v<0.1 else "moderee" if v<0.15 else "elevee" if v<0.25 else "tres elevee"),
+    "annual_volatility": lambda v: f"Volatilite annuelle de {v*100:.1f}%",
+    "win_rate":     lambda v: f"Taux de reussite de {v*100:.1f}%",
+    "calmar_ratio": lambda v: f"Ratio de Calmar de {v:.2f}",
+    "calmar":       lambda v: f"Ratio de Calmar de {v:.2f}",
+}
+
 def interpret_metric(name: str, value: float | None) -> str:
     """Retourne une interprétation contextuelle d'une métrique selon sa valeur."""
     if value is None:
