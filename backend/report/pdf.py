@@ -1278,6 +1278,9 @@ def generate_pdf(tearsheet: dict) -> bytes:
     kpi_s = st("K", fontSize=22, textColor=colors.HexColor(GOLD), fontName="Helvetica-Bold", spaceAfter=0)
     kpi_label_s = st("KL", fontSize=7, textColor=colors.HexColor(GREY), fontName="Helvetica", spaceAfter=2)
 
+    def hr():
+        return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
+
     # Dict custom passe aux sous-fonctions _pages_*
     styles = {
         "title":      title_s,
@@ -1318,8 +1321,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
     def e(v):
         return "N/A" if v is None else f"{v:,.2f} €".replace(",", " ")
 
-    def hr():
-        return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
 
     doc = SimpleDocTemplate(
         buf,
