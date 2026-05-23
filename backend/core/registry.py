@@ -67,7 +67,8 @@ SHARIA_SECTOR_BLACKLIST = [
 
 # AAOIFI thresholds
 SHARIA_DEBT_RATIO_MAX = 0.33  # debt / market cap (or 24mo avg cap)
-SHARIA_LIQUIDITY_RATIO_MAX = 0.33  # cash + interest-bearing securities / market cap
+SHARIA_LIQUIDITY_RATIO_MAX = 0.33
+SHARIA_INCOME_RATIO_MAX    = 0.05  # cash + interest-bearing securities / market cap
 SHARIA_NON_PERMISSIBLE_INCOME_MAX = 0.05  # non-halal income / total revenue
 
 
