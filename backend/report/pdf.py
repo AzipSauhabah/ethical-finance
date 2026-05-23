@@ -1251,10 +1251,10 @@ def generate_pdf(tearsheet: dict) -> bytes:
         return _fig_to_image_flowable(fig, width_cm)
 
     buf = io.BytesIO()
-    styles = getSampleStyleSheet()
+    _base_styles = getSampleStyleSheet()
 
     def st(name, **kw):
-        return ParagraphStyle(name, parent=styles["Normal"], **kw)
+        return ParagraphStyle(name, parent=_base_styles["Normal"], **kw)
 
     title_s = st(
         "T", fontSize=20, textColor=colors.HexColor(NAVY), fontName="Helvetica-Bold", spaceAfter=8
@@ -1273,6 +1273,18 @@ def generate_pdf(tearsheet: dict) -> bytes:
     body_s = st("B", fontSize=9, textColor=colors.black, leading=12, spaceAfter=4)
     small_s = st("Sm", fontSize=7, textColor=colors.HexColor(GREY))
     disclm_s = st("D", fontSize=7, textColor=colors.HexColor(GREY), leading=10)
+    bold_s = st("Bd", fontSize=9, textColor=colors.black, fontName="Helvetica-Bold", leading=12)
+
+    # Dict custom passe aux sous-fonctions _pages_*
+    styles = {
+        "title":      title_s,
+        "subtitle":   subtitle_s,
+        "section":    section_s,
+        "body":       body_s,
+        "small":      small_s,
+        "disclaimer": disclm_s,
+        "bold":       bold_s,
+    }
 
     def tbl_style():
         return TableStyle(
