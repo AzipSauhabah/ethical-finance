@@ -489,7 +489,7 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
                     sa.text("""
                     SELECT ticker, name, sector, industry, country, currency, exchange,
                            market_cap, beta, dividend_yield, total_debt, total_revenue,
-                           revenue_segments, total_cash,
+                           revenue_segments, total_cash, haram_revenue_ratio, sharia_debt_ratio,
                            interest_expense, interest_income,
                            interest_bearing_debt, short_term_debt,
                            long_term_debt, total_assets, total_equity
@@ -527,6 +527,8 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
             "long_term_debt":        int(row[18] or 0),
             "total_assets":          int(row[19] or 0),
             "total_equity":          int(row[20] or 0),
+            "haram_revenue_ratio":   float(row[21]) if row[21] is not None else None,
+            "sharia_debt_ratio":     float(row[22]) if row[22] is not None else None,
             "esg_scores": {},
         }
     except Exception as e:
