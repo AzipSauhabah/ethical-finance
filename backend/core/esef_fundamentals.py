@@ -127,38 +127,38 @@ _TICKER_TO_LEI: dict[str, str] = {
     "MC.PA":   "IOG4E947OATN0KJYSD45",  # LVMH
     "TTE.PA":  "529900S21EQ1BO4ESM68",  # TotalEnergies
     "SAN.PA":  "ZU21BBDW5TWS5BHMSD60",  # Sanofi
-    "OR.PA":   "LBQXPBHCQF5DNGLZL195",  # L'Oréal
+    "OR.PA":   "529900JI1GG6F7RKVI53",  # L'Oréal
     "AIR.PA":  "VNN1OYBB7298VLHH5P36",  # Airbus
     "BNP.PA":  "R0MUWSFPU8MPRO8K5P83",  # BNP Paribas
-    "SU.PA":   "549300FXZPV7UBXJ3L90",  # Schneider Electric
-    "AI.PA":   "529900IBP8LD3TS8H915",  # Air Liquide
-    "RMS.PA":  "969500UP76J52A9OXU27",  # Hermès
-    "KER.PA":  "5299001GJKFGZM0FRM93",  # Kering
-    "SAF.PA":  "96950010J6JKW0LKUR55",  # Safran
-    "HO.PA":   "529900XYBRTNFKUIOB87",  # Thales
-    "DSY.PA":  "2221009RDQNJHPUPJ966",  # Dassault Systèmes
-    "EL.PA":   "969500O9SQJFQ8MJCH09",  # EssilorLuxottica
-    "DG.PA":   "969500M4IHLQFT9CKS28",  # Vinci
-    "CS.PA":   "UNXMKZ4LCXQNRZ4YJP57",  # AXA
+    "SU.PA":   "969500A1YF1XUYYXS284",  # Schneider Electric
+    "AI.PA":   "969500MMPQVHK671GT54",  # Air Liquide
+    "RMS.PA":  "969500Y4IJGHJE2MTJ13",  # Hermès
+    "KER.PA":  "549300VGEJKB7SVUZR78",  # Kering
+    "SAF.PA":  "969500UIC89GT3UL7L24",  # Safran
+    "HO.PA":   "529900FNDVTQJOVVPZ19",  # Thales
+    "DSY.PA":  "96950065LBWY0APQIM86",  # Dassault Systèmes
+    "EL.PA":   "9695005W553B1E61P457",  # EssilorLuxottica (no ESEF filing)
+    "DG.PA":   "213800WFQ334R8UXUG83",  # Vinci
+    "CS.PA":   "9695007ZQTEMPGIL5N67",  # AXA (no ESEF filing)
     "GLE.PA":  "O2RNE8IBXP4R0TD8PU41",  # Société Générale
     "ACA.PA":  "969500TJ5KRTCJQWXH05",  # Crédit Agricole
-    "ORA.PA":  "969500GM7J1WTAXQ7O45",  # Orange
-    "ENGI.PA": "529900TCTJYQP2HJKQ10",  # Engie
-    "VIE.PA":  "969500BHL7BDKRQQLJ67",  # Veolia
-    "BN.PA":   "EPGKIMFIXFXZAQVF3T31",  # Danone
-    "CA.PA":   "969500ALB8PJGD7KRQ27",  # Carrefour
-    "SGO.PA":  "XHDVJ1T4WKFWQGQ2VM34",  # Saint-Gobain
-    "ML.PA":   "969500QQC7XT6L4CJE37",  # Michelin
-    "RNO.PA":  "96950065LENZ4PIZBX03",  # Renault
-    "RI.PA":   "529900OJ9BKPFD68CF70",  # Pernod Ricard
-    "PUB.PA":  "969500A1X7V6IXRUFP42",  # Publicis
-    "VIV.PA":  "969500EF2HUZS2ZXNB74",  # Vivendi
-    "EN.PA":   "969500P5GJBJP5FHKQ23",  # Bouygues
-    "CAP.PA":  "529900VMMG6AHOVP4536",  # Capgemini
-    "LR.PA":   "969500EAB7EF2TDPCI35",  # Legrand
-    "TEP.PA":  "9695004GKDCXE78QWP22",  # Teleperformance
-    "WLN.PA":  "969500BIIX3FVOROIZ09",  # Worldline
-    "URW.PA":  "969500O9SQLZQOHSIZ41",  # Unibail-Rodamco
+    "ORA.PA":  "969500MCOONR8990S771",  # Orange
+    "ENGI.PA": "LAXUQCHT4FH58LRZDY46",  # Engie
+    "VIE.PA":  "969500LENY69X51OOT31",  # Veolia
+    "BN.PA":   "969500KMUQ2B6CBAF162",  # Danone
+    "CA.PA":   "549300B8P6MUJ1YWTS08",  # Carrefour
+    "SGO.PA":  "NFONVGN05Z0FMN5PEC35",  # Saint-Gobain
+    "ML.PA":   "549300SOSI58J6VIW052",  # Michelin
+    "RNO.PA":  "969500F7JLTX36OUI695",  # Renault
+    "RI.PA":   "52990097YFPX9J0H5D87",  # Pernod Ricard
+    "PUB.PA":  "969500PU6DNXRDGZAZ98",  # Publicis (no ESEF filing)
+    "VIV.PA":  "969500FU4DRAEVJW7U54",  # Vivendi
+    "EN.PA":   "969500MOCLNQFNZN0D63",  # Bouygues
+    "CAP.PA":  "96950077L0TN7BAROX36",  # Capgemini
+    "LR.PA":   "969500XXRPGD7HCAFA90",  # Legrand
+    "TEP.PA":  "9695004GI61FHFFNRG61",  # Teleperformance
+    "WLN.PA":  "549300CJMQNCA0U4TS33",  # Worldline
+    "URW.PA":  "969500SHQITWXSIS7N89",  # Unibail-Rodamco
 }
 
 async def get_lei(ticker: str, client: httpx.AsyncClient) -> Optional[str]:
