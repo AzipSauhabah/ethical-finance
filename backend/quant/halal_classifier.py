@@ -86,6 +86,7 @@ _HARAM_KEYWORDS: list[tuple[str, str]] = [
     ("weapon",               "Armement"),
     ("weapons",              "Armement"),
     ("defense",              "Défense"),
+    ("defence",              "Défense"),
     ("munition",             "Munitions"),
     ("ammunition",           "Munitions"),
 ]
