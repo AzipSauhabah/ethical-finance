@@ -175,14 +175,16 @@ async def get_latest_filing(lei: str, client: httpx.AsyncClient) -> Optional[dic
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _extract_period_year(period_str: str) -> Optional[int]:
-    """Extrait l'année de fin depuis une période ISO."""
-    # Format : "2024-01-01T00:00:00/2025-01-01T00:00:00"
+    """Extrait l'année depuis une période ISO.
+    Flux (2024-01-01/2025-01-01) → début → 2024.
+    Stock (2024-12-31) → date → 2024.
+    """
     if "/" in period_str:
-        end = period_str.split("/")[1]
+        ref = period_str.split("/")[0]
     else:
-        end = period_str
+        ref = period_str
     try:
-        return int(end[:4])
+        return int(ref[:4])
     except (ValueError, IndexError):
         return None
 
