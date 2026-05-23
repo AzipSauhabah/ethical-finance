@@ -344,7 +344,8 @@ def _screener_load_fundamentals(engine, payload) -> "pd.DataFrame":
             SELECT ticker, name, sector, industry, market_cap,
                    total_debt, total_revenue, beta, dividend_yield,
                    earning_yield_sec, roic_sec, pe_ratio, ev_ebitda,
-                   net_margin, fcf_yield, debt_equity, current_ratio
+                   net_margin, fcf_yield, debt_equity, current_ratio,
+                   haram_revenue_ratio, sharia_debt_ratio, sharia_income_ratio
             FROM ticker_fundamentals WHERE market_cap >= :min_cap {universe_filter}
             ORDER BY market_cap DESC
         """), qparams).fetchall()
@@ -353,7 +354,8 @@ def _screener_load_fundamentals(engine, payload) -> "pd.DataFrame":
     return pd.DataFrame(rows, columns=[
         "ticker","name","sector","industry","market_cap","total_debt","total_revenue",
         "beta","dividend_yield","earning_yield_sec","roic_sec","pe_ratio","ev_ebitda",
-        "net_margin","fcf_yield","debt_equity","current_ratio"])
+        "net_margin","fcf_yield","debt_equity","current_ratio",
+        "haram_revenue_ratio","sharia_debt_ratio","sharia_income_ratio"])
 
 
 # ─── Sharia screening constants (AAOIFI / MSCI Islamic Index) ───────────────
@@ -536,6 +538,16 @@ def _screener_rank(scores_df, method, top_n):
     scores_df = scores_df.head(top_n).reset_index(drop=True)
     scores_df["rank"] = scores_df.index + 1
     scores_df["score"] = scores_df["score"].round(2)
+    # Propager colonnes Sharia depuis df original
+    for col in ["haram_revenue_ratio", "sharia_debt_ratio", "sharia_income_ratio"]:
+        if col in df.columns:
+            scores_df = scores_df.merge(df[["ticker", col]], on="ticker", how="left")
+    # Calculer is_sharia simple
+    scores_df["is_sharia"] = (
+        scores_df.get("sharia_income_ratio", 1.0).fillna(1.0) <= 0.05
+    ) & (
+        scores_df.get("sharia_debt_ratio", 1.0).fillna(1.0) <= 0.33
+    )
     return scores_df
 
 

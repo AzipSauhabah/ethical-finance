@@ -21,6 +21,41 @@ interface ScreenerResult {
   beta: number;
   dividend_yield: number;
   score: number;
+  is_sharia?: boolean | null;
+  haram_revenue_ratio?: number | null;
+  sharia_debt_ratio?: number | null;
+}
+
+
+// ShariaBadge
+function ShariaBadge({ isSharia, haramRatio, debtRatio }: {
+  isSharia?: boolean | null;
+  haramRatio?: number | null;
+  debtRatio?: number | null;
+}) {
+  if (isSharia === null || isSharia === undefined) {
+    return <span title="Donnees non disponibles" style={{
+      display:"inline-flex", alignItems:"center", justifyContent:"center",
+      width:20, height:20, borderRadius:"50%",
+      background:"#333", color:"#666", fontSize:11, cursor:"help",
+    }}>?</span>;
+  }
+  const lines = [];
+  if (haramRatio != null) lines.push("Revenus haram : " + (haramRatio*100).toFixed(1) + "% (seuil 5%)");
+  if (debtRatio != null) lines.push("Dette interets / cap : " + (debtRatio*100).toFixed(1) + "% (seuil 33%)");
+  const tip = lines.join("\n") || (isSharia ? "Conforme Sharia" : "Non conforme");
+  return <span title={tip} style={{
+    display:"inline-flex", alignItems:"center", justifyContent:"center",
+    width:20, height:20, borderRadius:"50%",
+    background: isSharia ? "#14532d" : "#450a0a",
+    color:      isSharia ? "#4ade80" : "#f87171",
+    border:     "1.5px solid " + (isSharia ? "#16a34a" : "#dc2626"),
+    fontSize:12, fontWeight:700, cursor:"help",
+    transition:"transform 0.1s", flexShrink:0,
+  }}
+  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform="scale(1.2)"; }}
+  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform="scale(1)"; }}
+  >{isSharia ? "✓" : "✗"}</span>;
 }
 
 const METHODS = [
@@ -279,7 +314,7 @@ export default function ScreeningPanel({
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #1e2d4a" }}>
-                    {["", "#", "Ticker", "Nom", "Secteur", "Cap.", "EY", "ROIC", "1M", "6M", "12M", "Vol", "Beta", "Div", "Score"].map((h) => (
+                    {["", "#", "Ticker", "Nom", "Secteur", "Cap.", "EY", "ROIC", "1M", "6M", "12M", "Vol", "Beta", "Div", "Score", "Sharia"].map((h) => (
                       <th key={h} style={{ padding: "0.75rem 0.6rem", textAlign: "left", color: "#555", fontWeight: 500, fontSize: "0.68rem", letterSpacing: "1px", whiteSpace: "nowrap" }}>
                         {h}
                       </th>
@@ -342,6 +377,9 @@ export default function ScreeningPanel({
                       </td>
                       <td style={{ padding: "0.6rem 0.6rem", color: GOLD, fontFamily: '"JetBrains Mono", monospace' }}>
                         {r.score}
+                      </td>
+                      <td style={{ padding: "0.6rem 0.6rem", textAlign: "center" }}>
+                        <ShariaBadge isSharia={r.is_sharia} haramRatio={r.haram_revenue_ratio} debtRatio={r.sharia_debt_ratio} />
                       </td>
                     </tr>
                   ))}
