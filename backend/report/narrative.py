@@ -128,9 +128,7 @@ def narrative_performance(m: dict, _meta: dict) -> str:
             parts.append(
                 f"L'alpha de Jensen de {_pct(alpha)} et le ratio d'information de {_f(ir)} "
                 "confirment une génération de valeur ajoutée significative par rapport "
-                "au benchmark, au-delà de la simple exposition au marché (bêta : {_f(beta)}).".format(
-                    _f=_f
-                )
+                f"au benchmark (beta : {_f(beta)})."
             )
         elif alpha > 0:
             parts.append(
