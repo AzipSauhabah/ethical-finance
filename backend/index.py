@@ -538,15 +538,6 @@ def _screener_rank(scores_df, method, top_n):
     scores_df = scores_df.head(top_n).reset_index(drop=True)
     scores_df["rank"] = scores_df.index + 1
     scores_df["score"] = scores_df["score"].round(2)
-    # Colonnes Finance Islamique — deja dans scores_df depuis _screener_load_fundamentals
-    for col in ["haram_revenue_ratio", "sharia_debt_ratio", "sharia_income_ratio"]:
-        if col not in scores_df.columns:
-            scores_df[col] = None
-    import numpy as np
-    has_data = scores_df["sharia_debt_ratio"].notna() | scores_df["sharia_income_ratio"].notna()
-    debt_ok   = scores_df["sharia_debt_ratio"].fillna(0.0) <= 0.33
-    income_ok = scores_df["sharia_income_ratio"].fillna(0.0) <= 0.05
-    scores_df["is_sharia"] = np.where(has_data, debt_ok & income_ok, None)
     return scores_df
 
 
@@ -580,6 +571,20 @@ async def screener(payload: ScreenerIn):
         if scores_df.empty:
             return []
         scores_df = _screener_rank(scores_df, payload.method, payload.top_n)
+        # Finance Islamique — merger depuis df original apres ranking
+        import numpy as np
+        sharia_cols = [c for c in ["haram_revenue_ratio","sharia_debt_ratio","sharia_income_ratio"] if c in df.columns]
+        if sharia_cols:
+            scores_df = scores_df.merge(df[["ticker"]+sharia_cols], on="ticker", how="left", suffixes=("","_y"))
+        for col in ["haram_revenue_ratio","sharia_debt_ratio","sharia_income_ratio"]:
+            if col not in scores_df.columns:
+                scores_df[col] = None
+        has_data = scores_df["sharia_debt_ratio"].notna() | scores_df["sharia_income_ratio"].notna()
+        scores_df["is_sharia"] = np.where(
+            has_data,
+            (scores_df["sharia_debt_ratio"].fillna(0.0) <= 0.33) & (scores_df["sharia_income_ratio"].fillna(0.0) <= 0.05),
+            None
+        )
         return scores_df.to_dict(orient="records")
 
     results = await loop.run_in_executor(None, _run_screener)
