@@ -1421,15 +1421,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
         TableStyle,
     )
 
-    def chart(fig, width_cm: float = 17.0, aspect: float = 0.40):
-        """Convertit une figure matplotlib en Flowable ReportLab."""
-        if fig is None:
-            return Spacer(1, 0.1 * cm)
-        return _fig_to_image_flowable(fig, width_cm)
-
-    buf = io.BytesIO()
-    _base_styles = getSampleStyleSheet()
-
     def st(name, **kw):
         return ParagraphStyle(name, parent=_base_styles["Normal"], **kw)
 
@@ -1455,19 +1446,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
     kpi_s = st("K", fontSize=22, textColor=colors.HexColor(GOLD), fontName="Helvetica-Bold", spaceAfter=0)
     kpi_label_s = st("KL", fontSize=7, textColor=colors.HexColor(GREY), fontName="Helvetica", spaceAfter=2)
 
-    # Dict custom passe aux sous-fonctions _pages_*
-    styles = {
-        "title":      title_s,
-        "subtitle":   subtitle_s,
-        "section":    section_s,
-        "body":       body_s,
-        "small":      small_s,
-        "disclaimer": disclm_s,
-        "bold":       bold_s,
-        "kpi":        kpi_s,
-        "kpi_label":  kpi_label_s,
-    }
-
     def tbl_style():
         return TableStyle(
             [
@@ -1485,17 +1463,9 @@ def generate_pdf(tearsheet: dict) -> bytes:
             ]
         )
 
-    def p(v):
-        return "N/A" if v is None else f"{v*100:+.2f}%"
 
-    def f(v, d=2):
-        return "N/A" if v is None else f"{v:.{d}f}"
 
-    def e(v):
-        return "N/A" if v is None else f"{v:,.2f} €".replace(",", " ")
 
-    def hr():
-        return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
 
     doc = SimpleDocTemplate(
         buf,
@@ -1507,6 +1477,48 @@ def generate_pdf(tearsheet: dict) -> bytes:
         title=f"Sauhabah — {tearsheet['meta']['strategy']}",
         author="Sauhabah Ethical Finance Platform",
     )
+
+    def hr():
+        return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
+
+    def p(v):
+        return "N/A" if v is None else f"{v*100:+.2f}%"
+
+    def f(v, d=2):
+        return "N/A" if v is None else f"{v:.{d}f}"
+
+    def e(v):
+        return "N/A" if v is None else f"{v:,.2f} €".replace(",", " ")
+
+    def chart(fig, width_cm: float = 17.0, aspect: float = 0.40):
+        """Convertit une figure matplotlib en Flowable ReportLab."""
+        if fig is None:
+            return Spacer(1, 0.1 * cm)
+        return _fig_to_image_flowable(fig, width_cm)
+
+    buf = io.BytesIO()
+    _base_styles = getSampleStyleSheet()
+
+
+    # Dict custom passe aux sous-fonctions _pages_*
+    styles = {
+        "title":      title_s,
+        "subtitle":   subtitle_s,
+        "section":    section_s,
+        "body":       body_s,
+        "small":      small_s,
+        "disclaimer": disclm_s,
+        "bold":       bold_s,
+        "kpi":        kpi_s,
+        "kpi_label":  kpi_label_s,
+        "hr":         hr,
+        "p":          p,
+        "f":          f,
+        "e":          e,
+        "chart":      chart,
+        "tbl_style":  tbl_style,
+    }
+
 
     meta = tearsheet["meta"]
     narratives = generate_all_narratives(tearsheet)
