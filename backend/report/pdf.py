@@ -1422,6 +1422,11 @@ def generate_pdf(tearsheet: dict) -> bytes:
     )
 
 
+    _base_styles = getSampleStyleSheet()
+
+    def st(name, **kw):
+        return ParagraphStyle(name, parent=_base_styles["Normal"], **kw)
+
     title_s = st(
         "T", fontSize=20, textColor=colors.HexColor(NAVY), fontName="Helvetica-Bold", spaceAfter=8
     )
@@ -1465,11 +1470,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
     buf = io.BytesIO()
 
-
-    _base_styles = getSampleStyleSheet()
-
-    def st(name, **kw):
-        return ParagraphStyle(name, parent=_base_styles["Normal"], **kw)
 
     def hr():
         return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
