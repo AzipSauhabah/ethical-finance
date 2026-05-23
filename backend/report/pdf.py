@@ -56,23 +56,23 @@ def _mpl_style():
     """Style matplotlib Goldman Sachs dark."""
     plt.rcParams.update(
         {
-            "figure.facecolor": "#111827",
-            "axes.facecolor": "#111827",
-            "axes.edgecolor": "#1e2d4a",
-            "axes.labelcolor": "#888888",
+            "figure.facecolor": "white",
+            "axes.facecolor": "#f8f9fa",
+            "axes.edgecolor": "#cccccc",
+            "axes.labelcolor": "#333333",
             "axes.grid": True,
-            "grid.color": "#1e2d4a",
+            "grid.color": "#e0e0e0",
             "grid.linewidth": 0.5,
             "grid.alpha": 0.8,
-            "xtick.color": "#666666",
-            "ytick.color": "#666666",
+            "xtick.color": "#333333",
+            "ytick.color": "#333333",
             "xtick.labelsize": 7,
             "ytick.labelsize": 7,
-            "legend.facecolor": "#0d1528",
-            "legend.edgecolor": "#1e2d4a",
+            "legend.facecolor": "white",
+            "legend.edgecolor": "#cccccc",
             "legend.fontsize": 7,
             "font.family": "DejaVu Sans",
-            "text.color": "#888888",
+            "text.color": "#1a1a1a",
             "lines.linewidth": 1.8,
         }
     )
@@ -84,7 +84,7 @@ def _fig_to_image_flowable(fig, width_cm: float = 17.0):
     from reportlab.platypus import Image as RLImage
 
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight", facecolor="white")
     buf.seek(0)
     plt.close(fig)
 
@@ -100,8 +100,8 @@ def _line_chart(
     y_fmt=None,
 ):
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     dashes = [None, (6, 2), (2, 2), (4, 2, 1, 2)]
     for i, (label, color, vals) in enumerate(series):
@@ -125,13 +125,13 @@ def _area_chart(
     y_fmt=None,
 ):
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     x = list(range(len(values)))
     ax.plot(x, values, color=color, linewidth=1.8)
     ax.fill_between(x, values, 0, color=color, alpha=0.25)
-    ax.axhline(0, color="#555", linewidth=0.8)
+    ax.axhline(0, color="#999999", linewidth=0.8)
 
     if y_fmt:
         ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: y_fmt(v)))
@@ -147,15 +147,15 @@ def _bar_chart(
     height: float = 180,
 ):
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, max(3.5, len(labels) * 0.5)), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, max(3.5, len(labels) * 0.5)), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     colors_bar = [GREEN if v >= 0 else RED for v in values]
     y_pos = range(len(labels))
     ax.barh(list(y_pos), values, color=colors_bar, height=0.6, alpha=0.85)
     ax.set_yticks(list(y_pos))
     ax.set_yticklabels(labels, fontsize=7)
-    ax.axvline(0, color="#555", linewidth=0.8)
+    ax.axvline(0, color="#999999", linewidth=0.8)
 
     for i, v in enumerate(values):
         ax.text(
@@ -165,7 +165,7 @@ def _bar_chart(
             va="center",
             ha="left" if v >= 0 else "right",
             fontsize=7,
-            color="#aaa",
+            color="#555555",
         )
 
     ax.spines[["top", "right"]].set_visible(False)
@@ -181,8 +181,8 @@ def _pie_chart(
 ):
     _mpl_style()
     pie_colors = [NAVY, GOLD, "#8a6f9c", "#3e8260"]
-    fig, ax = plt.subplots(figsize=(5, 3.5), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(5, 3.5), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     wedges, texts, autotexts = ax.pie(
         values,
@@ -190,8 +190,8 @@ def _pie_chart(
         colors=pie_colors[: len(values)],
         autopct="%1.0f%%",
         startangle=90,
-        textprops={"fontsize": 7, "color": "#aaa"},
-        wedgeprops={"linewidth": 1, "edgecolor": "#111827"},
+        textprops={"fontsize": 7, "color": "#555555"},
+        wedgeprops={"linewidth": 1, "edgecolor": "white"},
     )
     for at in autotexts:
         at.set_color("#e8e8e8")
@@ -268,16 +268,16 @@ def _chart_rolling_sharpe(rolling_sharpe: list) -> object:
     if not rolling_sharpe:
         return None
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
     dates = list(range(len(rolling_sharpe)))
     values = [d["sharpe"] for d in rolling_sharpe]
     ax.plot(dates, values, color=GOLD, linewidth=1.8)
-    ax.axhline(0, color="#555", linewidth=0.8, linestyle="--")
+    ax.axhline(0, color="#999999", linewidth=0.8, linestyle="--")
     ax.axhline(1, color=GREEN, linewidth=0.6, linestyle=":", alpha=0.7)
     ax.fill_between(dates, values, 0, where=[v >= 0 for v in values], color=GREEN, alpha=0.15)
     ax.fill_between(dates, values, 0, where=[v < 0 for v in values], color=RED, alpha=0.15)
-    ax.set_title("Rolling Sharpe 252j", color="#aaa", fontsize=8, pad=4)
+    ax.set_title("Rolling Sharpe 252j", color="#555555", fontsize=8, pad=4)
     ax.set_ylabel("Sharpe", fontsize=7)
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout(pad=0.5)
@@ -289,13 +289,13 @@ def _chart_rolling_vol(rolling_vol: list) -> object:
     if not rolling_vol:
         return None
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
     dates = list(range(len(rolling_vol)))
     values = [d["vol"] for d in rolling_vol]
     ax.plot(dates, values, color="#5b8dee", linewidth=1.8)
     ax.fill_between(dates, values, alpha=0.2, color="#5b8dee")
-    ax.set_title("Rolling Volatilité 63j (annualisée)", color="#aaa", fontsize=8, pad=4)
+    ax.set_title("Rolling Volatilité 63j (annualisée)", color="#555555", fontsize=8, pad=4)
     ax.set_ylabel("Volatilité %", fontsize=7)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:.1f}%"))
     ax.spines[["top", "right"]].set_visible(False)
@@ -332,8 +332,8 @@ def _chart_monthly_heatmap(monthly_returns_list: list) -> object:
     ][: len(pivot.columns)]
 
     n_years = len(pivot)
-    fig, ax = plt.subplots(figsize=(12, max(2.5, n_years * 0.5)), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(12, max(2.5, n_years * 0.5)), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     vmax = max(abs(pivot.values[~np.isnan(pivot.values)]).max(), 5)
     im = ax.imshow(pivot.values, cmap="RdYlGn", aspect="auto", vmin=-vmax, vmax=vmax)
@@ -360,7 +360,7 @@ def _chart_monthly_heatmap(monthly_returns_list: list) -> object:
                 )
 
     plt.colorbar(im, ax=ax, shrink=0.8, pad=0.02)
-    ax.set_title("Rendements mensuels (%)", color="#aaa", fontsize=8, pad=4)
+    ax.set_title("Rendements mensuels (%)", color="#555555", fontsize=8, pad=4)
     fig.tight_layout(pad=0.5)
     return fig
 
@@ -370,8 +370,8 @@ def _chart_return_distribution(return_distribution: list) -> object:
     if not return_distribution:
         return None
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     data = np.array(return_distribution)
     ax.hist(
@@ -391,10 +391,10 @@ def _chart_return_distribution(return_distribution: list) -> object:
     gaussian = np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
     ax.plot(x, gaussian, color=GOLD, linewidth=1.8, linestyle="--", label="Gaussienne théorique")
 
-    ax.axvline(0, color="#555", linewidth=0.8)
+    ax.axvline(0, color="#999999", linewidth=0.8)
     ax.axvline(np.percentile(data, 5), color=RED, linewidth=1.2, linestyle=":", label="VaR 95%")
 
-    ax.set_title("Distribution des rendements journaliers", color="#aaa", fontsize=8, pad=4)
+    ax.set_title("Distribution des rendements journaliers", color="#555555", fontsize=8, pad=4)
     ax.set_xlabel("Rendement journalier %", fontsize=7)
     ax.legend(fontsize=7)
     ax.spines[["top", "right"]].set_visible(False)
@@ -407,15 +407,15 @@ def _chart_underwater(dd_data: list) -> object:
     if not dd_data:
         return None
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     dates = list(range(len(dd_data)))
     values = [d["drawdown"] * 100 for d in dd_data]
 
     ax.fill_between(dates, values, 0, color=RED, alpha=0.4)
     ax.plot(dates, values, color=RED, linewidth=1.0, alpha=0.8)
-    ax.axhline(0, color="#555", linewidth=0.5)
+    ax.axhline(0, color="#999999", linewidth=0.5)
 
     # Annoter le max drawdown
     min_dd = min(values)
@@ -429,7 +429,7 @@ def _chart_underwater(dd_data: list) -> object:
         arrowprops=dict(arrowstyle="->", color="#f87171", lw=0.8),
     )
 
-    ax.set_title("Underwater Plot (Drawdown cumulatif)", color="#aaa", fontsize=8, pad=4)
+    ax.set_title("Underwater Plot (Drawdown cumulatif)", color="#555555", fontsize=8, pad=4)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda v, _: f"{v:.1f}%"))
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout(pad=0.5)
@@ -441,15 +441,15 @@ def _chart_rolling_beta(rolling_beta: list) -> object:
     if not rolling_beta:
         return None
     _mpl_style()
-    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="#111827")
-    ax.set_facecolor("#111827")
+    fig, ax = plt.subplots(figsize=(10, 3.0), facecolor="white")
+    ax.set_facecolor("#f8f9fa")
 
     dates = list(range(len(rolling_beta)))
     values = [d["beta"] for d in rolling_beta]
 
     ax.plot(dates, values, color="#8a6f9c", linewidth=1.8)
     ax.axhline(1.0, color=GOLD, linewidth=0.8, linestyle="--", label="Bêta marché = 1")
-    ax.axhline(0.0, color="#555", linewidth=0.5)
+    ax.axhline(0.0, color="#999999", linewidth=0.5)
     ax.fill_between(
         dates,
         values,
@@ -469,7 +469,7 @@ def _chart_rolling_beta(rolling_beta: list) -> object:
         label="Sous-exposition",
     )
 
-    ax.set_title("Rolling Bêta 252j vs Benchmark", color="#aaa", fontsize=8, pad=4)
+    ax.set_title("Rolling Bêta 252j vs Benchmark", color="#555555", fontsize=8, pad=4)
     ax.legend(fontsize=6)
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout(pad=0.5)
@@ -481,9 +481,9 @@ def _chart_win_loss(win_loss_data: dict) -> object:
     if not win_loss_data:
         return None
     _mpl_style()
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.5), facecolor="#111827")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3.5), facecolor="white")
     for ax in [ax1, ax2]:
-        ax.set_facecolor("#111827")
+        ax.set_facecolor("#f8f9fa")
 
     wins = win_loss_data.get("wins", [])
     losses = win_loss_data.get("losses", [])
@@ -493,7 +493,7 @@ def _chart_win_loss(win_loss_data: dict) -> object:
         ax1.hist(
             wins, bins=50, color=GREEN, alpha=0.7, density=True, edgecolor="#0d1528", linewidth=0.3
         )
-        ax1.set_title(f"Jours positifs ({hit_rate:.1f}%)", color="#aaa", fontsize=8, pad=4)
+        ax1.set_title(f"Jours positifs ({hit_rate:.1f}%)", color="#555555", fontsize=8, pad=4)
         ax1.set_xlabel("Rendement %", fontsize=7)
         ax1.spines[["top", "right"]].set_visible(False)
 
@@ -501,11 +501,11 @@ def _chart_win_loss(win_loss_data: dict) -> object:
         ax2.hist(
             losses, bins=50, color=RED, alpha=0.7, density=True, edgecolor="#0d1528", linewidth=0.3
         )
-        ax2.set_title(f"Jours négatifs ({100-hit_rate:.1f}%)", color="#aaa", fontsize=8, pad=4)
+        ax2.set_title(f"Jours négatifs ({100-hit_rate:.1f}%)", color="#555555", fontsize=8, pad=4)
         ax2.set_xlabel("Rendement %", fontsize=7)
         ax2.spines[["top", "right"]].set_visible(False)
 
-    fig.suptitle("Distribution Win/Loss", color="#aaa", fontsize=9, y=1.02)
+    fig.suptitle("Distribution Win/Loss", color="#555555", fontsize=9, y=1.02)
     fig.tight_layout(pad=0.5)
     return fig
 
@@ -521,7 +521,7 @@ def _pages_cover_summary(tearsheet: dict, styles: dict, narratives: dict, interp
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; hr = styles['hr']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -606,7 +606,7 @@ def _pages_performance_charts(tearsheet: dict, styles: dict, narratives: dict, i
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; hr = styles['hr']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -813,7 +813,7 @@ def _pages_costs_allocation(tearsheet: dict, styles: dict, narratives: dict, int
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; hr = styles['hr']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -880,7 +880,7 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; hr = styles['hr']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -1165,13 +1165,190 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
     return S
 
 
+
+
+def _pages_islamic_finance(tearsheet: dict, styles: dict, narratives: dict, interpretations: dict) -> list:
+    """Page Finance Islamique — Conformite AAOIFI."""
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
+
+    title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
+    small_s = styles['small']; section_s = styles['section']; bold_s = styles['bold']
+    tbl_style = styles['tbl_style']
+
+    S = []
+    meta = tearsheet.get('meta', {})
+    tickers = meta.get('tickers', [])
+    screening = tearsheet.get('screening', {})
+
+    S += [
+        Paragraph("Finance Islamique — Conformite AAOIFI", title_s),
+        HRFlowable(width="100%", thickness=2, color=colors.HexColor(GOLD)),
+        Spacer(1, 0.3 * cm),
+        Paragraph(
+            "Analyse de conformite aux standards AAOIFI (Accounting and Auditing Organisation "
+            "for Islamic Financial Institutions). Quatre criteres cumulatifs obligatoires.",
+            body_s
+        ),
+        Spacer(1, 0.4 * cm),
+    ]
+
+    # Tableau des criteres AAOIFI
+    CRITERIA = [
+        ("1", "Secteur d'activite",
+         "Exclusion des secteurs non-conformes : alcool, tabac, armement, jeux, intérets.",
+         "Blacklist sectorielle"),
+        ("2", "Ratio dette portant interets",
+         "Dette ST + LT / capitalisation boursiere <= 33%.",
+         "ESEF / SEC EDGAR"),
+        ("3", "Ratio liquidites portant interets",
+         "Tresorerie + actifs financiers / capitalisation <= 33%.",
+         "ESEF / SEC EDGAR"),
+        ("4", "Revenus non-permissibles",
+         "Revenus haram / chiffre d'affaires total <= 5%.",
+         "Segments ESEF / Rapports annuels"),
+    ]
+
+    header = ["Critere", "Nom", "Description", "Source"]
+    rows = [header] + [[c[0], c[1], c[2], c[3]] for c in CRITERIA]
+    t = Table(rows, colWidths=[1.2*cm, 4.5*cm, 9.0*cm, 3.5*cm])
+    ts = TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0), colors.HexColor(NAVY)),
+        ("TEXTCOLOR",     (0, 0), (-1, 0), colors.white),
+        ("FONTNAME",      (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [colors.HexColor("#f0f4f8"), colors.white]),
+        ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
+        ("TOPPADDING",    (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+    ])
+    t.setStyle(ts)
+    S += [t, Spacer(1, 0.5*cm)]
+
+    # Resultats par ticker
+    if tickers and screening:
+        S += [
+            Paragraph("Resultats par titre", section_s),
+            HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+            Spacer(1, 0.3*cm),
+        ]
+
+        ticker_header = ["Ticker", "Conformite", "C1 Secteur", "C2 Dette", "C3 Liquidites", "C4 Revenus", "Details"]
+        ticker_rows = [ticker_header]
+
+        for ticker in tickers:
+            info = screening.get(ticker, {})
+            is_sharia = info.get('is_sharia')
+            sharia = info.get('sharia', {})
+            checks = sharia.get('checks', [])
+
+            verdict = "CONFORME" if is_sharia else ("NON CONFORME" if is_sharia is False else "N/D")
+
+            def get_check(n):
+                c = next((x for x in checks if x.get('name','').startswith(str(n)+'.')), None)
+                if not c:
+                    return "N/D"
+                return "OK" if c.get('passed') else "KO"
+
+            # Details critere 4
+            haram = info.get('haram_revenue_ratio')
+            debt  = info.get('sharia_debt_ratio')
+            detail = ""
+            if haram is not None:
+                detail += f"Haram: {haram*100:.1f}% "
+            if debt is not None:
+                detail += f"Dette: {debt*100:.1f}%"
+
+            ticker_rows.append([
+                ticker,
+                verdict,
+                get_check(1),
+                get_check(2),
+                get_check(3),
+                get_check(4),
+                detail or "—",
+            ])
+
+        # Couleurs conditionnelles
+        style_cmds = [
+            ("BACKGROUND",    (0, 0), (-1, 0), colors.HexColor(NAVY)),
+            ("TEXTCOLOR",     (0, 0), (-1, 0), colors.white),
+            ("FONTNAME",      (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 8),
+            ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ]
+        for i, row in enumerate(ticker_rows[1:], 1):
+            verdict = row[1]
+            if verdict == "CONFORME":
+                style_cmds.append(("BACKGROUND", (1, i), (1, i), colors.HexColor("#d4edda")))
+                style_cmds.append(("TEXTCOLOR",  (1, i), (1, i), colors.HexColor("#155724")))
+            elif verdict == "NON CONFORME":
+                style_cmds.append(("BACKGROUND", (1, i), (1, i), colors.HexColor("#f8d7da")))
+                style_cmds.append(("TEXTCOLOR",  (1, i), (1, i), colors.HexColor("#721c24")))
+            # Couleurs OK/KO
+            for col in range(2, 6):
+                val = row[col]
+                if val == "OK":
+                    style_cmds.append(("TEXTCOLOR", (col, i), (col, i), colors.HexColor("#155724")))
+                elif val == "KO":
+                    style_cmds.append(("TEXTCOLOR", (col, i), (col, i), colors.HexColor("#721c24")))
+            # Alternance lignes
+            if i % 2 == 0:
+                style_cmds.append(("BACKGROUND", (0, i), (0, i), colors.HexColor("#f0f4f8")))
+                style_cmds.append(("BACKGROUND", (2, i), (-1, i), colors.HexColor("#f0f4f8")))
+
+        tt = Table(ticker_rows, colWidths=[2.0*cm, 2.8*cm, 2.0*cm, 2.0*cm, 2.5*cm, 2.5*cm, 4.4*cm])
+        tt.setStyle(TableStyle(style_cmds))
+        S += [tt, Spacer(1, 0.5*cm)]
+
+    # Note methodologique
+    S += [
+        Paragraph("Note methodologique", section_s),
+        HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+        Spacer(1, 0.2*cm),
+        Paragraph(
+            "<b>Sources des donnees :</b> Les donnees de conformite proviennent de "
+            "filings ESEF (European Single Electronic Format) via filings.xbrl.org, "
+            "des declarations SEC EDGAR pour les societes US, et des rapports annuels "
+            "publics pour les donnees de segments de revenus non couvertes par les "
+            "taxonomies standard.",
+            body_s
+        ),
+        Spacer(1, 0.2*cm),
+        Paragraph(
+            "<b>Limites :</b> Les donnees de segments sont mises a jour annuellement "
+            "apres la publication des rapports annuels. Les ratios de dette et de "
+            "liquidites sont actualises hebdomadairement. La conformite Finance Islamique "
+            "ne constitue pas un avis juridique ou religieux.",
+            body_s
+        ),
+        Spacer(1, 0.2*cm),
+        Paragraph(
+            "<b>Reference :</b> AAOIFI — Accounting and Auditing Organisation for "
+            "Islamic Financial Institutions. Standards FAS et Governance Standards.",
+            small_s
+        ),
+        PageBreak(),
+    ]
+
+    return S
+
 def _pages_methodology(tearsheet: dict, styles: dict, narratives: dict, interpretations: dict) -> list:
     """Auto-extracted PDF page builder."""
     from reportlab.lib import colors
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']; p = styles['p']; f = styles['f']; e = styles['e']; chart = styles['chart']; tbl_style = styles['tbl_style']; hr = styles['hr']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -1278,6 +1455,18 @@ def generate_pdf(tearsheet: dict) -> bytes:
     kpi_s = st("K", fontSize=22, textColor=colors.HexColor(GOLD), fontName="Helvetica-Bold", spaceAfter=0)
     kpi_label_s = st("KL", fontSize=7, textColor=colors.HexColor(GREY), fontName="Helvetica", spaceAfter=2)
 
+    # Dict custom passe aux sous-fonctions _pages_*
+    styles = {
+        "title":      title_s,
+        "subtitle":   subtitle_s,
+        "section":    section_s,
+        "body":       body_s,
+        "small":      small_s,
+        "disclaimer": disclm_s,
+        "bold":       bold_s,
+        "kpi":        kpi_s,
+        "kpi_label":  kpi_label_s,
+    }
 
     def tbl_style():
         return TableStyle(
@@ -1307,24 +1496,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
     def hr():
         return HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD))
-
-    # Dict custom passe aux sous-fonctions _pages_*
-    styles = {
-        "title":      title_s,
-        "subtitle":   subtitle_s,
-        "section":    section_s,
-        "body":       body_s,
-        "small":      small_s,
-        "disclaimer": disclm_s,
-        "bold":       bold_s,
-        "kpi":        kpi_s,
-        "kpi_label":  kpi_label_s,
-        "hr":         hr,
-    }
-
-
-
-
 
     doc = SimpleDocTemplate(
         buf,
@@ -1357,6 +1528,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
     S += _pages_performance_charts(tearsheet, styles, narratives, interpretations)
     S += _pages_costs_allocation(tearsheet, styles, narratives, interpretations)
     S += _pages_analysis(tearsheet, styles, narratives, interpretations)
+    S += _pages_islamic_finance(tearsheet, styles, narratives, interpretations)
     S += _pages_methodology(tearsheet, styles, narratives, interpretations)
     doc.build(S)
     return buf.getvalue()
