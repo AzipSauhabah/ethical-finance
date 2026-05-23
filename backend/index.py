@@ -538,15 +538,14 @@ def _screener_rank(scores_df, method, top_n):
     scores_df = scores_df.head(top_n).reset_index(drop=True)
     scores_df["rank"] = scores_df.index + 1
     scores_df["score"] = scores_df["score"].round(2)
-    # Propager colonnes Sharia depuis df original
+    # Colonnes Finance Islamique — deja dans scores_df depuis _screener_load_fundamentals
     for col in ["haram_revenue_ratio", "sharia_debt_ratio", "sharia_income_ratio"]:
-        if col in df.columns:
-            scores_df = scores_df.merge(df[["ticker", col]], on="ticker", how="left")
-    # Calculer is_sharia simple
+        if col not in scores_df.columns:
+            scores_df[col] = None
     scores_df["is_sharia"] = (
-        scores_df.get("sharia_income_ratio", 1.0).fillna(1.0) <= 0.05
+        scores_df["sharia_income_ratio"].fillna(1.0) <= 0.05
     ) & (
-        scores_df.get("sharia_debt_ratio", 1.0).fillna(1.0) <= 0.33
+        scores_df["sharia_debt_ratio"].fillna(1.0) <= 0.33
     )
     return scores_df
 
