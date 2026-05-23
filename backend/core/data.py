@@ -488,7 +488,8 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
                 row = conn.execute(
                     sa.text("""
                     SELECT ticker, name, sector, industry, country, currency, exchange,
-                           market_cap, beta, dividend_yield, total_debt, total_revenue
+                           market_cap, beta, dividend_yield, total_debt, total_revenue,
+                           revenue_segments, total_cash
                     FROM ticker_fundamentals
                     WHERE ticker = :ticker
                     LIMIT 1
@@ -514,6 +515,8 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
             "dividend_yield": float(row[9] or 0.0),
             "total_debt": int(row[10] or 0),
             "total_revenue": int(row[11] or 0),
+            "revenue_segments": dict(row[12]) if row[12] else None,
+            "total_cash": int(row[13] or 0),
             "interest_expense": 0,
             "esg_scores": {},
         }
