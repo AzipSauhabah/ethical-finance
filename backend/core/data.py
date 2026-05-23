@@ -527,8 +527,8 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
             "long_term_debt":        int(row[18] or 0),
             "total_assets":          int(row[19] or 0),
             "total_equity":          int(row[20] or 0),
-            "haram_revenue_ratio":   float(row[21]) if row[21] is not None else None,
-            "sharia_debt_ratio":     float(row[22]) if row[22] is not None else None,
+            "haram_revenue_ratio":   float(row[14]) if row[14] is not None else None,
+            "sharia_debt_ratio":     float(row[15]) if row[15] is not None else None,
             "esg_scores": {},
         }
     except Exception as e:
