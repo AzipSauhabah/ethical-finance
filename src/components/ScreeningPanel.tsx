@@ -544,7 +544,8 @@ export default function ScreeningPanel({
                       </td>
                     </tr>
                     {expandedTicker === r.ticker && <IslamicFinancePanel r={r} />}
-                  ))}
+                  </>) }
+                  )}
                 </tbody>
               </table>
             </div>
