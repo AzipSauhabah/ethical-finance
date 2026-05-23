@@ -162,6 +162,8 @@ async def get_latest_filing(lei: str, client: httpx.AsyncClient) -> Optional[dic
         )
         data = r.json().get("data", [])
         if data:
+            # Trie côté Python par period_end décroissant
+            data.sort(key=lambda x: x["attributes"].get("period_end", ""), reverse=True)
             return data[0]["attributes"]
     except Exception as exc:
         log.warning("Filing lookup failed for LEI %s: %s", lei, exc)
