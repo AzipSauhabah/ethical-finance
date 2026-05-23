@@ -122,8 +122,51 @@ _FLOW_CONCEPTS = {
 # Fetch LEI depuis info-financiere.gouv.fr
 # ─────────────────────────────────────────────────────────────────────────────
 
+# LEI hardcodés pour éviter les ambiguïtés du lookup par nom
+_TICKER_TO_LEI: dict[str, str] = {
+    "MC.PA":   "IOG4E947OATN0KJYSD45",  # LVMH
+    "TTE.PA":  "529900S21EQ1BO4ESM68",  # TotalEnergies
+    "SAN.PA":  "ZU21BBDW5TWS5BHMSD60",  # Sanofi
+    "OR.PA":   "LBQXPBHCQF5DNGLZL195",  # L'Oréal
+    "AIR.PA":  "VNN1OYBB7298VLHH5P36",  # Airbus
+    "BNP.PA":  "R0MUWSFPU8MPRO8K5P83",  # BNP Paribas
+    "SU.PA":   "549300FXZPV7UBXJ3L90",  # Schneider Electric
+    "AI.PA":   "529900IBP8LD3TS8H915",  # Air Liquide
+    "RMS.PA":  "969500UP76J52A9OXU27",  # Hermès
+    "KER.PA":  "5299001GJKFGZM0FRM93",  # Kering
+    "SAF.PA":  "96950010J6JKW0LKUR55",  # Safran
+    "HO.PA":   "529900XYBRTNFKUIOB87",  # Thales
+    "DSY.PA":  "2221009RDQNJHPUPJ966",  # Dassault Systèmes
+    "EL.PA":   "969500O9SQJFQ8MJCH09",  # EssilorLuxottica
+    "DG.PA":   "969500M4IHLQFT9CKS28",  # Vinci
+    "CS.PA":   "UNXMKZ4LCXQNRZ4YJP57",  # AXA
+    "GLE.PA":  "O2RNE8IBXP4R0TD8PU41",  # Société Générale
+    "ACA.PA":  "969500TJ5KRTCJQWXH05",  # Crédit Agricole
+    "ORA.PA":  "969500GM7J1WTAXQ7O45",  # Orange
+    "ENGI.PA": "529900TCTJYQP2HJKQ10",  # Engie
+    "VIE.PA":  "969500BHL7BDKRQQLJ67",  # Veolia
+    "BN.PA":   "EPGKIMFIXFXZAQVF3T31",  # Danone
+    "CA.PA":   "969500ALB8PJGD7KRQ27",  # Carrefour
+    "SGO.PA":  "XHDVJ1T4WKFWQGQ2VM34",  # Saint-Gobain
+    "ML.PA":   "969500QQC7XT6L4CJE37",  # Michelin
+    "RNO.PA":  "96950065LENZ4PIZBX03",  # Renault
+    "RI.PA":   "529900OJ9BKPFD68CF70",  # Pernod Ricard
+    "PUB.PA":  "969500A1X7V6IXRUFP42",  # Publicis
+    "VIV.PA":  "969500EF2HUZS2ZXNB74",  # Vivendi
+    "EN.PA":   "969500P5GJBJP5FHKQ23",  # Bouygues
+    "CAP.PA":  "529900VMMG6AHOVP4536",  # Capgemini
+    "LR.PA":   "969500EAB7EF2TDPCI35",  # Legrand
+    "TEP.PA":  "9695004GKDCXE78QWP22",  # Teleperformance
+    "WLN.PA":  "969500BIIX3FVOROIZ09",  # Worldline
+    "URW.PA":  "969500O9SQLZQOHSIZ41",  # Unibail-Rodamco
+}
+
 async def get_lei(ticker: str, client: httpx.AsyncClient) -> Optional[str]:
-    """Résout ticker .PA → LEI via le dataset codes-lei."""
+    """Résout ticker .PA → LEI. Utilise le dict hardcodé en priorité."""
+    # Priorité 1 : dict hardcodé (évite les ambiguïtés du lookup par nom)
+    if ticker.upper() in _TICKER_TO_LEI:
+        return _TICKER_TO_LEI[ticker.upper()]
+
     fragment = ticker.upper().replace(".PA", "").replace(".FP", "")
     try:
         r = await client.get(
