@@ -235,6 +235,50 @@ def run_sharia_screen(info: dict) -> ShariaScreen:
         ),
     ))
 
+
+    # ── Court-circuit banques / assurances (AAOIFI) ──────────────────────────
+    # Les banques et assurances échouent structurellement :
+    #   - Critère 2 : dette portant intérêts >>> 33% market cap (business model)
+    #   - Critère 3 : revenus d'intérêts >>> 33% market cap
+    #   - Critère 4 : intérêts = activité principale
+    # Pas besoin de données — le secteur suffit.
+    _BANK_SECTORS = {
+        "bank", "banking", "financial services", "insurance",
+        "diversified financials", "capital markets", "thrifts",
+        "consumer finance", "mortgage",
+    }
+    _sector_lower = (info.get("sector", "") or "").lower()
+    _industry_lower = (info.get("industry", "") or "").lower()
+    _is_bank = any(s in _sector_lower or s in _industry_lower for s in _BANK_SECTORS)
+
+    if _is_bank:
+        checks.append(ScreenCheck(
+            name="2. Ratio dette a interets (<=33%)",
+            passed=False,
+            value=1.0,
+            threshold=SHARIA_DEBT_RATIO_MAX,
+            description="Banque/assurance : dette portant interets structurellement > 33% market cap",
+        ))
+        checks.append(ScreenCheck(
+            name="3. Ratio liquidites (<=33%)",
+            passed=False,
+            value=1.0,
+            threshold=SHARIA_LIQUIDITY_RATIO_MAX,
+            description="Banque/assurance : produits d'interets structurellement > 33% market cap",
+        ))
+        checks.append(ScreenCheck(
+            name="4. Revenus non-permissibles (<=5%)",
+            passed=False,
+            value=1.0,
+            threshold=SHARIA_INCOME_RATIO_MAX,
+            description="Banque/assurance : revenus d'interets = activite principale (non-permissible)",
+        ))
+        return ShariaScreen(
+            passed=False,
+            score=0.0,
+            checks=checks,
+        )
+
     # Critère 2 : Ratio dette portant intérêts / capitalisation ≤ 33% (AAOIFI)
     cap = float(info.get("market_cap", 0) or 0)
     ibd = float(
