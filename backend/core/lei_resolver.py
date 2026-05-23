@@ -307,7 +307,7 @@ async def _upsert_lei(
         """,
         ticker, lei, legal_name, source,
         has_esef_filing, esef_filing_count,
-        last_period_end,
+        datetime.strptime(last_period_end, "%Y-%m-%d").date() if last_period_end else None,
         datetime.now(timezone.utc),
     )
 
