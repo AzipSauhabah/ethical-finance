@@ -1421,8 +1421,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
         TableStyle,
     )
 
-    def st(name, **kw):
-        return ParagraphStyle(name, parent=_base_styles["Normal"], **kw)
 
     title_s = st(
         "T", fontSize=20, textColor=colors.HexColor(NAVY), fontName="Helvetica-Bold", spaceAfter=8
@@ -1445,6 +1443,11 @@ def generate_pdf(tearsheet: dict) -> bytes:
 
     kpi_s = st("K", fontSize=22, textColor=colors.HexColor(GOLD), fontName="Helvetica-Bold", spaceAfter=0)
     kpi_label_s = st("KL", fontSize=7, textColor=colors.HexColor(GREY), fontName="Helvetica", spaceAfter=2)
+
+    _base_styles = getSampleStyleSheet()
+
+    def st(name, **kw):
+        return ParagraphStyle(name, parent=_base_styles["Normal"], **kw)
 
     def tbl_style():
         return TableStyle(
@@ -1497,7 +1500,6 @@ def generate_pdf(tearsheet: dict) -> bytes:
         return _fig_to_image_flowable(fig, width_cm)
 
     buf = io.BytesIO()
-    _base_styles = getSampleStyleSheet()
 
 
     # Dict custom passe aux sous-fonctions _pages_*
