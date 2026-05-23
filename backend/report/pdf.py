@@ -521,7 +521,7 @@ def _pages_cover_summary(tearsheet: dict, styles: dict, narratives: dict, interp
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -606,7 +606,7 @@ def _pages_performance_charts(tearsheet: dict, styles: dict, narratives: dict, i
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -813,7 +813,7 @@ def _pages_costs_allocation(tearsheet: dict, styles: dict, narratives: dict, int
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -880,7 +880,7 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -1171,7 +1171,7 @@ def _pages_methodology(tearsheet: dict, styles: dict, narratives: dict, interpre
     from reportlab.lib.units import cm
     from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
     title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
-    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']
+    small_s = styles['small']; disclm_s = styles['disclaimer']; bold_s = styles['bold']; section_s = styles['section']; hr = styles['hr']
     kpi_s = styles['kpi']; kpi_label_s = styles['kpi_label']
     meta = tearsheet['meta']; m = tearsheet['metrics']
     sig = tearsheet.get('significance', {})
@@ -1289,6 +1289,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
         "bold":       bold_s,
         "kpi":        kpi_s,
         "kpi_label":  kpi_label_s,
+        "hr":         hr,
     }
 
     def tbl_style():
