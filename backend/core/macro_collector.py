@@ -141,14 +141,14 @@ async def upsert_insee_all(db_engine, token: str = "") -> int:
     import sqlalchemy as sa
     total = 0
     for series_id, (name, freq, unit) in FRED_FRANCE_SERIES.items():
-        rows = await fetch_insee_series(series_id, token)
+        rows = await fetch_fred_series(series_id, start='2015-01-01')
         if not rows:
             continue
         with db_engine.connect() as conn:
             for row in rows:
                 conn.execute(sa.text("""
                     INSERT INTO macro_series (series_id, source, name, frequency, date, value, unit)
-                    VALUES (:sid, 'INSEE', :name, :freq, :date, :value, :unit)
+                    VALUES (:sid, 'FRED_FR', :name, :freq, :date, :value, :unit)
                     ON CONFLICT (series_id, date) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
                 """), {"sid": f"INSEE:{series_id}", "name": name, "freq": freq,
                        "date": row["date"], "value": row["value"], "unit": unit})
