@@ -520,7 +520,7 @@ export default function TickerManager({ tickers, setTickers }: Props) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
           <thead>
             <tr style={{ background: '#0d1528' }}>
-              {['TICKER', 'NOM', 'DERNIER', 'BID', 'ASK', 'VOLUME', 'VAR. %', 'ESG', 'FIN. ISL.', ''].map(h => (
+              {['TICKER', 'NOM', 'DERNIER', 'BID', 'ASK', 'VOLUME', 'VAR. %', 'ESG', 'FIN. ISL.', 'BUFFETT', ''].map(h => (
                 <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.65rem', letterSpacing: '2px', color: '#666', fontWeight: 600, borderBottom: '1px solid #1e2d4a' }}>{h}</th>
               ))}
             </tr>
