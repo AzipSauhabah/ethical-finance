@@ -87,6 +87,17 @@ graph TB
 - [x] Buffett Score — ROE / Dette / FCF Yield / Marge nette, score 0-100, panel Portfolio + Screener + PDF
 - [x] ESG renommage interface + badge ✓ Finance Islamique
 
+### Vision — Au-delà de QuantConnect
+
+| Axe | Ethical Finance | QuantConnect |
+|---|---|---|
+| **Transparence** | Code source complet, chaque hypothèse visible | Boîte noire cloud |
+| **Screening éthique/islamique** | Natif AAOIFI + ESG + Buffett Score | Absent |
+| **Coûts français réalistes** | TTF, PEA, Fortuneo/Degiro grilles réelles | Calibré marché US |
+| **ML hybride** | EPR5 : LSTM + Magic Formula + Sharia dans un pipeline | Séparé |
+| **Stratégies plug-and-play** | `@register` → auto GUI + API sans toucher au code | Configuration lourde |
+| **LLM local** | Ollama (après RAM 16Go) → stratégies en langage naturel | Non prévu |
+
 ### À venir
 - [ ] NAV changements de composition d'indice (SP500/CAC40 annuels)
 - [ ] Notifications Gitea (email sur échec de job)
