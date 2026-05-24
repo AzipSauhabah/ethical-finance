@@ -47,9 +47,9 @@ async def job_macro_series() -> None:
         fred_key = os.environ.get("FRED_API_KEY", "")
         n_fred = await upsert_fred_all(engine, api_key=fred_key)
         n_insee = await upsert_insee_all(engine)
-        from backend.core.macro_collector import fetch_dvf_index
-        n_dvf = await fetch_dvf_index(engine)
-        log.info("Macro job complete — FRED: %d rows, INSEE: %d rows, DVF: %d rows", n_fred, n_insee, n_dvf)
+        from backend.core.macro_collector import fetch_dvf_csv
+        n_dvf = await fetch_dvf_csv(engine)
+        log.info("Macro job complete — FRED: %d rows, FRED_FR: %d rows, DVF: %d rows", n_fred, n_insee, n_dvf)
     except Exception as e:
         log.warning("Macro job error: %s", e)
 
