@@ -35,6 +35,11 @@ FRED_SERIES = {
     # Credit
     "TOTALSL":   ("Consumer Credit Outstanding", "monthly", "USD B"),
     "DRCCLACBS": ("Credit Card Delinquency Rate", "quarterly", "%"),
+    "INTGSBFRM193N": ("France Govt Bond 10Y Yield", "monthly", "%"),
+    "MYAGM2EZM196N": ("Euro Area M2 Money Supply", "monthly", "EUR B"),
+    "ECBDFR":        ("ECB Deposit Facility Rate", "daily", "%"),
+    "BOGMBASE":      ("US Monetary Base", "monthly", "USD B"),
+    "WALCL":         ("Fed Balance Sheet Total Assets", "weekly", "USD B"),
 }
 
 async def fetch_fred_series(series_id: str, api_key: str = "", start: str = "2020-01-01") -> list[dict]:
