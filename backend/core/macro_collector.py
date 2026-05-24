@@ -106,32 +106,27 @@ INSEE_SERIES = {
 }
 
 async def fetch_insee_series(series_id: str, token: str = "") -> list[dict]:
-    """Fetch une série INSEE BDM (accès public sans token ou avec token)."""
+    """Fetch une série INSEE BDM via CSV public (sans auth)."""
     rows = []
     try:
-        url = f"{INSEE_BASE}/{series_id}?startPeriod=2020-01&format=json"
-        headers = {"Accept": "application/json"}
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.get(url, headers=headers)
-            data = r.json()
-            obs_list = (data.get("GenericData", {})
-                           .get("DataSet", {})
-                           .get("Series", {})
-                           .get("Obs", []))
-            if isinstance(obs_list, dict):
-                obs_list = [obs_list]
-            for obs in obs_list:
-                period = obs.get("ObsDimension", {}).get("value", "")
-                value  = obs.get("ObsValue", {}).get("value")
-                if period and value:
-                    # Convertit 2024-01 → 2024-01-01
-                    d = period + "-01" if len(period) == 7 else period
-                    try:
-                        rows.append({"date": d, "value": float(value)})
-                    except ValueError:
-                        pass
+        # URL CSV publique BDM — ne nécessite pas d'auth
+        url = f"https://www.bdm.insee.fr/series/sdmx/data/SERIES_BDM/{series_id}?startPeriod=2020-01&format=csvnohead"
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+            r = await client.get(url, headers={"Accept": "text/csv"})
+            if r.status_code != 200:
+                log.warning("INSEE %s HTTP %d", series_id, r.status_code)
+                return []
+            for line in r.text.strip().split("\n")[1:]:
+                parts = line.split(";")
+                if len(parts) >= 2:
+                    period = parts[0].strip().strip('"')
+                    val = parts[-1].strip().strip('"')
+                    if period and val and val not in ("", "NA", "."):
+                        d = period + "-01" if len(period) == 7 else period
+                        try:
+                            rows.append({"date": d, "value": float(val.replace(",", "."))})
+                        except ValueError:
+                            pass
     except Exception as e:
         log.warning("INSEE %s error: %s", series_id, e)
     return rows
