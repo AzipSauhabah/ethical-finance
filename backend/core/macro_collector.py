@@ -304,3 +304,69 @@ async def fetch_dvf_index(db_engine) -> int:
     except Exception as e:
         log.warning("DVF error: %s", e)
         return 0
+
+
+async def fetch_dvf_csv(db_engine, year: int = 2024) -> int:
+    """Telecharge DVF CSV, agrege prix/m2 par trimestre et departement."""
+    import gzip, io, csv, statistics
+    import sqlalchemy as sa
+    from collections import defaultdict
+    url = f"https://files.data.gouv.fr/geo-dvf/latest/csv/{year}/full.csv.gz"
+    log.info("DVF: telechargement %s...", url)
+    try:
+        async with httpx.AsyncClient(timeout=120, follow_redirects=True) as client:
+            r = await client.get(url)
+            if r.status_code != 200:
+                log.warning("DVF HTTP %d", r.status_code)
+                return 0
+        buckets = defaultdict(list)
+        with gzip.open(io.BytesIO(r.content), "rt", encoding="utf-8", errors="ignore") as f:
+            reader = csv.DictReader(f, delimiter=",")
+            for row in reader:
+                try:
+                    date_str = row.get("date_mutation", "")
+                    if not date_str or len(date_str) < 7:
+                        continue
+                    month = int(date_str[5:7])
+                    quarter = (month - 1) // 3 + 1
+                    periode = f"{date_str[:4]}-Q{quarter}"
+                    dept = row.get("code_departement", "")[:2]
+                    surface = row.get("surface_reelle_bati", "")
+                    valeur = row.get("valeur_fonciere", "").replace(",", ".")
+                    type_local = row.get("type_local", "")
+                    if surface and valeur and type_local in ("Appartement", "Maison"):
+                        s, v = float(surface), float(valeur)
+                        if 10 < s < 500 and v > 10000:
+                            buckets[(periode, dept)].append(v / s)
+                except (ValueError, KeyError):
+                    continue
+        count = 0
+        with db_engine.connect() as conn:
+            for (periode, dept), prix_list in buckets.items():
+                if len(prix_list) < 10:
+                    continue
+                median_prix = statistics.median(prix_list)
+                y, q = periode.split("-Q")
+                month_start = (int(q) - 1) * 3 + 1
+                d = f"{y}-{month_start:02d}-01"
+                conn.execute(sa.text("""
+                    INSERT INTO macro_series (series_id, source, name, frequency, date, value, unit)
+                    VALUES (:sid, 'DVF', :name, 'quarterly', :date, :value, 'EUR/m2')
+                    ON CONFLICT (series_id, date) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
+                """), {"sid": f"DVF:PRIX_M2_{dept}", "name": f"Prix m2 median dept {dept}",
+                       "date": d, "value": round(median_prix, 2)})
+                count += 1
+            all_prices = [p for prices in buckets.values() for p in prices]
+            if all_prices:
+                conn.execute(sa.text("""
+                    INSERT INTO macro_series (series_id, source, name, frequency, date, value, unit)
+                    VALUES ('DVF:PRIX_M2_FR', 'DVF', 'Prix m2 median France', 'annual', :date, :value, 'EUR/m2')
+                    ON CONFLICT (series_id, date) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
+                """), {"date": f"{year}-01-01", "value": round(statistics.median(all_prices), 2)})
+                count += 1
+            conn.commit()
+        log.info("DVF %d: %d series upserted", year, count)
+        return count
+    except Exception as e:
+        log.warning("DVF error: %s", e)
+        return 0
