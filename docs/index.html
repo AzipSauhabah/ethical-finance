@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ethical Finance — Documentation Technique</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0d1628;
+  --navy2: #111e35;
+  --navy3: #142340;
+  --gold: #b8962f;
+  --gold2: #d4a93a;
+  --green: #1d8c41;
+  --red: #b82424;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #475569;
+  --border: #1e2d4a;
+  --border2: #2a3a5a;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Syne', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--navy);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+#sidebar {
+  width: 280px;
+  min-height: 100vh;
+  background: var(--navy2);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  top: 0; left: 0;
+  overflow-y: auto;
+  z-index: 100;
+  padding-bottom: 2rem;
+}
+.sidebar-logo {
+  padding: 1.5rem 1.2rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo h1 {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+.sidebar-logo p {
+  font-size: 0.65rem;
+  color: var(--text3);
+  margin-top: 0.2rem;
+  font-family: var(--mono);
+}
+.sidebar-section {
+  padding: 1rem 1.2rem 0.3rem;
+  font-size: 0.58rem;
+  letter-spacing: 3px;
+  color: var(--text3);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.2rem;
+  font-size: 0.78rem;
+  color: var(--text2);
+  text-decoration: none;
+  transition: all 0.15s;
+  font-family: var(--mono);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.sidebar-item:hover { background: rgba(184,150,47,0.06); color: var(--gold); border-left-color: var(--gold); }
+.sidebar-item.active { background: rgba(184,150,47,0.1); color: var(--gold); border-left-color: var(--gold); }
+.sidebar-item .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0;
+}
+.sidebar-item:hover .dot, .sidebar-item.active .dot { background: var(--gold); }
+
+/* ── Main ── */
+#main {
+  margin-left: 280px;
+  flex: 1;
+  padding: 2rem 2.5rem;
+  max-width: calc(100vw - 280px);
+}
+
+/* ── Header ── */
+.page-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+.page-header h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+.page-header p { color: var(--text2); font-size: 0.85rem; }
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  letter-spacing: 1px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+.badge-gold { background: rgba(184,150,47,0.2); color: var(--gold); border: 1px solid rgba(184,150,47,0.3); }
+.badge-green { background: rgba(29,140,65,0.2); color: #4ade80; border: 1px solid rgba(29,140,65,0.3); }
+.badge-blue { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+.badge-red { background: rgba(184,36,36,0.2); color: #f87171; border: 1px solid rgba(184,36,36,0.3); }
+
+/* ── Section ── */
+.section { margin-bottom: 3rem; }
+.section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Module card ── */
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1rem;
+}
+.module-card {
+  background: var(--navy2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.2rem;
+  transition: border-color 0.2s;
+}
+.module-card:hover { border-color: var(--border2); }
+.module-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.module-path {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--gold);
+  font-weight: 600;
+}
+.module-desc {
+  font-size: 0.78rem;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+}
+.module-exports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.export-tag {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(20,35,64,0.8);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--text2);
+}
+
+/* ── Endpoint table ── */
+.endpoint-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.endpoint-row {
+  display: grid;
+  grid-template-columns: 80px 280px 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.8rem 1rem;
+  background: var(--navy2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+.method {
+  font-weight: 700;
+  font-size: 0.65rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.GET { background: rgba(29,140,65,0.2); color: #4ade80; border: 1px solid rgba(29,140,65,0.3); }
+.POST { background: rgba(59,130,246,0.2); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+.WS { background: rgba(168,85,247,0.2); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+.endpoint-path { color: var(--gold); }
+.endpoint-desc { color: var(--text2); font-family: var(--sans); font-size: 0.78rem; }
+
+/* ── DB Table ── */
+.db-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+}
+.db-table th {
+  background: var(--navy3);
+  color: var(--text2);
+  font-size: 0.6rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.db-table td {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+}
+.db-table tr:hover td { background: rgba(184,150,47,0.04); }
+.db-table td:first-child { color: var(--gold); }
+.db-table td:nth-child(2) { color: #93c5fd; }
+
+/* ── Pipeline ── */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+.pipeline-step {
+  background: var(--navy2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.6rem 1rem;
+  font-size: 0.75rem;
+  font-family: var(--mono);
+  color: var(--text2);
+}
+.pipeline-step strong { color: var(--gold); display: block; font-size: 0.65rem; margin-bottom: 0.1rem; }
+.pipeline-arrow {
+  color: var(--border2);
+  font-size: 1.2rem;
+  padding: 0 0.5rem;
+}
+
+/* ── Stack overview ── */
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.stack-card {
+  background: var(--navy2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+}
+.stack-card h4 {
+  font-size: 0.65rem;
+  letter-spacing: 2px;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.stack-card ul { list-style: none; }
+.stack-card li {
+  font-size: 0.78rem;
+  color: var(--text2);
+  padding: 0.2rem 0;
+  font-family: var(--mono);
+}
+.stack-card li::before { content: "▸ "; color: var(--gold); }
+
+/* ── Tabs ── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.tab {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.tab:hover { color: var(--text2); }
+.tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Pages ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--navy); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── Search ── */
+.search-bar {
+  padding: 0.8rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+}
+.search-bar input {
+  width: 100%;
+  background: var(--navy3);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 0.4rem 0.7rem;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  outline: none;
+}
+.search-bar input:focus { border-color: var(--gold); }
+.search-bar input::placeholder { color: var(--text3); }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <h1>Ethical Finance</h1>
+    <p>v2.6 · Documentation technique</p>
+  </div>
+  <div class="search-bar">
+    <input type="text" placeholder="Rechercher..." id="searchInput" oninput="filterSidebar(this.value)">
+  </div>
+
+  <div class="sidebar-section">Vue d'ensemble</div>
+  <a class="sidebar-item active" onclick="showPage('overview')"><span class="dot"></span>Architecture</a>
+  <a class="sidebar-item" onclick="showPage('pipeline')"><span class="dot"></span>Pipeline de données</a>
+  <a class="sidebar-item" onclick="showPage('db')"><span class="dot"></span>Base de données</a>
+
+  <div class="sidebar-section">Backend Python</div>
+  <a class="sidebar-item" onclick="showPage('api')"><span class="dot"></span>API — index.py</a>
+  <a class="sidebar-item" onclick="showPage('core')"><span class="dot"></span>Core modules</a>
+  <a class="sidebar-item" onclick="showPage('backtest')"><span class="dot"></span>Backtest engine</a>
+  <a class="sidebar-item" onclick="showPage('strategies')"><span class="dot"></span>Stratégies</a>
+  <a class="sidebar-item" onclick="showPage('quant')"><span class="dot"></span>Quant / Signals</a>
+  <a class="sidebar-item" onclick="showPage('report')"><span class="dot"></span>Reports PDF</a>
+  <a class="sidebar-item" onclick="showPage('auth')"><span class="dot"></span>Auth JWT</a>
+
+  <div class="sidebar-section">Frontend React/TS</div>
+  <a class="sidebar-item" onclick="showPage('components')"><span class="dot"></span>Composants</a>
+  <a class="sidebar-item" onclick="showPage('types')"><span class="dot"></span>Types & Hooks</a>
+</nav>
+
+<!-- ── Main ── -->
+<main id="main">
+
+<!-- PAGE: OVERVIEW -->
+<div class="page active" id="page-overview">
+  <div class="page-header">
+    <h2>Architecture <span class="badge badge-gold">v2.6</span></h2>
+    <p>Plateforme d'analyse quantitative auto-hébergée — NAS Synology DS925+</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Stack technique</div>
+    <div class="stack-grid">
+      <div class="stack-card">
+        <h4>Infrastructure</h4>
+        <ul>
+          <li>NAS Synology DS925+</li>
+          <li>Docker Compose</li>
+          <li>Cloudflare Tunnel HTTPS</li>
+          <li>GitHub Mirror CI/CD</li>
+          <li>Gitea Actions (tests/lint)</li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>Backend</h4>
+        <ul>
+          <li>Python 3.11</li>
+          <li>FastAPI + Uvicorn</li>
+          <li>PostgreSQL 15 (:5433)</li>
+          <li>APScheduler</li>
+          <li>TensorFlow / scikit-learn</li>
+          <li>ReportLab + Matplotlib</li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>Frontend</h4>
+        <ul>
+          <li>React 18 + Vite + TypeScript</li>
+          <li>Nginx (fichiers buildés)</li>
+          <li>Recharts / JetBrains Mono</li>
+          <li>WebSocket (live quotes)</li>
+          <li>localStorage (portfolio)</li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>Sources de données</h4>
+        <ul>
+          <li>FMP (fondamentaux)</li>
+          <li>SEC EDGAR (US GAAP)</li>
+          <li>ESEF / xbrl.org (EU)</li>
+          <li>Twelve Data (OHLCV)</li>
+          <li>Yahoo Finance RSS</li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>PROD vs DEV</h4>
+        <ul>
+          <li>PROD: API :8000 / DB :5433</li>
+          <li>DEV: API :8001 / DB :5434</li>
+          <li>Workflow: docker cp + restart</li>
+          <li>JAMAIS --build (sauf pip)</li>
+          <li>JAMAIS git clean -fd</li>
+        </ul>
+      </div>
+      <div class="stack-card">
+        <h4>Déploiement</h4>
+        <ul>
+          <li>Mac → git push → GitHub</li>
+          <li>NAS: git pull (via alpine/git)</li>
+          <li>docker cp fichier → container</li>
+          <li>Frontend: node:20-alpine build</li>
+          <li>VITE_API_URL injecté build-time</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Ports & conteneurs</div>
+    <table class="db-table">
+      <thead><tr><th>Conteneur</th><th>Port</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>ethical-finance-api</td><td>:8000</td><td>API FastAPI PROD</td></tr>
+        <tr><td>ethical-finance-db</td><td>:5433</td><td>PostgreSQL PROD (2.75M OHLCV · 573 tickers)</td></tr>
+        <tr><td>ethical-finance-api-dev</td><td>:8001</td><td>API FastAPI DEV</td></tr>
+        <tr><td>ethical-finance-db-dev</td><td>:5434</td><td>PostgreSQL DEV (clone PROD)</td></tr>
+        <tr><td>nginx</td><td>:443</td><td>Frontend React buildé</td></tr>
+        <tr><td>pgAdmin</td><td>:5050</td><td>Interface DB — 192.168.1.47:5050</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PAGE: PIPELINE -->
+<div class="page" id="page-pipeline">
+  <div class="page-header">
+    <h2>Pipeline de données <span class="badge badge-blue">automatique</span></h2>
+    <p>Flux de collecte, transformation et stockage des données financières</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Scheduler APScheduler (UTC)</div>
+    <table class="db-table">
+      <thead><tr><th>Heure UTC</th><th>Job</th><th>Source</th><th>Cible DB</th></tr></thead>
+      <tbody>
+        <tr><td>20h00</td><td>daily_signals</td><td>PostgreSQL OHLCV local</td><td>daily_signals</td></tr>
+        <tr><td>20h30</td><td>job_intraday</td><td>Twelve Data</td><td>ohlcv_intraday</td></tr>
+        <tr><td>21h00</td><td>job_ohlcv_update</td><td>Twelve Data / yfinance</td><td>ohlcv</td></tr>
+        <tr><td>22h00</td><td>job_sec_fundamentals</td><td>SEC EDGAR API</td><td>ticker_fundamentals</td></tr>
+        <tr><td>22h30</td><td>job_fmp_fundamentals</td><td>FMP API</td><td>ticker_fundamentals</td></tr>
+        <tr><td>23h00</td><td>job_pg_backup</td><td>pg_dump</td><td>/backups/ (7j rétention)</td></tr>
+        <tr><td>lun 04h</td><td>job_esef_fundamentals</td><td>xbrl.org ESEF</td><td>ticker_fundamentals</td></tr>
+        <tr><td>variable</td><td>job_drive_sync</td><td>Google Drive</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Flux données fondamentales</div>
+    <div class="pipeline">
+      <div class="pipeline-step"><strong>FMP API</strong>net_margin · fcf_yield · total_equity · ibd</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>upsert_fmp()</strong>COALESCE sur revenue_segments</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>ticker_fundamentals</strong>PostgreSQL</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>registry.load()</strong>cache 1h</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>API /screening</strong>/buffett · /sharia</div>
+    </div>
+    <div class="pipeline" style="margin-top:0.5rem">
+      <div class="pipeline-step"><strong>SEC EDGAR</strong>30+ métriques GAAP</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>upsert_sec()</strong>CIK lookup</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>ticker_fundamentals</strong>PostgreSQL</div>
+    </div>
+    <div class="pipeline" style="margin-top:0.5rem">
+      <div class="pipeline-step"><strong>ESEF xbrl.org</strong>CAC40 / EU</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>esef_fundamentals</strong>revenue_segments</div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><strong>ticker_fundamentals</strong>haram_revenue_ratio</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: DB -->
+<div class="page" id="page-db">
+  <div class="page-header">
+    <h2>Base de données <span class="badge badge-blue">PostgreSQL 15</span></h2>
+    <p>Schéma des tables principales — 2.75M lignes OHLCV · 573 tickers · migration 0005</p>
+  </div>
+
+  <div class="section">
+    <div class="section-title">ticker_fundamentals — 40 colonnes (migration 0005)</div>
+    <table class="db-table">
+      <thead><tr><th>Colonne</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>ticker</td><td>text PK</td><td>Identifiant unique</td></tr>
+        <tr><td>name · sector · industry · country · currency · exchange</td><td>text</td><td>Métadonnées</td></tr>
+        <tr><td>market_cap · total_debt · total_revenue · total_cash</td><td>bigint</td><td>Données financières brutes</td></tr>
+        <tr><td>total_equity · total_assets · short_term_debt · long_term_debt</td><td>bigint</td><td>Bilan</td></tr>
+        <tr><td>interest_bearing_debt · interest_expense · interest_income</td><td>bigint</td><td>Critères Sharia AAOIFI</td></tr>
+        <tr><td>net_margin · fcf_yield · pe_ratio · ev_ebitda</td><td>double precision</td><td>Ratios calculés</td></tr>
+        <tr><td>debt_equity · current_ratio · net_margin · earning_yield_sec · roic_sec</td><td>double precision</td><td>Ratios Magic Formula</td></tr>
+        <tr><td>sharia_debt_ratio · sharia_liquidity_ratio · sharia_income_ratio</td><td>double precision</td><td>Ratios AAOIFI calculés</td></tr>
+        <tr><td>haram_revenue_ratio · non_permissible_income</td><td>double/bigint</td><td>Revenus haram</td></tr>
+        <tr><td>revenue_segments</td><td>jsonb</td><td>Segments CA par activité (index GIN)</td></tr>
+        <tr><td>universe</td><td>text</td><td>sp500 / cac40 / etf_broad / etf_precious_metals</td></tr>
+        <tr><td>updated_at · sec_updated_at · segments_fetched_at · sharia_ratios_updated_at</td><td>text/timestamp</td><td>Horodatages</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Autres tables</div>
+    <table class="db-table">
+      <thead><tr><th>Table</th><th>Lignes</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>ohlcv</td><td>2.75M</td><td>Prix OHLCV journaliers · 573 tickers · colonnes: ticker, date, open, high, low, close, adj_close, volume</td></tr>
+        <tr><td>ohlcv_intraday</td><td>variable</td><td>Prix 1h intraday — Twelve Data</td></tr>
+        <tr><td>daily_signals</td><td>variable</td><td>Signaux buy/sell par ticker/stratégie générés 20h UTC</td></tr>
+        <tr><td>ticker_lei_mapping</td><td>573</td><td>Mapping ticker → LEI (Legal Entity Identifier) ESEF</td></tr>
+        <tr><td>users / portfolios / positions</td><td>variable</td><td>Auth JWT + positions réelles utilisateurs</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- PAGE: API -->
+<div class="page" id="page-api">
+  <div class="page-header">
+    <h2>API FastAPI <span class="badge badge-green">backend/index.py</span></h2>
+    <p>Endpoints REST + WebSocket — <a href="https://api.sauhabah-advisory.eu/docs" style="color:var(--gold)">api.sauhabah-advisory.eu/docs</a></p>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="showTab(this,'tab-tickers')">Tickers</div>
+    <div class="tab" onclick="showTab(this,'tab-prices')">Prix</div>
+    <div class="tab" onclick="showTab(this,'tab-backtest')">Backtest</div>
+    <div class="tab" onclick="showTab(this,'tab-signals')">Signaux</div>
+    <div class="tab" onclick="showTab(this,'tab-misc')">Misc</div>
+  </div>
+
+  <div class="tab-content active" id="tab-tickers">
+    <div class="endpoint-list">
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/tickers/search?q=</span><span class="endpoint-desc">Recherche ticker par nom ou symbole dans ticker_fundamentals</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/tickers/{ticker}/screening</span><span class="endpoint-desc">Détail complet screening ESG + Sharia AAOIFI pour un ticker</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/tickers/{ticker}/buffett</span><span class="endpoint-desc">Buffett Score — ROE / Dette / FCF Yield / Marge nette — score 0-100</span></div>
+      <div class="endpoint-row"><span class="method POST">POST</span><span class="endpoint-path">/api/tickers/screen</span><span class="endpoint-desc">Screener multi-critères avec ranking Magic Formula / EPR5 / momentum</span></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-prices">
+    <div class="endpoint-list">
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/prices?tickers=&period=</span><span class="endpoint-desc">Prix historiques depuis PostgreSQL OHLCV (fallback yfinance)</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/prices/db</span><span class="endpoint-desc">Prix directement depuis DB sans fallback</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/prices/intraday</span><span class="endpoint-desc">Prix intraday 1h depuis ohlcv_intraday</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/quote/{ticker}</span><span class="endpoint-desc">Dernière cotation depuis OHLCV (bid/ask/volume/change%)</span></div>
+      <div class="endpoint-row"><span class="method WS">WS</span><span class="endpoint-path">/api/quote/stream/{ticker}</span><span class="endpoint-desc">Stream SSE live quotes — keepalive 120s</span></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-backtest">
+    <div class="endpoint-list">
+      <div class="endpoint-row"><span class="method POST">POST</span><span class="endpoint-path">/api/backtest</span><span class="endpoint-desc">Lance un backtest event-driven — retourne tearsheet JSON complet</span></div>
+      <div class="endpoint-row"><span class="method POST">POST</span><span class="endpoint-path">/api/backtest/pdf</span><span class="endpoint-desc">Génère le rapport PDF 15 pages (tearsheet + screening + buffett)</span></div>
+      <div class="endpoint-row"><span class="method POST">POST</span><span class="endpoint-path">/api/montecarlo</span><span class="endpoint-desc">Monte Carlo 10 000 chemins GBM + bootstrap — calibration bayésienne</span></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-signals">
+    <div class="endpoint-list">
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/signals?tickers=&strategy=</span><span class="endpoint-desc">Signaux journaliers buy/sell depuis daily_signals (générés 20h UTC)</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/sentiment/market</span><span class="endpoint-desc">Sentiment marché global VADER (Yahoo Finance RSS + Google News)</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/sentiment/{ticker}</span><span class="endpoint-desc">Sentiment par ticker — articles bullish/bearish + score</span></div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-misc">
+    <div class="endpoint-list">
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/health</span><span class="endpoint-desc">Health check — version + nb stratégies</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/meta</span><span class="endpoint-desc">Métadonnées plateforme — tickers disponibles, univers, devises</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/stats</span><span class="endpoint-desc">Stats DB — nb tickers, OHLCV rows, fundamentals</span></div>
+      <div class="endpoint-row"><span class="method GET">GET</span><span class="endpoint-path">/api/strategies</span><span class="endpoint-desc">Liste des 11 stratégies disponibles avec paramètres</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: CORE -->
+<div class="page" id="page-core">
+  <div class="page-header">
+    <h2>Core modules <span class="badge badge-gold">backend/core/</span></h2>
+    <p>Modules fondamentaux — données, cache, registry, screening</p>
+  </div>
+  <div class="module-grid">
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/data.py</span><span class="badge badge-gold">central</span></div>
+      <div class="module-desc">Source principale données. get_ticker_fundamentals() — SELECT 25 colonnes depuis ticker_fundamentals. get_prices() — OHLCV PostgreSQL + fallback yfinance. get_live_quote() — dernière cotation.</div>
+      <div class="module-exports">
+        <span class="export-tag">get_ticker_fundamentals()</span>
+        <span class="export-tag">get_prices()</span>
+        <span class="export-tag">get_live_quote()</span>
+        <span class="export-tag">get_fx_rate()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/registry.py</span><span class="badge badge-green">cache</span></div>
+      <div class="module-desc">Cache registry tickers — TickerInfo dataclass. load() async avec TTL 1h. run_sharia_screen() — 4 critères AAOIFI. ticker_to_dict() — sérialisation API. run_ethical_screen() ESG sectoriel.</div>
+      <div class="module-exports">
+        <span class="export-tag">TickerInfo</span>
+        <span class="export-tag">registry.load()</span>
+        <span class="export-tag">run_sharia_screen()</span>
+        <span class="export-tag">ticker_to_dict()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/buffett.py</span><span class="badge badge-gold">v2.6</span></div>
+      <div class="module-desc">Buffett Score 0-100. 4 critères : ROE (net_margin×rev/equity), Dette/CA (ibd/revenue), FCF Yield (fcf_yield colonne DB), Marge nette. Interpolation continue par critère, 25pts max chacun.</div>
+      <div class="module-exports">
+        <span class="export-tag">compute_buffett_score()</span>
+        <span class="export-tag">_score_roe()</span>
+        <span class="export-tag">_score_debt()</span>
+        <span class="export-tag">_score_fcf()</span>
+        <span class="export-tag">_score_moat()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/sec_edgar.py</span></div>
+      <div class="module-desc">SEC EDGAR API — data.sec.gov. CIK lookup depuis company_tickers.json officiel. 30+ métriques GAAP : revenue, netIncome, equity, assets, debt. Couverture SP500 49/50.</div>
+      <div class="module-exports">
+        <span class="export-tag">fetch_sec_fundamentals()</span>
+        <span class="export-tag">get_cik()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/fmp.py</span></div>
+      <div class="module-desc">Financial Modeling Prep API. Fondamentaux + ratios calculés. upsert_fmp_fundamentals() avec COALESCE sur revenue_segments/haram_revenue_ratio pour ne pas écraser données ESEF.</div>
+      <div class="module-exports">
+        <span class="export-tag">fetch_fmp_fundamentals()</span>
+        <span class="export-tag">upsert_fmp_fundamentals()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/esef_fundamentals.py</span></div>
+      <div class="module-desc">ESEF (European Single Electronic Format) via filings.xbrl.org. Taxonomies IFRS. Segments revenus CAC40/EU. Hardcode rapports 2024 pour tickers sans taxonomie standard. CAC40 35/35.</div>
+      <div class="module-exports">
+        <span class="export-tag">fetch_esef_fundamentals()</span>
+        <span class="export-tag">upsert_esef()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/cache.py</span></div>
+      <div class="module-desc">Cache mémoire local (dict async). TTL configurable. Clés: fund:{ticker}, prices:{...}, live:{ticker}. Zéro dépendance Redis. Thread-safe via asyncio.Lock.</div>
+      <div class="module-exports">
+        <span class="export-tag">cache.get()</span>
+        <span class="export-tag">cache.set()</span>
+        <span class="export-tag">cache.delete()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">core/db.py</span></div>
+      <div class="module-desc">SQLAlchemy engine PostgreSQL. DATABASE_URL depuis .env. Pool pré-ping. Port 5433 PROD / 5434 DEV. Initialisation tables au démarrage.</div>
+      <div class="module-exports">
+        <span class="export-tag">engine</span>
+        <span class="export-tag">init_db()</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: BACKTEST -->
+<div class="page" id="page-backtest">
+  <div class="page-header">
+    <h2>Backtest Engine <span class="badge badge-blue">backend/backtest/</span></h2>
+    <p>Moteur event-driven strict — aucune fuite du futur possible par construction</p>
+  </div>
+  <div class="module-grid">
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">backtest/engine.py</span><span class="badge badge-gold">core</span></div>
+      <div class="module-desc">Moteur principal. on_bar(dt, past_prices[:dt]) — la stratégie ne voit que les données passées. Event-driven strict. Gestion dividendes réinvestis. Fractions de parts par broker.</div>
+      <div class="module-exports">
+        <span class="export-tag">BacktestEngine</span>
+        <span class="export-tag">run_backtest()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">backtest/costs.py</span></div>
+      <div class="module-desc">Modèle de coûts réaliste. Fortuneo (50 USD flat &lt;7500 USD), Degiro, Bourse Direct, IBKR. TTF 0.3%, Stamp Duty UK/BE/IT. Slippage + impact marché √ADV. Withholding tax dividendes.</div>
+      <div class="module-exports">
+        <span class="export-tag">compute_costs()</span>
+        <span class="export-tag">BROKERS</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">backtest/portfolio.py</span></div>
+      <div class="module-desc">NAV multi-devises. Conversion FX temps réel. Suivi positions par ticker. P&L réalisé/non réalisé. Taxes françaises PFU 30%, PEA exonération 5 ans.</div>
+      <div class="module-exports">
+        <span class="export-tag">Portfolio</span>
+        <span class="export-tag">Position</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">backtest/stress.py</span></div>
+      <div class="module-desc">5 crises historiques : GFC 2008, COVID 2020, Bear 2022, Dot-com 2000, EU Debt 2011. Replay des rendements réels sur la stratégie testée.</div>
+      <div class="module-exports">
+        <span class="export-tag">run_stress_tests()</span>
+        <span class="export-tag">CRISIS_PERIODS</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: STRATEGIES -->
+<div class="page" id="page-strategies">
+  <div class="page-header">
+    <h2>Stratégies <span class="badge badge-gold">11 built-in</span></h2>
+    <p>backend/strategies/ — base + builtins + custom JSON</p>
+  </div>
+  <div class="section">
+    <div class="section-title">Stratégies disponibles</div>
+    <table class="db-table">
+      <thead><tr><th>ID</th><th>Nom</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>buy_and_hold</td><td>Buy & Hold</td><td>Allocation égale, pas de rebalancement</td></tr>
+        <tr><td>equal_weight</td><td>Equal Weight</td><td>Rebalancement mensuel à poids égaux</td></tr>
+        <tr><td>momentum</td><td>Momentum</td><td>Top N rendements sur lookback + PositionManager ATR stops</td></tr>
+        <tr><td>mean_reversion</td><td>Mean Reversion</td><td>Z-score RSI + trailing stops</td></tr>
+        <tr><td>sma_crossover</td><td>SMA Crossover</td><td>SMA court/long + stops per position</td></tr>
+        <tr><td>risk_parity</td><td>Risk Parity</td><td>Pondération inverse volatilité</td></tr>
+        <tr><td>min_variance</td><td>Min Variance</td><td>Optimisation Markowitz covariance shrinkage</td></tr>
+        <tr><td>dual_momentum</td><td>Dual Momentum</td><td>Momentum absolu + relatif (Gary Antonacci)</td></tr>
+        <tr><td>adaptive_trend</td><td>Adaptive Trend</td><td>Trend following adaptatif volatilité</td></tr>
+        <tr><td>ml_ensemble</td><td>ML Ensemble</td><td>RandomForest + GBM walk-forward</td></tr>
+        <tr><td>epr5</td><td>EPR5</td><td>Magic Formula + SPX/VIX style + RF(60%) + LSTM(40%)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="module-grid" style="margin-top:1rem">
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">strategies/base.py</span><span class="badge badge-gold">mixin</span></div>
+      <div class="module-desc">PositionManager mixin. ATR-based sizing. Per-position stop losses avec mémoire prix d'entrée. Trailing stops. Appliqué à Momentum, MeanReversion, SMA, DualMomentum, AdaptiveTrend.</div>
+      <div class="module-exports">
+        <span class="export-tag">BaseStrategy</span>
+        <span class="export-tag">PositionManager</span>
+        <span class="export-tag">on_bar()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">builtin/lstm_scorer.py</span><span class="badge badge-blue">ML</span></div>
+      <div class="module-desc">LSTM TensorFlow. Séquence 30j → LSTM(64)→LSTM(32)→Dense(1,sigmoid). Intégré dans EPR5 à 40% weight + 60% RandomForest score. Entraîné walk-forward par ticker.</div>
+      <div class="module-exports">
+        <span class="export-tag">LSTMScorer</span>
+        <span class="export-tag">score()</span>
+        <span class="export-tag">train()</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: QUANT -->
+<div class="page" id="page-quant">
+  <div class="page-header">
+    <h2>Quant / Signals <span class="badge badge-blue">backend/quant/</span></h2>
+    <p>Métriques, signaux, sentiment, Monte Carlo, significance</p>
+  </div>
+  <div class="module-grid">
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">quant/metrics.py</span></div>
+      <div class="module-desc">25+ métriques : Sharpe, Sortino, Calmar, Omega, Treynor, VaR/CVaR historique, skewness, kurtosis, tail ratio, hit rate, profit factor, beta, alpha Jensen, information ratio, max drawdown.</div>
+      <div class="module-exports">
+        <span class="export-tag">compute_metrics()</span>
+        <span class="export-tag">sharpe()</span>
+        <span class="export-tag">var_cvar()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">quant/signals.py</span></div>
+      <div class="module-desc">Signaux journaliers multi-indicateurs. Vote majoritaire : SMA, RSI, MACD, Momentum, VADER Sentiment (5ème vote). Générés 20h UTC sur 573 tickers × 6 stratégies.</div>
+      <div class="module-exports">
+        <span class="export-tag">generate_signals()</span>
+        <span class="export-tag">vote()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">quant/sentiment.py</span></div>
+      <div class="module-desc">VADER sentiment analysis. Yahoo Finance RSS + Google News RSS. Lexique financier custom. Score [-1, +1] par ticker. Intégré comme 5ème vote dans daily signals.</div>
+      <div class="module-exports">
+        <span class="export-tag">analyze_ticker()</span>
+        <span class="export-tag">analyze_market()</span>
+        <span class="export-tag">FINANCIAL_LEXICON</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">quant/montecarlo.py</span></div>
+      <div class="module-desc">10 000 chemins GBM vectorisés + bootstrap par blocs. Calibration bayésienne des paramètres μ/σ. IC 95% sur NAV finale. Percentiles 5/25/50/75/95.</div>
+      <div class="module-exports">
+        <span class="export-tag">run_montecarlo()</span>
+        <span class="export-tag">bootstrap_blocks()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">quant/significance.py</span></div>
+      <div class="module-desc">Tests statistiques : Jobson-Korkie (comparaison Sharpe), bootstrap CI 95%, t-test alpha Jensen, White's Reality Check (p-value data snooping).</div>
+      <div class="module-exports">
+        <span class="export-tag">jobson_korkie()</span>
+        <span class="export-tag">bootstrap_ci()</span>
+        <span class="export-tag">whites_reality_check()</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">quant/halal_classifier.py</span></div>
+      <div class="module-desc">Classificateur secteurs haram. Blacklist : alcool, tabac, armement, jeux, intérêts. Banques auto-fail. Utilisé par run_sharia_screen() dans registry.py.</div>
+      <div class="module-exports">
+        <span class="export-tag">is_halal_sector()</span>
+        <span class="export-tag">HARAM_SECTORS</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: REPORT -->
+<div class="page" id="page-report">
+  <div class="page-header">
+    <h2>Reports PDF <span class="badge badge-gold">15+ pages</span></h2>
+    <p>backend/report/ — tearsheet institutionnel Goldman Sachs style</p>
+  </div>
+  <div class="section">
+    <div class="section-title">Structure du PDF (v2.6)</div>
+    <table class="db-table">
+      <thead><tr><th>#</th><th>Page</th><th>Contenu</th><th>Fonction</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Cover</td><td>Titre, stratégie, période, KPIs clés</td><td>_pages_cover_summary()</td></tr>
+        <tr><td>2</td><td>Executive Summary</td><td>Métriques + narrative interprétation</td><td>_pages_cover_summary()</td></tr>
+        <tr><td>3</td><td>NAV vs Benchmark</td><td>Graphique matplotlib HD ligne</td><td>_pages_performance_charts()</td></tr>
+        <tr><td>4</td><td>Drawdown</td><td>Area chart underwater plot</td><td>_pages_performance_charts()</td></tr>
+        <tr><td>5</td><td>Risk metrics</td><td>VaR/CVaR + distribution rendements</td><td>_pages_performance_charts()</td></tr>
+        <tr><td>6</td><td>Stress tests</td><td>5 crises historiques avec barres</td><td>_pages_analysis()</td></tr>
+        <tr><td>7</td><td>Coûts</td><td>Cumul costs + breakdown par type</td><td>_pages_costs_allocation()</td></tr>
+        <tr><td>8</td><td>Allocation</td><td>Cash vs investi dans le temps</td><td>_pages_costs_allocation()</td></tr>
+        <tr><td>9</td><td>Signaux ML</td><td>Rolling signals + interprétation</td><td>_pages_analysis()</td></tr>
+        <tr><td>10</td><td>Significance</td><td>Tests statistiques Jobson-Korkie</td><td>_pages_analysis()</td></tr>
+        <tr><td>11</td><td>Positions finales</td><td>Table des positions + P&L</td><td>_pages_analysis()</td></tr>
+        <tr><td>12</td><td>Finance Islamique</td><td>4 critères AAOIFI par ticker</td><td>_pages_islamic_finance()</td></tr>
+        <tr><td>13</td><td>Buffett Score</td><td>ROE/Dette/FCF/Marge par ticker</td><td>_pages_buffett() — v2.6</td></tr>
+        <tr><td>14</td><td>Méthodologie</td><td>Hypothèses + sources</td><td>_pages_methodology()</td></tr>
+        <tr><td>15</td><td>Glossaire</td><td>Définitions + disclaimer AMF</td><td>_pages_methodology()</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="section">
+    <div class="section-title">Gotcha critique — pdf.py</div>
+    <div class="module-card" style="max-width:600px">
+      <div class="module-desc">
+        Toutes les fonctions locales <code style="font-family:var(--mono);color:var(--gold)">hr, p, f, e, chart, tbl_style, st, _base_styles</code> doivent être définies <strong>AVANT</strong> le dict <code style="font-family:var(--mono);color:var(--gold)">styles</code> et AVANT <code style="font-family:var(--mono);color:var(--gold)">buf = io.BytesIO()</code>.<br><br>
+        Chaque sous-fonction <code style="font-family:var(--mono);color:var(--gold)">_pages_*()</code> doit extraire <code style="font-family:var(--mono);color:var(--gold)">section_s</code> explicitement depuis le dict styles.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: AUTH -->
+<div class="page" id="page-auth">
+  <div class="page-header">
+    <h2>Auth JWT <span class="badge badge-blue">backend/auth/</span></h2>
+    <p>Authentification + persistance portfolio PostgreSQL</p>
+  </div>
+  <div class="module-grid">
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">auth/jwt.py</span></div>
+      <div class="module-desc">JWT tokens HS256. Expiration configurable. Middleware FastAPI. Routes /auth/login, /auth/register, /auth/me.</div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">auth/portfolio_routes.py</span></div>
+      <div class="module-desc">CRUD positions réelles. Tables users/portfolios/positions en PostgreSQL. P&L calculé server-side avec dernière cotation.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: COMPONENTS -->
+<div class="page" id="page-components">
+  <div class="page-header">
+    <h2>Composants React <span class="badge badge-blue">src/components/</span></h2>
+    <p>Architecture modulaire — chaque panel = un onglet de l'interface</p>
+  </div>
+  <div class="module-grid">
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">App.tsx</span><span class="badge badge-gold">shell</span></div>
+      <div class="module-desc">Shell principal. 6 onglets : Accueil, Portefeuille, Screening, Backtest, Signaux, Sentiment. State tickers[] partagé. localStorage pour persistance.</div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">TickerManager.tsx</span><span class="badge badge-gold">v2.6</span></div>
+      <div class="module-desc">Onglet Portefeuille. Tableau live quotes (WebSocket SSE). Panel ESG + Sharia AAOIFI au clic ligne. Panel Buffett Score au bouton B (doré). Positions réelles Qté/PRU/P&L. Badge ✓/✗ Finance Islamique.</div>
+      <div class="module-exports">
+        <span class="export-tag">BuffettPanel</span>
+        <span class="export-tag">IslamicFinancePanelPortfolio</span>
+        <span class="export-tag">IslamicBadgeMini</span>
+        <span class="export-tag">Badge (ESG)</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">ScreeningPanel.tsx</span><span class="badge badge-gold">v2.6</span></div>
+      <div class="module-desc">Screener multi-univers (sp500/cac40/etf/...). Méthodes : Magic Formula, EPR5, Momentum... Colonnes Sharia + Buffett. Panel expandable par ticker. Checkbox sélection → backtest.</div>
+      <div class="module-exports">
+        <span class="export-tag">BuffettPanelScreener</span>
+        <span class="export-tag">IslamicFinancePanel</span>
+        <span class="export-tag">IslamicBadge</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">BacktestPanel.tsx</span></div>
+      <div class="module-desc">Configuration backtest : stratégie, broker, période, filtre ESG/Sharia. Lance /api/backtest → affiche métriques + graphiques recharts. Bouton PDF → téléchargement rapport.</div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">SignalsPanel.tsx</span></div>
+      <div class="module-desc">Signaux journaliers buy/sell par ticker. Historique jour/jour. Vote multi-indicateurs (SMA+RSI+MACD+Momentum+VADER). Strategy-aware.</div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">SentimentPanel.tsx</span></div>
+      <div class="module-desc">Sentiment VADER par ticker et marché global. Articles bullish/bearish. Score [-1,+1] avec badge coloré. Source : Yahoo Finance RSS + Google News.</div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">TechnicalPanel.tsx</span></div>
+      <div class="module-desc">Analyse technique. Indicateurs configurables : RSI, Bollinger, MACD, Fibonacci. Elliott Wave ZigZag + vagues 1-5. Mode intraday 1h.</div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">LivePanel.tsx</span></div>
+      <div class="module-desc">Cotations live WebSocket. Sparklines intraday. P&L temps réel. Abonnement SSE par ticker via /api/quote/stream/{ticker}.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: TYPES -->
+<div class="page" id="page-types">
+  <div class="page-header">
+    <h2>Types & Hooks <span class="badge badge-blue">src/types/ · src/hooks/ · src/utils/</span></h2>
+  </div>
+  <div class="module-grid">
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">types/index.ts</span></div>
+      <div class="module-desc">Types TypeScript globaux. TickerScreening (is_ethical, is_sharia, sharia{checks}, buffett?). Quote (last, bid, ask, volume, change_pct). BacktestResult. SignalData.</div>
+      <div class="module-exports">
+        <span class="export-tag">TickerScreening</span>
+        <span class="export-tag">Quote</span>
+        <span class="export-tag">BacktestResult</span>
+        <span class="export-tag">ShariaCheck</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">hooks/useLiveQuotes.ts</span></div>
+      <div class="module-desc">Hook React SSE. Abonnement /api/quote/stream/{ticker} par ticker. State quotes Record&lt;string,Quote&gt;. Reconnexion auto. Cleanup sur unmount.</div>
+      <div class="module-exports">
+        <span class="export-tag">useLiveQuotes(tickers)</span>
+      </div>
+    </div>
+    <div class="module-card">
+      <div class="module-card-header"><span class="module-path">utils/api.ts</span></div>
+      <div class="module-desc">Helpers fetch. VITE_API_URL base. fetchJSON(), postJSON(). Gestion erreurs HTTP. Headers Content-Type auto.</div>
+      <div class="module-exports">
+        <span class="export-tag">fetchJSON()</span>
+        <span class="export-tag">postJSON()</span>
+        <span class="export-tag">API_BASE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:2rem">
+    <div class="section-title">Gotchas frontend critiques</div>
+    <table class="db-table">
+      <thead><tr><th>Problème</th><th>Cause</th><th>Solution</th></tr></thead>
+      <tbody>
+        <tr><td>Build TS error apostrophes</td><td>Apostrophes françaises dans JSX single-quoted strings</td><td>Utiliser double quotes obligatoirement</td></tr>
+        <tr><td>VITE_API_URL undefined</td><td>Variable injectée uniquement au build-time</td><td>Toujours rebuilder le frontend après modif .env</td></tr>
+        <tr><td>Chunk &gt;500kB warning</td><td>TensorFlow + recharts dans le bundle</td><td>À code-splitter via dynamic import() (roadmap)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<script>
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('page-' + id)?.classList.add('active');
+  event?.currentTarget?.classList.add('active');
+}
+
+function showTab(el, id) {
+  const parent = el.closest('.page') || document;
+  parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  parent.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(id)?.classList.add('active');
+}
+
+function filterSidebar(q) {
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>
