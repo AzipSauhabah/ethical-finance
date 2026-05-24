@@ -404,6 +404,7 @@ async def fetch_gdelt_sentiment(db_engine, query: str = "CAC40 OR SP500 OR stock
             f"&mode=artlist&maxrecords=50&format=json"
             f"&timespan={days}d"
         )
+                await asyncio.sleep(6)  # GDELT: 1 req/5s
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
             r = await client.get(url)
             if r.status_code != 200:
