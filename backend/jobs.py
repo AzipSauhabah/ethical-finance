@@ -22,11 +22,17 @@ _PG_PSYCOPG2_SCHEME = "postgresql+psycopg2://"
 async def job_sec_fundamentals() -> None:
     """Update SP500 fundamentals from SEC EDGAR at 22h00 UTC."""
     try:
-        from backend.core.loader import SP500_TICKERS
+        import sqlalchemy as sa
+        from backend.core.db import engine
         from backend.core.sec_edgar import upsert_sec_fundamentals
 
-        log.info("SEC EDGAR job started — %d tickers", len(SP500_TICKERS))
-        n = await upsert_sec_fundamentals(SP500_TICKERS[:100])
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text(
+                "SELECT ticker FROM ticker_fundamentals WHERE universe='sp500' ORDER BY sec_updated_at ASC NULLS FIRST"
+            )).fetchall()
+        tickers = [r[0] for r in rows]
+        log.info("SEC EDGAR job started — %d tickers (DB)", len(tickers))
+        n = await upsert_sec_fundamentals(tickers)
         log.info("SEC EDGAR job complete — %d tickers updated", n)
     except Exception as e:
         log.warning("SEC EDGAR job error: %s", e)
