@@ -92,18 +92,22 @@ async def upsert_fred_all(db_engine, api_key: str = "", start: str = "2020-01-01
 # ── INSEE BDM ─────────────────────────────────────────────────────────────────
 INSEE_BASE = "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM"
 
-INSEE_SERIES = {
-    "001769682": ("IPC Ensemble", "monthly", "index"),
-    "001769683": ("IPC Alimentation", "monthly", "index"),
-    "001769684": ("IPC Energie", "monthly", "index"),
-    "001762077": ("IPC Sous-jacent", "monthly", "index"),
-    "001688527": ("Indice Confiance Consommateurs", "monthly", "index"),
-    "001688526": ("Situation Financiere Menages", "monthly", "index"),
-    "001672893": ("Taux Chomage France", "quarterly", "%"),
-    "001620144": ("PIB Volume", "quarterly", "index"),
-    "001654798": ("Production Industrielle", "monthly", "index"),
-    "001617212": ("Ventes Commerce Detail", "monthly", "index"),
+# INSEE via FRED (Eurostat/OECD reformaté) — accès libre sans auth
+FRED_FRANCE_SERIES = {
+    "FRCPIALLMINMEI":  ("France IPC Ensemble", "monthly", "index"),
+    "FRACPIENGMINMEI": ("France IPC Energie", "monthly", "index"),
+    "FRACPIFODAMINMEI":("France IPC Alimentation", "monthly", "index"),
+    "LRUNTTTTFRM156S": ("France Taux Chomage", "monthly", "%"),
+    "CLVMEURSCAB1GQFR":("France PIB Volume", "quarterly", "index"),
+    "FRAPRINTO01IXPYM":("France Production Industrielle", "monthly", "index"),
+    "FRARETAILSALMEI": ("France Ventes Retail", "monthly", "index"),
+    "CSCICP03FRM665S": ("France Confiance Consommateurs", "monthly", "index"),
+    "IRLTLT01FRM156N": ("France Taux 10 ans OAT", "monthly", "%"),
+    "ECBDFR":          ("France Deficit/PIB", "annual", "%"),
 }
+
+# Alias pour compatibilité
+INSEE_SERIES = {}
 
 async def fetch_insee_series(series_id: str, token: str = "") -> list[dict]:
     """Fetch une série INSEE BDM via CSV public (sans auth)."""
@@ -136,7 +140,7 @@ async def upsert_insee_all(db_engine, token: str = "") -> int:
     """Fetch et upsert toutes les séries INSEE définies."""
     import sqlalchemy as sa
     total = 0
-    for series_id, (name, freq, unit) in INSEE_SERIES.items():
+    for series_id, (name, freq, unit) in FRED_FRANCE_SERIES.items():
         rows = await fetch_insee_series(series_id, token)
         if not rows:
             continue
