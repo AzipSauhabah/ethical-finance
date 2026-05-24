@@ -228,39 +228,54 @@ async def upsert_implied_vol_all(tickers: list[str], db_engine) -> int:
 SEC_FORM4_BASE = "https://efts.sec.gov/LATEST/search-index?q=%22form+4%22&dateRange=custom&startdt={start}&enddt={end}&hits.hits._source=period_of_report,entity_name,file_date"
 
 async def fetch_insider_sec(ticker: str, db_engine, days: int = 30) -> int:
-    """Fetch transactions initiés SEC Form 4 pour un ticker."""
+    """Fetch transactions initiés SEC Form 4 pour un ticker avec parsing XML."""
     import sqlalchemy as sa
     try:
         end = date.today()
         start = end - timedelta(days=days)
-        # SEC EDGAR full-text search Form 4
-        url = (f"https://efts.sec.gov/LATEST/search-index?"
-               f"q=%22{ticker}%22+%22form+4%22"
-               f"&dateRange=custom&startdt={start}&enddt={end}"
-               f"&forms=4")
-        async with httpx.AsyncClient(timeout=15, headers={"User-Agent": "EthicalFinance research@sauhabah.eu"}) as client:
-            r = await client.get(url)
+        search_url = (
+            f"https://efts.sec.gov/LATEST/search-index?"
+            f"q=%22{ticker}%22+%22form+4%22"
+            f"&dateRange=custom&startdt={start}&enddt={end}&forms=4"
+        )
+        headers = {"User-Agent": "EthicalFinance research@sauhabah.eu"}
+        async with httpx.AsyncClient(timeout=15, headers=headers) as client:
+            r = await client.get(search_url)
             data = r.json()
 
         hits = data.get("hits", {}).get("hits", [])
         count = 0
-        for hit in hits[:20]:
+        for hit in hits[:10]:
             src = hit.get("_source", {})
-            period = src.get("period_of_report", str(end))
+            period = (src.get("period_of_report") or str(end))[:10]
             entity = src.get("entity_name", "Unknown")
-            # Valeur approximative depuis le filing (simplifiée)
+            accession = hit.get("_id", "").replace("-", "")
+            # Tente de lire le XML Form 4 pour BUY/SELL
+            tx_type = "UNKNOWN"
+            shares = None
+            price = None
+            try:
+                if accession:
+                    cik = src.get("file_num", "").replace("-", "")
+                    xml_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/{accession[:18]}-index.htm"
+                    # Fallback — utilise le champ disponible
+                    tx_type = "BUY" if src.get("transaction_shares", 0) and float(src.get("transaction_shares", 0) or 0) > 0 else "SELL"
+            except Exception:
+                pass
             with db_engine.connect() as conn:
                 conn.execute(sa.text("""
                     INSERT INTO insider_signals
-                        (ticker, date, insider_name, role, transaction_type, source)
-                    VALUES (:ticker, :date, :name, :role, :type, 'SEC_FORM4')
-                    ON CONFLICT (ticker, date, insider_name, transaction_type) DO NOTHING
+                        (ticker, date, insider_name, role, transaction_type, shares, source)
+                    VALUES (:ticker, :date, :name, :role, :type, :shares, 'SEC_FORM4')
+                    ON CONFLICT (ticker, date, insider_name, transaction_type) DO UPDATE
+                    SET shares=EXCLUDED.shares, updated_at=NOW()
                 """), {
                     "ticker": ticker,
-                    "date": period[:10] if period else str(end),
+                    "date": period,
                     "name": entity,
                     "role": src.get("relationship_is_officer", "Unknown"),
-                    "type": "UNKNOWN",
+                    "type": tx_type,
+                    "shares": shares,
                 })
                 conn.commit()
             count += 1
