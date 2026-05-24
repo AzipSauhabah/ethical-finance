@@ -682,7 +682,30 @@ async def run_backtest(payload: BacktestIn):
 
 @app.post("/api/backtest/pdf")
 async def backtest_pdf(payload: BacktestIn):
+    from backend.core.data import get_ticker_fundamentals
+    from backend.core.buffett import compute_buffett_score
     tearsheet = await run_backtest(payload)
+    # Enrichir tearsheet avec screening + buffett par ticker
+    tickers = payload.tickers or []
+    screening = {}
+    buffett = {}
+    for t in tickers:
+        try:
+            rec = await registry.load(t)
+            if rec:
+                from backend.core.registry import ticker_to_dict
+                screening[t] = ticker_to_dict(rec)
+        except Exception:
+            pass
+        try:
+            info = await get_ticker_fundamentals(t)
+            mc = float(info.get("market_cap") or 0) or None
+            buffett[t] = compute_buffett_score(info, mc)
+        except Exception:
+            pass
+    tearsheet["screening"] = screening
+    tearsheet["buffett"] = buffett
+    tearsheet.setdefault("meta", {})["tickers"] = tickers
     pdf_bytes = generate_pdf(tearsheet)
     return Response(
         content=pdf_bytes,

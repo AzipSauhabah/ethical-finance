@@ -1342,6 +1342,145 @@ def _pages_islamic_finance(tearsheet: dict, styles: dict, narratives: dict, inte
 
     return S
 
+
+def _pages_buffett(tearsheet: dict, styles: dict, narratives: dict, interpretations: dict) -> list:
+    """Page Buffett Score — Qualite fondamentale."""
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
+
+    title_s = styles['title']; subtitle_s = styles['subtitle']; body_s = styles['body']
+    small_s = styles['small']; section_s = styles['section']; bold_s = styles['bold']
+    tbl_style = styles['tbl_style']
+
+    S = []
+    meta = tearsheet.get('meta', {})
+    tickers = meta.get('tickers', [])
+    buffett_data = tearsheet.get('buffett', {})
+
+    S += [
+        Paragraph("Buffett Score — Qualite Fondamentale", title_s),
+        HRFlowable(width="100%", thickness=2, color=colors.HexColor(GOLD)),
+        Spacer(1, 0.3 * cm),
+        Paragraph(
+            "Analyse de la qualite fondamentale selon les criteres de Warren Buffett : "
+            "rentabilite des fonds propres (ROE), niveau d'endettement, generation de cash (FCF Yield) "
+            "et avantage concurrentiel (marge nette). Score sur 100 points.",
+            body_s
+        ),
+        Spacer(1, 0.4 * cm),
+    ]
+
+    # Tableau des 4 criteres
+    CRITERIA = [
+        ("R", "ROE", "Rentabilite des fonds propres = benefice net / capitaux propres. Seuil Buffett : >= 15%.", "FMP / SEC EDGAR"),
+        ("D", "Dette / CA", "Dette portant interets / chiffre d'affaires. Seuil : <= 1x pour entreprise saine.", "FMP / SEC EDGAR"),
+        ("F", "FCF Yield", "Cash-flow operationnel / capitalisation boursiere. Seuil : >= 5% = bonne generation.", "FMP / SEC EDGAR"),
+        ("M", "Marge nette", "Benefice net / chiffre d'affaires. Proxy avantage concurrentiel. Seuil : >= 20%.", "FMP / SEC EDGAR"),
+    ]
+    header = ["Code", "Critere", "Description", "Source"]
+    rows = [header] + [[c[0], c[1], c[2], c[3]] for c in CRITERIA]
+    t = Table(rows, colWidths=[1.0*cm, 3.5*cm, 10.0*cm, 3.7*cm])
+    ts = TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0), colors.HexColor(NAVY)),
+        ("TEXTCOLOR",     (0, 0), (-1, 0), colors.white),
+        ("FONTNAME",      (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [colors.HexColor("#fdf8ee"), colors.white]),
+        ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
+        ("TOPPADDING",    (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+    ])
+    t.setStyle(ts)
+    S += [t, Spacer(1, 0.5*cm)]
+
+    # Resultats par ticker
+    if tickers and buffett_data:
+        S += [
+            Paragraph("Resultats par titre", section_s),
+            HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+            Spacer(1, 0.3*cm),
+        ]
+
+        ticker_header = ["Ticker", "Score /100", "Verdict", "ROE", "Dette/CA", "FCF Yield", "Marge nette"]
+        ticker_rows = [ticker_header]
+
+        for ticker in tickers:
+            bd = buffett_data.get(ticker, {})
+            if not bd:
+                ticker_rows.append([ticker, "N/D", "Donnees insuffisantes", "—", "—", "—", "—"])
+                continue
+            checks = {c["label"]: c for c in bd.get("checks", [])}
+            ticker_rows.append([
+                ticker,
+                str(bd.get("score", "N/D")),
+                bd.get("verdict", "N/D"),
+                checks.get("ROE", {}).get("detail", "—"),
+                checks.get("DETTE/CA", {}).get("detail", "—"),
+                checks.get("FCF YIELD", {}).get("detail", "—"),
+                checks.get("MARGE NETTE", {}).get("detail", "—"),
+            ])
+
+        style_cmds = [
+            ("BACKGROUND",    (0, 0), (-1, 0), colors.HexColor(NAVY)),
+            ("TEXTCOLOR",     (0, 0), (-1, 0), colors.white),
+            ("FONTNAME",      (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 8),
+            ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#cccccc")),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+        ]
+        for i, row in enumerate(ticker_rows[1:], 1):
+            try:
+                score = float(row[1])
+                if score >= 80:
+                    bg = colors.HexColor("#d4edda"); fg = colors.HexColor("#155724")
+                elif score >= 60:
+                    bg = colors.HexColor("#fff3cd"); fg = colors.HexColor("#856404")
+                elif score >= 40:
+                    bg = colors.HexColor("#fde8c8"); fg = colors.HexColor("#7d4e00")
+                else:
+                    bg = colors.HexColor("#f8d7da"); fg = colors.HexColor("#721c24")
+                style_cmds.append(("BACKGROUND", (1, i), (2, i), bg))
+                style_cmds.append(("TEXTCOLOR",  (1, i), (2, i), fg))
+                style_cmds.append(("FONTNAME",   (1, i), (1, i), "Helvetica-Bold"))
+            except (ValueError, TypeError):
+                pass
+            if i % 2 == 0:
+                style_cmds.append(("BACKGROUND", (0, i), (0, i), colors.HexColor("#fdf8ee")))
+
+        tt = Table(ticker_rows, colWidths=[2.0*cm, 2.0*cm, 3.5*cm, 2.8*cm, 2.8*cm, 2.8*cm, 2.3*cm])
+        tt.setStyle(TableStyle(style_cmds))
+        S += [tt, Spacer(1, 0.5*cm)]
+
+    S += [
+        Paragraph("Note methodologique", section_s),
+        HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+        Spacer(1, 0.2*cm),
+        Paragraph(
+            "<b>Sources :</b> Donnees fondamentales FMP (Financial Modeling Prep) et SEC EDGAR. "
+            "Le ROE est calcule a partir du benefice net annualise divise par les capitaux propres. "
+            "Le FCF Yield utilise le cash-flow operationnel comme proxy du free cash flow.",
+            body_s
+        ),
+        Spacer(1, 0.2*cm),
+        Paragraph(
+            "<b>Limites :</b> Le Buffett Score est un indicateur de qualite historique, "
+            "pas un signal predictif. Les seuils sont indicatifs et varient selon les secteurs. "
+            "Les banques et assurances ont structurellement des ratios de dette differents.",
+            body_s
+        ),
+        PageBreak(),
+    ]
+
+    return S
+
 def _pages_methodology(tearsheet: dict, styles: dict, narratives: dict, interpretations: dict) -> list:
     """Auto-extracted PDF page builder."""
     from reportlab.lib import colors
@@ -1545,6 +1684,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
     S += _pages_costs_allocation(tearsheet, styles, narratives, interpretations)
     S += _pages_analysis(tearsheet, styles, narratives, interpretations)
     S += _pages_islamic_finance(tearsheet, styles, narratives, interpretations)
+    S += _pages_buffett(tearsheet, styles, narratives, interpretations)
     S += _pages_methodology(tearsheet, styles, narratives, interpretations)
     doc.build(S)
     return buf.getvalue()
