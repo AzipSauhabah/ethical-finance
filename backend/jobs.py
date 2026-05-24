@@ -297,23 +297,21 @@ async def _persist_signals_batch(app_state, batch: list[str], strategy: str, wei
 # ─── OHLCV update ────────────────────────────────────────────────────────────
 
 async def job_ohlcv_update() -> None:
-    """Download and persist OHLCV data Mon-Fri at 20h00 UTC."""
+    """Download and persist OHLCV data Mon-Fri at 20h00 UTC via Twelve Data."""
     try:
         import asyncio
-        import time
-
-        import pandas as pd
         import sqlalchemy as sa
-        import yfinance as yf
         from datetime import date, timedelta
 
         database_url = os.environ.get("DATABASE_URL", "")
         sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
+        engine_ohlcv = sa.create_engine(sync_url, pool_pre_ping=True)
 
-        from backend.core.loader import SP500_TICKERS, CAC40_TICKERS
-        from backend.core.twelve_data import ALL_EXTENDED_TICKERS
-
-        all_tickers = list(set(SP500_TICKERS + CAC40_TICKERS + ALL_EXTENDED_TICKERS))
+        with engine_ohlcv.connect() as conn:
+            rows = conn.execute(sa.text(
+                "SELECT DISTINCT ticker FROM ticker_fundamentals ORDER BY ticker"
+            )).fetchall()
+        all_tickers = [r[0] for r in rows]
         end = date.today()
         start = end - timedelta(days=7)
         inserted = 0
