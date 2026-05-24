@@ -38,6 +38,56 @@ async def job_sec_fundamentals() -> None:
         log.warning("SEC EDGAR job error: %s", e)
 
 
+async def job_macro_series() -> None:
+    """Update macro series: FRED + INSEE BDM — daily/weekly."""
+    try:
+        import os
+        from backend.core.db import engine
+        from backend.core.macro_collector import upsert_fred_all, upsert_insee_all
+        fred_key = os.environ.get("FRED_API_KEY", "")
+        n_fred = await upsert_fred_all(engine, api_key=fred_key)
+        n_insee = await upsert_insee_all(engine)
+        log.info("Macro job complete — FRED: %d rows, INSEE: %d rows", n_fred, n_insee)
+    except Exception as e:
+        log.warning("Macro job error: %s", e)
+
+
+async def job_implied_vol() -> None:
+    """Update implied volatility for SP500 + CAC40 tickers — daily."""
+    try:
+        import sqlalchemy as sa
+        from backend.core.db import engine
+        from backend.core.macro_collector import upsert_implied_vol_all
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text(
+                "SELECT ticker FROM ticker_fundamentals WHERE universe IN ('sp500','cac40') ORDER BY market_cap DESC NULLS LAST LIMIT 100"
+            )).fetchall()
+        tickers = [r[0] for r in rows]
+        n = await upsert_implied_vol_all(tickers, engine)
+        log.info("Implied vol job complete — %d rows for %d tickers", n, len(tickers))
+    except Exception as e:
+        log.warning("Implied vol job error: %s", e)
+
+
+async def job_insider_signals() -> None:
+    """Update insider signals from SEC Form 4 — daily."""
+    try:
+        import sqlalchemy as sa
+        from backend.core.db import engine
+        from backend.core.macro_collector import fetch_insider_sec
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text(
+                "SELECT ticker FROM ticker_fundamentals WHERE universe='sp500' ORDER BY market_cap DESC NULLS LAST LIMIT 50"
+            )).fetchall()
+        tickers = [r[0] for r in rows]
+        total = 0
+        for t in tickers:
+            total += await fetch_insider_sec(t, engine)
+        log.info("Insider signals job complete — %d records for %d tickers", total, len(tickers))
+    except Exception as e:
+        log.warning("Insider signals job error: %s", e)
+
+
 # ─── PostgreSQL backup ───────────────────────────────────────────────────────
 
 async def job_pg_backup() -> None:

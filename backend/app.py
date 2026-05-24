@@ -93,6 +93,12 @@ async def _startup() -> None:
 
         scheduler.add_job(job_fmp_fundamentals, "cron", hour=22, minute=30, timezone="UTC")
         scheduler.add_job(job_esef_fundamentals, "cron", day_of_week="mon", hour=4, minute=0, timezone="UTC")
+        scheduler.add_job(job_macro_series, "cron", hour=6, minute=0, timezone="UTC")
+        scheduler.add_job(job_implied_vol, "cron", hour=21, minute=30, day_of_week="mon-fri", timezone="UTC")
+        scheduler.add_job(job_insider_signals, "cron", hour=23, minute=45, timezone="UTC")
+        scheduler.add_job(job_macro_series, "cron", hour=6, minute=0, timezone="UTC")
+        scheduler.add_job(job_implied_vol, "cron", hour=21, minute=30, day_of_week="mon-fri", timezone="UTC")
+        scheduler.add_job(job_insider_signals, "cron", hour=23, minute=45, timezone="UTC")
 
         scheduler.add_job(lambda: job_daily_signals(app.state), "cron", hour=20, minute=30, timezone="UTC")
 
