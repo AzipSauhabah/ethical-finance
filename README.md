@@ -22,6 +22,46 @@
 
 ---
 
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Internet
+        USER([Navigateur])
+        CF[Cloudflare Tunnel - app.sauhabah-advisory.eu]
+        GH[GitHub Mirror - AzipSauhabah/ethical-finance]
+    end
+    subgraph NAS[NAS Synology DS925+]
+        subgraph PROD[PROD Stack]
+            NGINX[Nginx Frontend React/Vite/TS :443]
+            API[FastAPI ethical-finance-api :8000]
+            DB[(PostgreSQL 15 :5433 - 2.75M OHLCV 573 tickers)]
+            SCHED[APScheduler OHLCV/SEC/FMP/ESEF/Backup]
+        end
+        subgraph DEV[DEV Stack]
+            DAPI[FastAPI DEV :8001]
+            DDB[(PostgreSQL DEV :5434)]
+        end
+        GDRIVE[Google Drive Backup]
+        PGADMIN[pgAdmin :5050]
+    end
+    subgraph DATA[Sources de donnees]
+        FMP[FMP API Fondamentaux]
+        SEC[SEC EDGAR Rapports US]
+        ESEF[ESEF xbrl.org Rapports EU]
+        TD[Twelve Data OHLCV]
+    end
+    USER --> CF --> NGINX --> API
+    API --> DB
+    API --> SCHED
+    SCHED --> FMP & SEC & ESEF & TD
+    SCHED --> GDRIVE
+    GH -->|git pull| NAS
+    PGADMIN --> DB
+    DAPI --> DDB
+```
+
 ## 🗺️ Roadmap
 
 ### Livré (v2 — 20/05/2026)
@@ -41,6 +81,11 @@
 - [x] SonarQube 9.9 auto-hébergé + intégration Gitea Actions
 - [x] Gitea Actions : tests + auto-fix ruff/black + SonarQube
 - [x] Badges statut CI/CD dans README
+
+### Livré (v2.6 — 24/05/2026)
+- [x] Finance Islamique AAOIFI — 4 critères, CAC40 35/35 + SP500 49/50 via SEC EDGAR + ESEF
+- [x] Buffett Score — ROE / Dette / FCF Yield / Marge nette, score 0-100, panel Portfolio + Screener + PDF
+- [x] ESG renommage interface + badge ✓ Finance Islamique
 
 ### À venir
 - [ ] NAV changements de composition d'indice (SP500/CAC40 annuels)
