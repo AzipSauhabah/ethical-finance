@@ -492,7 +492,8 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
                            revenue_segments, total_cash, haram_revenue_ratio, sharia_debt_ratio,
                            interest_expense, interest_income,
                            interest_bearing_debt, short_term_debt,
-                           long_term_debt, total_assets, total_equity
+                           long_term_debt, total_assets, total_equity,
+                           net_margin, fcf_yield
                     FROM ticker_fundamentals
                     WHERE ticker = :ticker
                     LIMIT 1
@@ -529,6 +530,8 @@ async def _fetch_fundamentals_db(ticker: str) -> dict | None:
             "total_equity":          int(row[20] or 0),
             "haram_revenue_ratio":   float(row[14]) if row[14] is not None else None,
             "sharia_debt_ratio":     float(row[15]) if row[15] is not None else None,
+            "net_margin":            float(row[21]) if row[21] is not None else None,
+            "fcf_yield":             float(row[22]) if row[22] is not None else None,
             "esg_scores": {},
         }
     except Exception as e:
