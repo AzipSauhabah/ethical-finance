@@ -390,3 +390,56 @@ async def fetch_dvf_csv(db_engine, year: int = 2024) -> int:
     except Exception as e:
         log.warning("DVF error: %s", e)
         return 0
+
+
+# ── GDELT — Global Database of Events, Language, and Tone ────────────────────
+async def fetch_gdelt_sentiment(db_engine, query: str = "CAC40 OR SP500 OR stocks", days: int = 7) -> int:
+    """Fetch sentiment GDELT pour les marchés financiers."""
+    import sqlalchemy as sa
+    from datetime import datetime
+    try:
+        url = (
+            f"https://api.gdeltproject.org/api/v2/doc/doc"
+            f"?query={query.replace(' ', '%20')}"
+            f"&mode=artlist&maxrecords=50&format=json"
+            f"&timespan={days}d"
+        )
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+            r = await client.get(url)
+            if r.status_code != 200:
+                log.warning("GDELT HTTP %d", r.status_code)
+                return 0
+            data = r.json()
+        articles = data.get("articles", [])
+        if not articles:
+            return 0
+        # Calcul score sentiment moyen (tone GDELT -100 à +100)
+        tones = []
+        for art in articles:
+            tone = art.get("tone")
+            if tone is not None:
+                try:
+                    tones.append(float(tone))
+                except ValueError:
+                    pass
+        if not tones:
+            return 0
+        avg_tone = sum(tones) / len(tones)
+        today = date.today()
+        with db_engine.connect() as conn:
+            conn.execute(sa.text("""
+                INSERT INTO macro_series (series_id, source, name, frequency, date, value, unit)
+                VALUES (:sid, 'GDELT', :name, 'daily', :date, :value, 'tone')
+                ON CONFLICT (series_id, date) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
+            """), {
+                "sid": f"GDELT:MARKET_TONE",
+                "name": "GDELT Market Sentiment Tone",
+                "date": str(today),
+                "value": round(avg_tone, 3),
+            })
+            conn.commit()
+        log.info("GDELT: tone=%.2f from %d articles", avg_tone, len(articles))
+        return 1
+    except Exception as e:
+        log.warning("GDELT error: %s", e)
+        return 0
