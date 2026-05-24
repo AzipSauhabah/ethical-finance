@@ -269,7 +269,7 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
         <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '2rem', paddingTop: '1.2rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>
             <input type="checkbox" id="ethical" checked={params.require_ethical} onChange={e => setParams({ ...params, require_ethical: e.target.checked })} />
-            Éthique uniquement
+            ESG uniquement
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#888', cursor: 'pointer' }}>
             <input type="checkbox" id="var" checked={params.use_var_constraint} onChange={e => setParams({ ...params, use_var_constraint: e.target.checked })} />

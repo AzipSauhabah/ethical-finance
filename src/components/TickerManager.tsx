@@ -30,7 +30,7 @@ function clearToken() {
 
 
 function IslamicBadgeMini({ passed }: { passed?: boolean | null }) {
-  const c = passed === true  ? { bg:"#14532d", border:"#16a34a", color:"#4ade80", icon:"+" }
+  const c = passed === true  ? { bg:"#14532d", border:"#16a34a", color:"#4ade80", icon:"✓" }
           : passed === false ? { bg:"#450a0a", border:"#dc2626", color:"#f87171", icon:"x" }
           : { bg:"#1a1a1a", border:"#333", color:"#555", icon:"?" };
   return (
