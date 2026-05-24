@@ -84,6 +84,9 @@ async def _startup() -> None:
             job_sec_fundamentals, job_pg_backup, job_drive_sync,
             job_fmp_fundamentals, job_daily_signals, job_ohlcv_update, job_intraday,
     job_esef_fundamentals,
+    job_macro_series,
+    job_implied_vol,
+    job_insider_signals,
 )
 
         scheduler.add_job(job_sec_fundamentals, "cron", hour=22, minute=0, timezone="UTC")
@@ -93,9 +96,6 @@ async def _startup() -> None:
 
         scheduler.add_job(job_fmp_fundamentals, "cron", hour=22, minute=30, timezone="UTC")
         scheduler.add_job(job_esef_fundamentals, "cron", day_of_week="mon", hour=4, minute=0, timezone="UTC")
-        scheduler.add_job(job_macro_series, "cron", hour=6, minute=0, timezone="UTC")
-        scheduler.add_job(job_implied_vol, "cron", hour=21, minute=30, day_of_week="mon-fri", timezone="UTC")
-        scheduler.add_job(job_insider_signals, "cron", hour=23, minute=45, timezone="UTC")
         scheduler.add_job(job_macro_series, "cron", hour=6, minute=0, timezone="UTC")
         scheduler.add_job(job_implied_vol, "cron", hour=21, minute=30, day_of_week="mon-fri", timezone="UTC")
         scheduler.add_job(job_insider_signals, "cron", hour=23, minute=45, timezone="UTC")
