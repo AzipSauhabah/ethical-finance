@@ -174,6 +174,16 @@ async def screening_detail(ticker: str):
     return ticker_to_dict(rec)
 
 
+@app.get("/api/tickers/{ticker}/buffett")
+async def buffett_detail(ticker: str):
+    """Buffett Score — ROE / Dette / FCF Yield / Moat."""
+    from backend.core.buffett import compute_buffett_score
+    rec = await registry.load(ticker.upper())
+    fund = rec.fundamentals if rec and rec.fundamentals else {}
+    mc = rec.market_cap if rec else None
+    return compute_buffett_score(fund, mc)
+
+
 @app.get("/api/quote/{ticker}")
 async def quote(ticker: str):
     return await get_live_quote(ticker.upper())
