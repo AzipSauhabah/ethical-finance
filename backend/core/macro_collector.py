@@ -263,3 +263,44 @@ async def fetch_insider_sec(ticker: str, db_engine, days: int = 30) -> int:
     except Exception as e:
         log.warning("Insider SEC %s: %s", ticker, e)
         return 0
+
+
+# ── DVF — Demandes de Valeurs Foncières (data.gouv.fr) ───────────────────────
+async def fetch_dvf_index(db_engine) -> int:
+    """Fetch indice prix immobilier agrégé depuis DVF/DV3F (Cerema)."""
+    import sqlalchemy as sa
+    try:
+        url = "https://apidf-preprod.cerema.fr/indicateurs/dv3f/national/indicateurs_transac/?ordering=periode&format=json"
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            r = await client.get(url)
+            if r.status_code != 200:
+                log.warning("DVF HTTP %d", r.status_code)
+                return 0
+            data = r.json()
+        rows = data.get("results", [])
+        count = 0
+        with db_engine.connect() as conn:
+            for row in rows:
+                periode = row.get("periode", "")
+                prix_m2 = row.get("prix_m2_median")
+                nb_ventes = row.get("nbtrans_cod")
+                if not periode or not prix_m2:
+                    continue
+                d = periode + "-01" if len(periode) == 7 else periode
+                for sid, name, val, unit in [
+                    ("DVF:PRIX_M2_MEDIAN_FR", "Prix m2 median France", prix_m2, "EUR/m2"),
+                    ("DVF:NB_VENTES_FR", "Nombre ventes France", nb_ventes, "transactions"),
+                ]:
+                    if val:
+                        conn.execute(sa.text("""
+                            INSERT INTO macro_series (series_id, source, name, frequency, date, value, unit)
+                            VALUES (:sid, 'DVF', :name, 'quarterly', :date, :value, :unit)
+                            ON CONFLICT (series_id, date) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
+                        """), {"sid": sid, "name": name, "date": d, "value": float(val), "unit": unit})
+                count += 1
+            conn.commit()
+        log.info("DVF: %d periodes upserted", count)
+        return count
+    except Exception as e:
+        log.warning("DVF error: %s", e)
+        return 0
