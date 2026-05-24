@@ -274,10 +274,10 @@ export default function DashboardPage() {
           → onglet Portfolio
         </span>
       </div>
-    </div>
-    <div style={{ marginTop: "1.5rem", padding: "0.75rem 1rem", background: "rgba(184,150,47,0.06)", border: "1px solid rgba(184,150,47,0.2)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-      <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Documentation technique complète — architecture, API, modules, schéma DB</span>
-      <a href="/docs/index.html" target="_blank" rel="noopener" style={{ fontSize: "0.72rem", color: "#b8962f", fontFamily: "monospace", fontWeight: 700, textDecoration: "none", border: "1px solid rgba(184,150,47,0.3)", padding: "0.25rem 0.75rem", borderRadius: 4 }}>DOCS →</a>
+      <div style={{ marginTop: "1.5rem", padding: "0.75rem 1rem", background: "rgba(184,150,47,0.06)", border: "1px solid rgba(184,150,47,0.2)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Documentation technique complète — architecture, API, modules, schéma DB</span>
+        <a href="/docs/index.html" target="_blank" rel="noopener" style={{ fontSize: "0.72rem", color: "#b8962f", fontFamily: "monospace", fontWeight: 700, textDecoration: "none", border: "1px solid rgba(184,150,47,0.3)", padding: "0.25rem 0.75rem", borderRadius: 4 }}>DOCS →</a>
+      </div>
     </div>
   );
 }
