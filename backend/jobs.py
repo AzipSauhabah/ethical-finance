@@ -281,7 +281,7 @@ async def _persist_signals_batch(app_state, batch: list[str], strategy: str, wei
                         signal_buy=EXCLUDED.signal_buy,
                         signal_sell=EXCLUDED.signal_sell
                 """,
-                    s["ticker"], s["date"], strategy,
+                    s["ticker"], __import__("datetime").date.fromisoformat(s["date"]) if isinstance(s["date"], str) else s["date"], strategy,
                     composite >= 0.60, composite <= 0.40,
                     _norm(ind.get("sma_crossover", 0)),
                     _norm(ind.get("macd", 0)),
