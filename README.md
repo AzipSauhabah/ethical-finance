@@ -108,6 +108,14 @@ graph TB
 - Nouvelles séries : VIX/VSTOXX, yield curve 2y-10y, retail sales, confiance consommateurs, DVF immobilier
 - Intégration EPR5 v3 : macro features dans RF + vol implicite dans LSTM + vote insider
 
+#### Portfolio Analytics (session 5)
+- Endpoint `/api/portfolio/analytics` — Sharpe, Sortino, volatilité, max drawdown du portefeuille réel
+- Matrice de corrélations entre positions (rolling 252j)
+- Contribution au risque par ticker (Risk Contribution = w_i × (Σw)_i / σ)
+- Ledoit-Wolf shrinkage pour stabiliser la matrice de covariance
+- Efficient Frontier — portefeuille optimal selon les positions actuelles
+- Panel Analytics dans Portfolio GUI — NAV historique + métriques + heatmap corrélations
+
 #### Refonte architecturale (sessions 6-8)
 - Stratégies plug-and-play — décorateur `@register` → auto GUI + API sans toucher au code
 - Frontend modulaire — `features/portfolio/`, `features/screener/`, `features/backtest/`
