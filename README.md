@@ -98,6 +98,30 @@ graph TB
 | **Stratégies plug-and-play** | `@register` → auto GUI + API sans toucher au code | Configuration lourde |
 | **LLM local** | Ollama (après RAM 16Go) → stratégies en langage naturel | Non prévu |
 
+### À venir (session 5+)
+
+#### Alternative Data & Macro (session 5)
+- `macro_series` table — FRED (800k séries), INSEE BDM, Banque de France
+- `implied_vol` table — vol implicite par ticker/strike/expiry via yfinance options
+- `insider_signals` table — SEC Form 4 (US) + AMF RDPF (FR)
+- Collecteurs : FRED API, INSEE BDM API, CBOE VIX term structure, Google Trends
+- Nouvelles séries : VIX/VSTOXX, yield curve 2y-10y, retail sales, confiance consommateurs, DVF immobilier
+- Intégration EPR5 v3 : macro features dans RF + vol implicite dans LSTM + vote insider
+
+#### Refonte architecturale (sessions 6-8)
+- Stratégies plug-and-play — décorateur `@register` → auto GUI + API sans toucher au code
+- Frontend modulaire — `features/portfolio/`, `features/screener/`, `features/backtest/`
+- Doc auto — Gitea Action `pdoc3` + `typedoc` → `docs/api/` à chaque commit
+- `quant-engine` repo séparé — lib pure backtest/metrics/montecarlo installable via pip
+
+#### Long terme
+- RAM 16Go → Ollama LLM local → stratégies en langage naturel
+- TensorFlow EPR5 avancé (LSTM bidirectionnel + attention + vol surface)
+- MSCI World étendu via Colab `daily_update()`
+- NAV exposition devises intrinsèque (CA par région)
+- Backtesting intraday (Twelve Data historiques)
+- Notifications Gitea (email sur échec job)
+
 ### À venir
 - [ ] NAV changements de composition d'indice (SP500/CAC40 annuels)
 - [ ] Notifications Gitea (email sur échec de job)
