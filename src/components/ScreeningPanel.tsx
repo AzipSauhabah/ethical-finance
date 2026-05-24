@@ -28,6 +28,44 @@ interface ScreenerResult {
 
 
 // ── Badge compact Finance Islamique ──────────────────────────────────────────
+function BuffettPanelScreener({ data }: { data: any }) {
+  if (!data) return (
+    <tr><td colSpan={17} style={{ padding: "0.5rem 1rem", background: "#060b14" }}>
+      <div style={{ fontSize: "0.7rem", color: "#555", padding: "0.5rem 1rem" }}>Chargement...</div>
+    </td></tr>
+  );
+  return (
+    <tr>
+      <td colSpan={17} style={{ padding: 0, background: "#060b14" }}>
+        <div style={{ margin: "0 0.5rem 0.5rem", border: "1px solid #2a1f0a", borderRadius: 6, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 1rem", background: "rgba(184,150,47,0.08)", borderBottom: "1px solid #2a1f0a" }}>
+            <span style={{ fontSize: "0.6rem", letterSpacing: "2px", color: "#555", fontWeight: 700 }}>BUFFETT SCORE</span>
+            <span style={{ fontSize: "0.9rem", fontWeight: 800, color: data.color, fontFamily: '"JetBrains Mono", monospace' }}>{data.score}<span style={{ fontSize: "0.55rem", color: "#555" }}>/100</span> — {data.verdict}</span>
+          </div>
+          <div style={{ height: 3, background: "#111" }}>
+            <div style={{ height: "100%", width: data.score + "%", background: data.color, transition: "width 0.5s" }} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
+            {(data.checks || []).map((chk: any, i: number) => (
+              <div key={chk.id} style={{ padding: "0.6rem 1rem", borderRight: i < 3 ? "1px solid #1e1a0a" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginBottom: "0.3rem" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: "rgba(184,150,47,0.15)", color: "#b8962f", fontSize: 8, fontWeight: 800, border: "1px solid #2a1f0a" }}>{chk.icon}</span>
+                  <span style={{ fontSize: "0.58rem", fontWeight: 700, color: "#999" }}>{chk.label}</span>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#b8962f", fontFamily: '"JetBrains Mono", monospace', marginLeft: "auto" }}>{chk.pts}<span style={{ fontSize: "0.5rem", color: "#444" }}>/{chk.max}</span></span>
+                </div>
+                <div style={{ fontSize: "0.6rem", color: "#555" }}>{chk.detail}</div>
+                <div style={{ height: 3, background: "#111", borderRadius: 2, marginTop: "0.3rem" }}>
+                  <div style={{ height: "100%", width: (chk.pts/chk.max*100) + "%", background: chk.pts/chk.max > 0.7 ? "#16a34a" : chk.pts/chk.max > 0.4 ? "#ca8a04" : "#dc2626", borderRadius: 2 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 function IslamicBadge({ isSharia }: { isSharia?: boolean | null }) {
   const c = isSharia === true ? { bg:"#14532d", border:"#16a34a", color:"#4ade80", icon:"✓" }
           : isSharia === false ? { bg:"#450a0a", border:"#dc2626", color:"#f87171", icon:"✗" }
@@ -251,6 +289,8 @@ export default function ScreeningPanel({
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ScreenerResult[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [expandedBuffett, setExpandedBuffett] = useState<string | null>(null);
+  const [buffettCache, setBuffettCache] = useState<Record<string, any>>({});
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -475,7 +515,7 @@ export default function ScreeningPanel({
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #1e2d4a" }}>
-                    {["", "#", "Ticker", "Nom", "Secteur", "Cap.", "EY", "ROIC", "1M", "6M", "12M", "Vol", "Beta", "Div", "Score", "Sharia"].map((h) => (
+                    {["", "#", "Ticker", "Nom", "Secteur", "Cap.", "EY", "ROIC", "1M", "6M", "12M", "Vol", "Beta", "Div", "Score", "Sharia", "Buffett"].map((h) => (
                       <th key={h} style={{ padding: "0.75rem 0.6rem", textAlign: "left", color: "#555", fontWeight: 500, fontSize: "0.68rem", letterSpacing: "1px", whiteSpace: "nowrap" }}>
                         {h}
                       </th>
@@ -543,8 +583,12 @@ export default function ScreeningPanel({
                       <td style={{ padding: "0.6rem 0.6rem", textAlign: "center" }}>
                         <IslamicBadge isSharia={r.is_sharia} />
                       </td>
+                      <td style={{ padding: "0.6rem 0.6rem", textAlign: "center" }}>
+                        <button onClick={(e) => { e.stopPropagation(); const next = expandedBuffett === r.ticker ? null : r.ticker; setExpandedBuffett(next); if (next && !buffettCache[r.ticker]) { fetch(`${API}/api/tickers/${r.ticker}/buffett`).then(res => res.json()).then(d => setBuffettCache(prev => ({ ...prev, [r.ticker]: d }))); } }} title="Buffett Score" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 4, background: expandedBuffett === r.ticker ? "#b8962f" : "rgba(184,150,47,0.12)", border: "1.5px solid " + (expandedBuffett === r.ticker ? "#b8962f" : "#4a3a10"), color: expandedBuffett === r.ticker ? "#000" : "#b8962f", cursor: "pointer", fontSize: "0.65rem", fontWeight: 800 }}>B</button>
+                      </td>
                     </tr>
                     {expandedTicker === r.ticker && <IslamicFinancePanel r={r} />}
+                    {expandedBuffett === r.ticker && <BuffettPanelScreener data={buffettCache[r.ticker]} />}
                   </>
                   ))}
                 </tbody>
