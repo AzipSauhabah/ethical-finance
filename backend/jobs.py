@@ -374,9 +374,13 @@ async def job_intraday() -> None:
         database_url = os.environ.get("DATABASE_URL", "")
         sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
 
-        from backend.core.loader import SP500_TICKERS, CAC40_TICKERS
-
-        tickers = list(set(SP500_TICKERS[:50] + CAC40_TICKERS[:20]))
+        import sqlalchemy as sa2
+        from backend.core.db import engine as db_engine
+        with db_engine.connect() as conn2:
+            rows2 = conn2.execute(sa.text(
+                "SELECT ticker FROM ticker_fundamentals WHERE universe='sp500' ORDER BY market_cap DESC NULLS LAST LIMIT 50"
+            )).fetchall()
+        tickers = [r[0] for r in rows2]
         engine = sa.create_engine(sync_url, pool_pre_ping=True)
         inserted = 0
 
