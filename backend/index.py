@@ -178,10 +178,10 @@ async def screening_detail(ticker: str):
 async def buffett_detail(ticker: str):
     """Buffett Score — ROE / Dette / FCF Yield / Moat."""
     from backend.core.buffett import compute_buffett_score
-    rec = await registry.load(ticker.upper())
-    fund = rec.fundamentals if rec and rec.fundamentals else {}
-    mc = rec.market_cap if rec else None
-    return compute_buffett_score(fund, mc)
+    from backend.core.data import get_ticker_fundamentals
+    info = await get_ticker_fundamentals(ticker.upper())
+    mc = float(info.get("market_cap") or 0) or None
+    return compute_buffett_score(info, mc)
 
 
 @app.get("/api/quote/{ticker}")
