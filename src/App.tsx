@@ -11,8 +11,9 @@ import SentimentPanel from './components/SentimentPanel';
 import TechnicalPanel from './components/TechnicalPanel';
 import IndicatorsPanel from './components/IndicatorsPanel';
 import LivePanel from './components/LivePanel';
+import StrategyBuilderPanel from './components/StrategyBuilderPanel';
 
-type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals' | 'sentiment' | 'technical' | 'indicators' | 'live';
+type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals' | 'sentiment' | 'technical' | 'indicators' | 'live' | 'builder';
 
 const METHOD_LABELS: Record<string, { label: string; strategy: string }> = {
   magic_formula: { label: 'Magic Formula (Greenblatt)', strategy: 'epr5' },
@@ -32,6 +33,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'technical',  label: 'Technical',  icon: '◇' },
   { key: 'indicators', label: 'Indicateurs',icon: '◈' },
   { key: 'live',       label: 'Live',       icon: '⬤' },
+  { key: 'builder',    label: 'Stratégies',  icon: '⚙' },
 ];
 
 export default function App() {
@@ -126,6 +128,7 @@ export default function App() {
         {tab === 'technical' && <TechnicalPanel />}
         {tab === 'indicators' && <IndicatorsPanel tickers={tickers} />}
         {tab === 'live'       && <LivePanel tickers={tickers} />}
+        {tab === 'builder'    && <StrategyBuilderPanel />}
       </main>
 
       <footer style={{
