@@ -23,7 +23,9 @@ services:
 
   # ─── Backend FastAPI ──────────────────────────────────────────────────────
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
     container_name: ethical-finance-api
     restart: unless-stopped
     ports:

@@ -1,6 +1,14 @@
-# flyctl launch added from .gitignore
 **/__pycache__
 **/.ruff_cache
 **/.pytest_cache
 **/.venv
-fly.toml
+**/.venv311
+frontend/node_modules
+frontend/dist
+.git
+.gitea
+.github
+.scannerwork
+docs
+tests
+*.md
