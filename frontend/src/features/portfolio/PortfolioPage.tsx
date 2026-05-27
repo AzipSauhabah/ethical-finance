@@ -571,7 +571,7 @@ export default function TickerManager({ tickers, setTickers }: Props) {
           <div style={{ padding: '0.75rem 1rem', background: '#0d1528', borderBottom: '1px solid #1e2d4a' }}>
             <span style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#b8962f', fontWeight: 600 }}>ANALYTICS</span>
           </div>
-          <AnalyticsPanel positions={positions} />
+          <AnalyticsPanel positions={positions} tickers={tickers} />
         </div>
       )}
 

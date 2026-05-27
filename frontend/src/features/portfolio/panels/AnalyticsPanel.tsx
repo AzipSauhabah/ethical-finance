@@ -25,22 +25,20 @@ function MetricCard({ label, value, unit = "", color }: { label: string; value: 
   );
 }
 
-export default function AnalyticsPanel({ positions }: { positions: Map<string, { qty: number; avg_price: number }> }) {
+export default function AnalyticsPanel({ positions, tickers: tickerList }: { positions: Map<string, { qty: number; avg_price: number }>; tickers?: string[] }) {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (positions.size === 0) return;
+    if ((tickerList?.length ?? positions.size) === 0) return;
     setLoading(true);
     const payload: Record<string, Record<string, number>> = {};
-    positions.forEach((pos, ticker) => {
-      payload[ticker] = { qty: pos.qty || 1, avg_price: pos.avg_price || 100, last_price: pos.avg_price || 100 };
+    const allTickers = tickerList ?? [...positions.keys()];
+    allTickers.forEach(ticker => {
+      const pos = positions.get(ticker);
+      payload[ticker] = { qty: pos?.qty || 1, avg_price: pos?.avg_price || 100, last_price: pos?.avg_price || 100 };
     });
-    // Si pas de positions renseignées, poids égaux
-    if ([...positions.values()].every(p => !p.qty)) {
-      positions.forEach((_, ticker) => { payload[ticker] = { qty: 1, avg_price: 100, last_price: 100 }; });
-    }
     fetch(`${API}/api/portfolio/analytics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -49,9 +47,10 @@ export default function AnalyticsPanel({ positions }: { positions: Map<string, {
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setError("Erreur chargement analytics"); setLoading(false); });
-  }, [positions]);
+  }, [tickerList?.join(',') ?? positions.size]);
 
-  if (positions.size === 0) return (
+  const tickerCount = tickerList?.length ?? positions.size;
+  if (tickerCount === 0) return (
     <div style={{ padding: "2rem", color: "#475569", textAlign: "center", fontSize: "0.8rem" }}>
       Ajoutez des positions pour voir les analytics
     </div>
