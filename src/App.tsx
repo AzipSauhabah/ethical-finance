@@ -2,16 +2,16 @@
 // © 2024 Sauhabah
 
 import { useState } from 'react';
-import AboutPanel    from './components/AboutPanel';
+import AboutPanel    from './features/about/AboutPage';
 import TickerManager from './components/TickerManager';
-import BacktestPanel from './components/BacktestPanel';
-import SignalsPanel  from './components/SignalsPanel';
-import ScreeningPanel from './components/ScreeningPanel';
-import SentimentPanel from './components/SentimentPanel';
-import TechnicalPanel from './components/TechnicalPanel';
+import BacktestPanel from './features/backtest/BacktestPage';
+import SignalsPanel  from './features/signals/SignalsPanel';
+import ScreeningPanel from './features/screener/ScreenerPage';
+import SentimentPanel from './features/sentiment/SentimentPage';
+import TechnicalPanel from './features/technical/TechnicalPage';
 import IndicatorsPanel from './components/IndicatorsPanel';
-import LivePanel from './components/LivePanel';
-import StrategyBuilderPanel from './components/StrategyBuilderPanel';
+import LivePanel from './features/live/LivePage';
+import StrategyBuilderPanel from './features/strategy-builder/StrategyBuilderPage';
 
 type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals' | 'sentiment' | 'technical' | 'indicators' | 'live' | 'builder';
 
