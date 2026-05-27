@@ -1,4 +1,5 @@
 import { Badge, IslamicBadgeMini } from '../../shared/components/badges';
+import AnalyticsPanel from './panels/AnalyticsPanel';
 import { useState, useEffect } from 'react';
 import { api } from '../../shared/utils/api';
 import { useLiveQuotes } from '../../shared/hooks/useLiveQuotes';
@@ -563,6 +564,16 @@ export default function TickerManager({ tickers, setTickers }: Props) {
           </div>
         )}
       </div>
+
+      {/* ── Portfolio Analytics ── */}
+      {tickers.length > 0 && (
+        <div style={{ background: '#111827', borderRadius: 8, overflow: 'hidden', border: '1px solid #1e2d4a', marginTop: '1rem' }}>
+          <div style={{ padding: '0.75rem 1rem', background: '#0d1528', borderBottom: '1px solid #1e2d4a' }}>
+            <span style={{ fontSize: '0.65rem', letterSpacing: '2px', color: '#b8962f', fontWeight: 600 }}>ANALYTICS</span>
+          </div>
+          <AnalyticsPanel positions={positions} />
+        </div>
+      )}
 
       {/* ── Section positions réelles ── */}
       {tickers.length > 0 && (
