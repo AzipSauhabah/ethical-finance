@@ -1,3 +1,4 @@
+import { Badge, IslamicBadgeMini } from '../shared/components/badges';
 import { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { useLiveQuotes } from '../hooks/useLiveQuotes';
@@ -29,20 +30,6 @@ function clearToken() {
 }
 
 
-function IslamicBadgeMini({ passed }: { passed?: boolean | null }) {
-  const c = passed === true  ? { bg:"#14532d", border:"#16a34a", color:"#4ade80", icon:"✓" }
-          : passed === false ? { bg:"#450a0a", border:"#dc2626", color:"#f87171", icon:"x" }
-          : { bg:"#1a1a1a", border:"#333", color:"#555", icon:"?" };
-  return (
-    <span title={passed === true ? "Conforme Finance Islamique" : passed === false ? "Non conforme" : "Donnees insuffisantes"}
-      style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
-        width:22, height:22, borderRadius:4,
-        background:c.bg, color:c.color, border:"1px solid "+c.border,
-        fontSize:12, fontWeight:700, cursor:"pointer" }}>
-      {c.icon}
-    </span>
-  );
-}
 
 function BuffettPanel({ data, colSpan }: { data: any; colSpan: number }) {
   if (!data) return (
@@ -655,16 +642,3 @@ export default function TickerManager({ tickers, setTickers }: Props) {
   );
 }
 
-function Badge({ passed }: { passed?: boolean }) {
-  if (passed === undefined) return <span style={{ color: '#444', fontSize: '0.7rem' }}>…</span>;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      width: 22, height: 22, borderRadius: 4,
-      background: passed ? 'rgba(29,140,65,0.15)' : 'rgba(184,36,36,0.15)',
-      border: `1px solid ${passed ? '#1d8c41' : '#b82424'}`,
-      color: passed ? '#1d8c41' : '#b82424',
-      fontSize: '0.75rem', fontWeight: 700,
-    }}>{passed ? '✓' : '✗'}</span>
-  );
-}

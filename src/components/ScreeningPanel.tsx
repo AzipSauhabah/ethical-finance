@@ -1,3 +1,4 @@
+import { IslamicBadge } from '../shared/components/badges';
 // ScreeningPanel — Stock screener avec ranking IA et non-IA
 // © 2024 Sauhabah
 
@@ -66,27 +67,6 @@ function BuffettPanelScreener({ data }: { data: any }) {
   );
 }
 
-function IslamicBadge({ isSharia }: { isSharia?: boolean | null }) {
-  const c = isSharia === true ? { bg:"#14532d", border:"#16a34a", color:"#4ade80", icon:"✓" }
-          : isSharia === false ? { bg:"#450a0a", border:"#dc2626", color:"#f87171", icon:"✗" }
-          : { bg:"#1a1a1a", border:"#333", color:"#555", icon:"?" };
-  const tip = isSharia === true ? "Conforme Finance Islamique (AAOIFI) — cliquer pour détails"
-            : isSharia === false ? "Non conforme Finance Islamique — cliquer pour détails"
-            : "Données insuffisantes — cliquer pour détails";
-  return (
-    <span title={tip} style={{
-      display:"inline-flex", alignItems:"center", justifyContent:"center",
-      width:20, height:20, borderRadius:"50%",
-      background:c.bg, color:c.color,
-      border:"1.5px solid "+c.border,
-      fontSize:11, fontWeight:700, cursor:"pointer",
-      transition:"transform 0.1s", flexShrink:0,
-    }}
-    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1.2)";}}
-    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1)";}}
-    >{c.icon}</span>
-  );
-}
 
 // ── Panel détaillé Finance Islamique ─────────────────────────────────────────
 function IslamicFinancePanel({ r }: { r: ScreenerResult }) {
