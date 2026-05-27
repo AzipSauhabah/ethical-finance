@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import AboutPanel    from './features/about/AboutPage';
-import TickerManager from './components/TickerManager';
+import TickerManager from './features/portfolio/PortfolioPage';
 import BacktestPanel from './features/backtest/BacktestPage';
 import SignalsPanel  from './features/signals/SignalsPanel';
 import ScreeningPanel from './features/screener/ScreenerPage';
