@@ -23,3 +23,14 @@ tsconfig.tsbuildinfo
 tsc
 dist/
 package-lock.json
+
+# NAS local data
+backups/
+postgres/
+data-nas/
+nginx.conf
+*.json
+!frontend/package.json
+efficient-portfolio2*/
+import
+backend/.scannerwork/
