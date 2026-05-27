@@ -174,6 +174,16 @@ async def screening_detail(ticker: str):
     return ticker_to_dict(rec)
 
 
+@app.post("/api/portfolio/analytics")
+async def portfolio_analytics(payload: dict):
+    """Portfolio Analytics — Sharpe, Sortino, corrélations, risk contribution."""
+    from backend.core.portfolio_analytics import compute_portfolio_analytics
+    from backend.core.db import engine
+    positions = payload.get("positions", {})
+    days = payload.get("days", 365)
+    return compute_portfolio_analytics(positions, engine, days)
+
+
 @app.get("/api/tickers/{ticker}/buffett")
 async def buffett_detail(ticker: str):
     """Buffett Score — ROE / Dette / FCF Yield / Moat."""
