@@ -35,8 +35,12 @@ export default function AnalyticsPanel({ positions }: { positions: Map<string, {
     setLoading(true);
     const payload: Record<string, Record<string, number>> = {};
     positions.forEach((pos, ticker) => {
-      payload[ticker] = { qty: pos.qty, avg_price: pos.avg_price, last_price: pos.avg_price };
+      payload[ticker] = { qty: pos.qty || 1, avg_price: pos.avg_price || 100, last_price: pos.avg_price || 100 };
     });
+    // Si pas de positions renseignées, poids égaux
+    if ([...positions.values()].every(p => !p.qty)) {
+      positions.forEach((_, ticker) => { payload[ticker] = { qty: 1, avg_price: 100, last_price: 100 }; });
+    }
     fetch(`${API}/api/portfolio/analytics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
