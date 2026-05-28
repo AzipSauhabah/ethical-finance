@@ -12,6 +12,12 @@ interface AnalyticsData {
   correlations: Record<string, Record<string, number>>;
   nav_history: { date: string; nav: number }[];
   tickers: string[];
+  benchmark?: {
+    composition: Record<string, number>;
+    beta: number; alpha: number; tracking_error: number;
+    sharpe: number; ann_return: number; max_drawdown: number;
+    interpretation: { beta: string; alpha: string; tracking_error: string };
+  };
 }
 
 function MetricCard({ label, value, unit = "", color }: { label: string; value: number; unit?: string; color: string }) {
@@ -135,6 +141,56 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
           );
         })}
       </div>
+
+      {/* Benchmark */}
+      {data.benchmark && Object.keys(data.benchmark).length > 0 && (
+        <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "0.75rem 1rem" }}>
+          <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#475569", fontWeight: 700, marginBottom: "0.5rem" }}>
+            BENCHMARK — {Object.entries(data.benchmark.composition).map(([t,w]) => `${t} ${w}%`).join(' + ')}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.75rem" }}>
+            {[
+              { label: "BETA", value: data.benchmark.beta, desc: data.benchmark.interpretation.beta,
+                color: data.benchmark.beta > 1.5 ? "#f87171" : data.benchmark.beta > 1 ? GOLD : "#4ade80" },
+              { label: "ALPHA /AN", value: `${data.benchmark.alpha > 0 ? "+" : ""}${data.benchmark.alpha}%`,
+                desc: data.benchmark.interpretation.alpha,
+                color: data.benchmark.alpha > 0 ? "#4ade80" : "#f87171" },
+              { label: "TRACKING ERROR", value: `${data.benchmark.tracking_error}%`,
+                desc: data.benchmark.interpretation.tracking_error,
+                color: data.benchmark.tracking_error < 10 ? "#4ade80" : data.benchmark.tracking_error < 20 ? GOLD : "#f87171" },
+              { label: "SHARPE BENCH.", value: data.benchmark.sharpe,
+                desc: `Sharpe ratio du benchmark — votre portefeuille: ${data.metrics.sharpe}`,
+                color: data.benchmark.sharpe >= 1 ? "#4ade80" : GOLD },
+            ].map(item => (
+              <div key={item.label} style={{ background: "#0d1628", borderRadius: 4, padding: "0.5rem 0.75rem", border: `1px solid ${BORDER}` }}>
+                <div style={{ fontSize: "0.55rem", letterSpacing: "1.5px", color: "#475569", marginBottom: "0.2rem" }}>{item.label}</div>
+                <div style={{ fontSize: "0.9rem", fontWeight: 800, color: item.color, fontFamily: '"JetBrains Mono", monospace', marginBottom: "0.2rem" }}>{item.value}</div>
+                <div style={{ fontSize: "0.6rem", color: "#475569", lineHeight: 1.4 }}>{item.desc}</div>
+              </div>
+            ))}
+          </div>
+          {/* Comparaison Sharpe bar */}
+          <div style={{ fontSize: "0.6rem", color: "#475569", marginBottom: "0.3rem" }}>Sharpe portefeuille vs benchmark</div>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <span style={{ fontSize: "0.65rem", color: GOLD, fontFamily: '"JetBrains Mono", monospace', width: 35 }}>
+              {data.metrics.sharpe}
+            </span>
+            <div style={{ flex: 1, height: 6, background: "#0d1628", borderRadius: 3, position: "relative" }}>
+              <div style={{ position: "absolute", height: "100%", width: `${Math.min(data.benchmark.sharpe / 3 * 100, 100)}%`,
+                background: "#475569", borderRadius: 3 }} />
+              <div style={{ position: "absolute", height: "100%", width: `${Math.min(data.metrics.sharpe / 3 * 100, 100)}%`,
+                background: GOLD, borderRadius: 3 }} />
+            </div>
+            <span style={{ fontSize: "0.65rem", color: "#475569", fontFamily: '"JetBrains Mono", monospace', width: 35, textAlign: "right" }}>
+              {data.benchmark.sharpe}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.55rem", color: "#333", marginTop: "0.1rem" }}>
+            <span style={{ color: GOLD }}>■ Portefeuille</span>
+            <span>■ Benchmark</span>
+          </div>
+        </div>
+      )}
 
       {/* Matrice corrélations */}
       {tickers.length > 1 && (
