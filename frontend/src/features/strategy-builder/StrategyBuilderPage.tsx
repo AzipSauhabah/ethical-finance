@@ -198,7 +198,7 @@ export default function StrategyBuilderPanel() {
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, margin: 0, color: "#fff" }}>
           Créer une stratégie
         </h1>
-        <p style={{ color: "#64748b", fontSize: "0.85rem", marginTop: "0.4rem" }}>
+        <p style={{ color: "#94a3b8", fontSize: "0.85rem", marginTop: "0.4rem" }}>
           Plug-and-play — une classe Python + un décorateur = présent dans toute l'interface
         </p>
       </div>
@@ -212,7 +212,7 @@ export default function StrategyBuilderPanel() {
         ].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as typeof tab)} style={{
             padding: "0.6rem 1.2rem", fontSize: "0.75rem", fontWeight: 600,
-            color: tab === t.id ? GOLD : "#475569",
+            color: tab === t.id ? GOLD : "#94a3b8",
             background: "none", border: "none", cursor: "pointer",
             borderBottom: tab === t.id ? `2px solid ${GOLD}` : "2px solid transparent",
             letterSpacing: "1px", transition: "all 0.15s",
@@ -255,7 +255,7 @@ export default function StrategyBuilderPanel() {
             {/* Steps */}
             <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden" }}>
               <div style={{ padding: "0.75rem 1rem", borderBottom: `1px solid ${BORDER}` }}>
-                <span style={{ fontSize: "0.6rem", letterSpacing: "3px", color: "#475569", fontWeight: 700 }}>ANATOMIE</span>
+                <span style={{ fontSize: "0.6rem", letterSpacing: "3px", color: "#94a3b8", fontWeight: 700 }}>ANATOMIE</span>
               </div>
               {STEPS.map(step => (
                 <div key={step.id}
@@ -267,11 +267,11 @@ export default function StrategyBuilderPanel() {
                     transition: "background 0.15s",
                   }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: activeStep === step.id ? "0.4rem" : 0 }}>
-                    <span style={{ fontSize: "0.9rem", color: activeStep === step.id ? GOLD : "#475569" }}>{step.icon}</span>
+                    <span style={{ fontSize: "0.9rem", color: activeStep === step.id ? GOLD : "#94a3b8" }}>{step.icon}</span>
                     <span style={{ fontSize: "0.75rem", fontWeight: 600, color: activeStep === step.id ? GOLD : "#94a3b8" }}>{step.title}</span>
                   </div>
                   {activeStep === step.id && (
-                    <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b", lineHeight: 1.5 }}>{step.desc}</p>
+                    <p style={{ margin: 0, fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.5 }}>{step.desc}</p>
                   )}
                 </div>
               ))}
@@ -280,7 +280,7 @@ export default function StrategyBuilderPanel() {
             {/* Examples */}
             <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 8, overflow: "hidden" }}>
               <div style={{ padding: "0.75rem 1rem", borderBottom: `1px solid ${BORDER}` }}>
-                <span style={{ fontSize: "0.6rem", letterSpacing: "3px", color: "#475569", fontWeight: 700 }}>EXEMPLES RAPIDES</span>
+                <span style={{ fontSize: "0.6rem", letterSpacing: "3px", color: "#94a3b8", fontWeight: 700 }}>EXEMPLES RAPIDES</span>
               </div>
               {EXAMPLES.map(ex => (
                 <div key={ex.id}
@@ -295,12 +295,12 @@ export default function StrategyBuilderPanel() {
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: ex.color, flexShrink: 0 }} />
                   <div>
                     <div style={{ fontSize: "0.75rem", fontWeight: 600, color: activeExample === ex.id ? ex.color : "#94a3b8" }}>{ex.label}</div>
-                    <div style={{ fontSize: "0.65rem", color: "#475569" }}>{ex.desc}</div>
+                    <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>{ex.desc}</div>
                   </div>
                 </div>
               ))}
               <div onClick={() => { setCode(TEMPLATE_CODE); setActiveExample(null); }}
-                style={{ padding: "0.5rem 1rem", cursor: "pointer", fontSize: "0.65rem", color: "#475569", textAlign: "center" }}>
+                style={{ padding: "0.5rem 1rem", cursor: "pointer", fontSize: "0.65rem", color: "#94a3b8", textAlign: "center" }}>
                 ↺ Réinitialiser le template
               </div>
             </div>
@@ -339,7 +339,7 @@ export default function StrategyBuilderPanel() {
               </div>
               <div style={{ padding: "0.75rem 1rem" }}>
                 <pre style={{ background: "#0d1117", border: `1px solid ${BORDER}`, borderRadius: 4, padding: "0.75rem", fontSize: 11, fontFamily: '"JetBrains Mono", monospace', color: "#7ee787", margin: "0 0 0.75rem", overflowX: "auto", whiteSpace: "pre" }}>{item.cmd}</pre>
-                <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b", lineHeight: 1.5 }}>{item.desc}</p>
+                <p style={{ margin: 0, fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.5 }}>{item.desc}</p>
               </div>
             </div>
           ))}
@@ -359,7 +359,7 @@ export default function StrategyBuilderPanel() {
             <div key={rule.icon} style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 8, padding: "1.2rem" }}>
               <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>{rule.icon}</div>
               <div style={{ fontSize: "0.78rem", fontWeight: 700, color: rule.color, marginBottom: "0.4rem" }}>{rule.title}</div>
-              <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b", lineHeight: 1.6 }}>{rule.desc}</p>
+              <p style={{ margin: 0, fontSize: "0.72rem", color: "#94a3b8", lineHeight: 1.6 }}>{rule.desc}</p>
             </div>
           ))}
         </div>

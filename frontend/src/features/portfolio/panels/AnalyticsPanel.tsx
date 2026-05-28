@@ -23,7 +23,7 @@ interface AnalyticsData {
 function MetricCard({ label, value, unit = "", color }: { label: string; value: number; unit?: string; color: string }) {
   return (
     <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "0.75rem 1rem" }}>
-      <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#475569", fontWeight: 700, marginBottom: "0.3rem" }}>{label}</div>
+      <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#94a3b8", fontWeight: 700, marginBottom: "0.3rem" }}>{label}</div>
       <div style={{ fontSize: "1.2rem", fontWeight: 800, color, fontFamily: '"JetBrains Mono", monospace' }}>
         {value > 0 && unit === "%" ? "+" : ""}{value.toFixed(2)}{unit}
       </div>
@@ -57,12 +57,12 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
 
   const tickerCount = tickerList?.length ?? positions.size;
   if (tickerCount === 0) return (
-    <div style={{ padding: "2rem", color: "#475569", textAlign: "center", fontSize: "0.8rem" }}>
+    <div style={{ padding: "2rem", color: "#94a3b8", textAlign: "center", fontSize: "0.8rem" }}>
       Ajoutez des positions pour voir les analytics
     </div>
   );
 
-  if (loading) return <div style={{ padding: "1rem", color: "#475569", fontSize: "0.8rem" }}>Calcul en cours...</div>;
+  if (loading) return <div style={{ padding: "1rem", color: "#94a3b8", fontSize: "0.8rem" }}>Calcul en cours...</div>;
   if (error || !data) return <div style={{ padding: "1rem", color: "#f87171", fontSize: "0.8rem" }}>{error || "Aucune donnée"}</div>;
   if ("error" in (data as any)) return <div style={{ padding: "1rem", color: "#f87171", fontSize: "0.8rem" }}>{(data as any).error}</div>;
 
@@ -73,7 +73,7 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <span style={{ fontSize: "0.6rem", letterSpacing: "3px", color: GOLD, fontWeight: 700 }}>PORTFOLIO ANALYTICS</span>
-        <span style={{ fontSize: "0.65rem", color: "#475569", fontFamily: '"JetBrains Mono", monospace' }}>{metrics.n_days}j de données</span>
+        <span style={{ fontSize: "0.65rem", color: "#94a3b8", fontFamily: '"JetBrains Mono", monospace' }}>{metrics.n_days}j de données</span>
       </div>
 
       {/* Métriques clés */}
@@ -89,7 +89,7 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
       {/* NAV Chart simplifié */}
       {nav_history.length > 0 && (
         <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "0.75rem 1rem" }}>
-          <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#475569", fontWeight: 700, marginBottom: "0.5rem" }}>NAV NORMALISÉE (base 1.0)</div>
+          <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#94a3b8", fontWeight: 700, marginBottom: "0.5rem" }}>NAV NORMALISÉE (base 1.0)</div>
           <svg viewBox={`0 0 400 80`} width="100%" style={{ display: "block" }}>
             {(() => {
               const vals = nav_history.map(d => d.nav);
@@ -112,7 +112,7 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
               );
             })()}
           </svg>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem", color: "#475569", fontFamily: '"JetBrains Mono", monospace', marginTop: "0.2rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6rem", color: "#94a3b8", fontFamily: '"JetBrains Mono", monospace', marginTop: "0.2rem" }}>
             <span>{nav_history[0]?.date}</span>
             <span style={{ color: nav_history[nav_history.length-1]?.nav >= 1 ? "#4ade80" : "#f87171", fontWeight: 700 }}>
               {nav_history[nav_history.length-1]?.nav.toFixed(3)}
@@ -124,7 +124,7 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
 
       {/* Risk contribution */}
       <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "0.75rem 1rem" }}>
-        <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#475569", fontWeight: 700, marginBottom: "0.5rem" }}>CONTRIBUTION AU RISQUE</div>
+        <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#94a3b8", fontWeight: 700, marginBottom: "0.5rem" }}>CONTRIBUTION AU RISQUE</div>
         {tickers.map(t => {
           const rc = risk_contribution[t] || 0;
           const w = weights[t] || 0;
@@ -145,7 +145,7 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
       {/* Benchmark */}
       {data.benchmark && Object.keys(data.benchmark).length > 0 && (
         <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "0.75rem 1rem" }}>
-          <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#475569", fontWeight: 700, marginBottom: "0.5rem" }}>
+          <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#94a3b8", fontWeight: 700, marginBottom: "0.5rem" }}>
             BENCHMARK — {Object.entries(data.benchmark.composition).map(([t,w]) => `${t} ${w}%`).join(' + ')}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.75rem" }}>
@@ -163,25 +163,25 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
                 color: data.benchmark.sharpe >= 1 ? "#4ade80" : GOLD },
             ].map(item => (
               <div key={item.label} style={{ background: "#0d1628", borderRadius: 4, padding: "0.5rem 0.75rem", border: `1px solid ${BORDER}` }}>
-                <div style={{ fontSize: "0.55rem", letterSpacing: "1.5px", color: "#475569", marginBottom: "0.2rem" }}>{item.label}</div>
+                <div style={{ fontSize: "0.55rem", letterSpacing: "1.5px", color: "#94a3b8", marginBottom: "0.2rem" }}>{item.label}</div>
                 <div style={{ fontSize: "0.9rem", fontWeight: 800, color: item.color, fontFamily: '"JetBrains Mono", monospace', marginBottom: "0.2rem" }}>{item.value}</div>
-                <div style={{ fontSize: "0.6rem", color: "#475569", lineHeight: 1.4 }}>{item.desc}</div>
+                <div style={{ fontSize: "0.6rem", color: "#94a3b8", lineHeight: 1.4 }}>{item.desc}</div>
               </div>
             ))}
           </div>
           {/* Comparaison Sharpe bar */}
-          <div style={{ fontSize: "0.6rem", color: "#475569", marginBottom: "0.3rem" }}>Sharpe portefeuille vs benchmark</div>
+          <div style={{ fontSize: "0.6rem", color: "#94a3b8", marginBottom: "0.3rem" }}>Sharpe portefeuille vs benchmark</div>
           <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
             <span style={{ fontSize: "0.65rem", color: GOLD, fontFamily: '"JetBrains Mono", monospace', width: 35 }}>
               {data.metrics.sharpe}
             </span>
             <div style={{ flex: 1, height: 6, background: "#0d1628", borderRadius: 3, position: "relative" }}>
               <div style={{ position: "absolute", height: "100%", width: `${Math.min(data.benchmark.sharpe / 3 * 100, 100)}%`,
-                background: "#475569", borderRadius: 3 }} />
+                background: "#94a3b8", borderRadius: 3 }} />
               <div style={{ position: "absolute", height: "100%", width: `${Math.min(data.metrics.sharpe / 3 * 100, 100)}%`,
                 background: GOLD, borderRadius: 3 }} />
             </div>
-            <span style={{ fontSize: "0.65rem", color: "#475569", fontFamily: '"JetBrains Mono", monospace', width: 35, textAlign: "right" }}>
+            <span style={{ fontSize: "0.65rem", color: "#94a3b8", fontFamily: '"JetBrains Mono", monospace', width: 35, textAlign: "right" }}>
               {data.benchmark.sharpe}
             </span>
           </div>
@@ -195,12 +195,12 @@ export default function AnalyticsPanel({ positions, tickers: tickerList }: { pos
       {/* Matrice corrélations */}
       {tickers.length > 1 && (
         <div style={{ background: NAVY2, border: `1px solid ${BORDER}`, borderRadius: 6, padding: "0.75rem 1rem" }}>
-          <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#475569", fontWeight: 700, marginBottom: "0.5rem" }}>CORRÉLATIONS</div>
+          <div style={{ fontSize: "0.58rem", letterSpacing: "2px", color: "#94a3b8", fontWeight: 700, marginBottom: "0.5rem" }}>CORRÉLATIONS</div>
           <div style={{ overflowX: "auto" }}>
             <table style={{ borderCollapse: "collapse", fontSize: "0.65rem", fontFamily: '"JetBrains Mono", monospace' }}>
               <thead>
                 <tr>
-                  <th style={{ padding: "0.2rem 0.4rem", color: "#475569" }}></th>
+                  <th style={{ padding: "0.2rem 0.4rem", color: "#94a3b8" }}></th>
                   {tickers.map(t => <th key={t} style={{ padding: "0.2rem 0.4rem", color: GOLD }}>{t}</th>)}
                 </tr>
               </thead>
