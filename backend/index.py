@@ -716,6 +716,15 @@ async def backtest_pdf(payload: BacktestIn):
     tearsheet["screening"] = screening
     tearsheet["buffett"] = buffett
     tearsheet.setdefault("meta", {})["tickers"] = tickers
+    # Portfolio analytics
+    try:
+        from backend.core.portfolio_analytics import compute_portfolio_analytics
+        from backend.core.db import engine as db_engine
+        positions = {t: {"qty": 1, "avg_price": 100, "last_price": 100} for t in tickers}
+        tearsheet["portfolio_analytics"] = compute_portfolio_analytics(positions, db_engine)
+    except Exception as e:
+        log.warning("Portfolio analytics PDF error: %s", e)
+        tearsheet["portfolio_analytics"] = {}
     pdf_bytes = generate_pdf(tearsheet)
     return Response(
         content=pdf_bytes,

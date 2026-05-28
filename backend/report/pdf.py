@@ -1167,6 +1167,173 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
 
 
 
+
+def _pages_portfolio_analytics(tearsheet: dict, styles: dict, narratives: dict, interpretations: dict) -> list:
+    """Page Portfolio Analytics — Beta, Alpha, Tracking Error, Correlations."""
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import HRFlowable, PageBreak, Paragraph, Spacer, Table, TableStyle
+
+    title_s = styles['title']; body_s = styles['body']
+    small_s = styles['small']; section_s = styles['section']
+
+    S = []
+    analytics = tearsheet.get('portfolio_analytics', {})
+    if not analytics or 'metrics' not in analytics:
+        return S
+
+    metrics = analytics.get('metrics', {})
+    benchmark = analytics.get('benchmark', {})
+    risk_contrib = analytics.get('risk_contribution', {})
+    correlations = analytics.get('correlations', {})
+    tickers = analytics.get('tickers', [])
+
+    S += [
+        Paragraph("Portfolio Analytics", title_s),
+        HRFlowable(width="100%", thickness=2, color=colors.HexColor(GOLD)),
+        Spacer(1, 0.3 * cm),
+        Paragraph(
+            "Analyse quantitative du portefeuille réel — métriques de risque, "
+            "comparaison au benchmark composite et matrice de corrélations.",
+            body_s
+        ),
+        Spacer(1, 0.4 * cm),
+    ]
+
+    # ── Métriques portefeuille ─────────────────────────────────────────────
+    S += [Paragraph("Métriques de performance", section_s),
+          HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+          Spacer(1, 0.2 * cm)]
+
+    met_header = ["Métrique", "Valeur", "Interprétation"]
+    met_rows = [met_header]
+    interp = {
+        "sharpe":        lambda v: "Excellent" if v >= 2 else "Bon" if v >= 1 else "Moyen" if v >= 0.5 else "Faible",
+        "sortino":       lambda v: "Excellent" if v >= 2.5 else "Bon" if v >= 1.5 else "Moyen",
+        "ann_return":    lambda v: f"{'Positif' if v >= 0 else 'Négatif'} — {abs(v):.1f}% annualisé",
+        "ann_volatility":lambda v: f"{'Faible' if v <= 15 else 'Modérée' if v <= 25 else 'Élevée'} — {v:.1f}%",
+        "max_drawdown":  lambda v: f"Perte max {abs(v):.1f}% — {'acceptable' if v >= -15 else 'significative'}",
+    }
+    labels = {
+        "sharpe": "Sharpe Ratio", "sortino": "Sortino Ratio",
+        "ann_return": "Rendement annualisé", "ann_volatility": "Volatilité annualisée",
+        "max_drawdown": "Max Drawdown",
+    }
+    for k, label in labels.items():
+        v = metrics.get(k)
+        if v is not None:
+            met_rows.append([label, f"{v:+.2f}" if k == "ann_return" else f"{v:.2f}",
+                             interp.get(k, lambda x: "")(v)])
+
+    t = Table(met_rows, colWidths=[5*cm, 3*cm, 10.2*cm])
+    t.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0), colors.HexColor(NAVY)),
+        ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
+        ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE",      (0,0), (-1,-1), 9),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.HexColor("#fdf8ee"), colors.white]),
+        ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 6),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    S += [t, Spacer(1, 0.4 * cm)]
+
+    # ── Benchmark ─────────────────────────────────────────────────────────
+    if benchmark and benchmark.get('beta') is not None:
+        S += [Paragraph("Analyse vs Benchmark", section_s),
+              HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+              Spacer(1, 0.2 * cm)]
+
+        comp = benchmark.get('composition', {})
+        bench_label = " + ".join(f"{t} {w:.0f}%" for t,w in comp.items())
+        S += [Paragraph(f"Benchmark composite : {bench_label}", body_s), Spacer(1, 0.2*cm)]
+
+        interp_bench = benchmark.get('interpretation', {})
+        bench_header = ["Indicateur", "Valeur", "Interprétation"]
+        bench_rows = [bench_header,
+            ["Beta", f"{benchmark['beta']:.2f}", interp_bench.get('beta', '')],
+            ["Alpha annuel", f"{benchmark['alpha']:+.2f}%", interp_bench.get('alpha', '')],
+            ["Tracking Error", f"{benchmark['tracking_error']:.2f}%", interp_bench.get('tracking_error', '')],
+            ["Sharpe benchmark", f"{benchmark.get('sharpe', 0):.2f}",
+             f"vs portefeuille {metrics.get('sharpe', 0):.2f}"],
+        ]
+        tb = Table(bench_rows, colWidths=[4*cm, 3*cm, 11.2*cm])
+        tb.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (-1,0), colors.HexColor(NAVY)),
+            ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
+            ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTSIZE",      (0,0), (-1,-1), 9),
+            ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.HexColor("#fdf8ee"), colors.white]),
+            ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+            ("LEFTPADDING",   (0,0), (-1,-1), 6),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 6),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ]))
+        S += [tb, Spacer(1, 0.4 * cm)]
+
+    # ── Contribution au risque ────────────────────────────────────────────
+    if risk_contrib and tickers:
+        S += [Paragraph("Contribution au risque", section_s),
+              HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+              Spacer(1, 0.2 * cm)]
+        weights = analytics.get('weights', {})
+        rc_header = ["Ticker", "Poids (%)", "Contribution risque (%)"]
+        rc_rows = [rc_header] + [
+            [t, f"{weights.get(t, 0):.1f}", f"{risk_contrib.get(t, 0):.1f}"]
+            for t in tickers if t in risk_contrib
+        ]
+        tc = Table(rc_rows, colWidths=[4*cm, 4*cm, 10.2*cm])
+        tc.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (-1,0), colors.HexColor(NAVY)),
+            ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
+            ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTSIZE",      (0,0), (-1,-1), 9),
+            ("ROWBACKGROUNDS",(0,1), (-1,-1), [colors.HexColor("#fdf8ee"), colors.white]),
+            ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+            ("LEFTPADDING",   (0,0), (-1,-1), 6),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 6),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ]))
+        S += [tc, Spacer(1, 0.4 * cm)]
+
+    # ── Matrice corrélations ──────────────────────────────────────────────
+    if correlations and len(tickers) > 1:
+        S += [Paragraph("Matrice de corrélations", section_s),
+              HRFlowable(width="100%", thickness=1, color=colors.HexColor(GOLD)),
+              Spacer(1, 0.2 * cm)]
+        corr_header = [""] + tickers
+        corr_rows = [corr_header]
+        for t1 in tickers:
+            row = [t1]
+            for t2 in tickers:
+                v = correlations.get(t1, {}).get(t2, 0)
+                row.append(f"{v:.2f}")
+            corr_rows.append(row)
+        col_w = [3*cm] + [18.2/len(tickers)*cm] * len(tickers)
+        td = Table(corr_rows, colWidths=col_w)
+        td.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (-1,0), colors.HexColor(NAVY)),
+            ("BACKGROUND",    (0,0), (0,-1), colors.HexColor(NAVY)),
+            ("TEXTCOLOR",     (0,0), (-1,0), colors.white),
+            ("TEXTCOLOR",     (0,0), (0,-1), colors.white),
+            ("FONTNAME",      (0,0), (-1,-1), "Helvetica-Bold"),
+            ("FONTSIZE",      (0,0), (-1,-1), 8),
+            ("GRID",          (0,0), (-1,-1), 0.3, colors.HexColor("#cccccc")),
+            ("ALIGN",         (0,0), (-1,-1), "CENTER"),
+            ("LEFTPADDING",   (0,0), (-1,-1), 4),
+            ("RIGHTPADDING",  (0,0), (-1,-1), 4),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ]))
+        S += [td, Spacer(1, 0.4 * cm)]
+
+    S += [PageBreak()]
+    return S
+
 def _pages_islamic_finance(tearsheet: dict, styles: dict, narratives: dict, interpretations: dict) -> list:
     """Page Finance Islamique — Conformite AAOIFI."""
     from reportlab.lib import colors
@@ -1683,6 +1850,7 @@ def generate_pdf(tearsheet: dict) -> bytes:
     S += _pages_performance_charts(tearsheet, styles, narratives, interpretations)
     S += _pages_costs_allocation(tearsheet, styles, narratives, interpretations)
     S += _pages_analysis(tearsheet, styles, narratives, interpretations)
+    S += _pages_portfolio_analytics(tearsheet, styles, narratives, interpretations)
     S += _pages_islamic_finance(tearsheet, styles, narratives, interpretations)
     S += _pages_buffett(tearsheet, styles, narratives, interpretations)
     S += _pages_methodology(tearsheet, styles, narratives, interpretations)
