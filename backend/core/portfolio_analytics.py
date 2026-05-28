@@ -14,11 +14,11 @@ log = logging.getLogger(__name__)
 TRADING_DAYS = 252
 
 UNIVERSE_BENCHMARKS = {
-    "sp500":             "SPY",
-    "cac40":             "^FCHI",
-    "etf_broad":         "SPY",
+    "sp500":               "^GSPC",
+    "cac40":               "^FCHI",
+    "etf_broad":           "^GSPC",
     "etf_precious_metals": "GLD",
-    "msci_world":        "SPY",
+    "msci_world":          "^GSPC",
 }
 
 def _get_universe_weights(tickers: list[str], engine) -> dict[str, float]:
