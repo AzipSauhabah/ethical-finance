@@ -9,7 +9,7 @@ import SignalsPanel  from './features/signals/SignalsPanel';
 import ScreeningPanel from './features/screener/ScreenerPage';
 import SentimentPanel from './features/sentiment/SentimentPage';
 import TechnicalPanel from './features/technical/TechnicalPage';
-import IndicatorsPanel from './components/IndicatorsPanel';
+import IndicatorsPanel from './features/indicators/IndicatorsPage';
 import LivePanel from './features/live/LivePage';
 import StrategyBuilderPanel from './features/strategy-builder/StrategyBuilderPage';
 
