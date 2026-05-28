@@ -13,6 +13,31 @@ log = logging.getLogger(__name__)
 
 TRADING_DAYS = 252
 
+UNIVERSE_BENCHMARKS = {
+    "sp500":             "SPY",
+    "cac40":             "^FCHI",
+    "etf_broad":         "SPY",
+    "etf_precious_metals": "GLD",
+    "msci_world":        "SPY",
+}
+
+def _get_universe_weights(tickers: list[str], engine) -> dict[str, float]:
+    """Retourne {benchmark_ticker: poids} selon l'univers des tickers du portefeuille."""
+    import sqlalchemy as sa
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(sa.text(
+                "SELECT ticker, universe FROM ticker_fundamentals WHERE ticker = ANY(:t)"
+            ), {"t": tickers}).fetchall()
+        universe_count: dict[str, int] = {}
+        for _, universe in rows:
+            bench = UNIVERSE_BENCHMARKS.get(universe or "sp500", "SPY")
+            universe_count[bench] = universe_count.get(bench, 0) + 1
+        total = sum(universe_count.values()) or 1
+        return {b: c / total for b, c in universe_count.items()}
+    except Exception:
+        return {"SPY": 1.0}
+
 
 def _get_prices(tickers: list[str], engine, days: int = 365) -> pd.DataFrame:
     """Fetch prix ajustés depuis PostgreSQL."""
@@ -109,6 +134,64 @@ def compute_portfolio_analytics(
         for dt, v in nav_series.items()
     ][-252:]  # dernière année
 
+    # ── Benchmark composite ───────────────────────────────────────────────
+    bench_weights = _get_universe_weights(tickers_available, engine)
+    bench_tickers = list(bench_weights.keys())
+    bench_prices = _get_prices(bench_tickers, engine, days)
+    benchmark = {}
+
+    if not bench_prices.empty:
+        # Rendement benchmark composite pondéré
+        available_bench = [t for t in bench_tickers if t in bench_prices.columns]
+        if available_bench:
+            bw = np.array([bench_weights.get(t, 0) for t in available_bench])
+            bw = bw / bw.sum()
+            bench_rets_df = bench_prices[available_bench].pct_change().dropna()
+            bench_rets = bench_rets_df @ bw
+            common = port_rets.index.intersection(bench_rets.index)
+
+            if len(common) > 30:
+                pr = port_rets[common].values
+                br = bench_rets[common].values
+                # Beta = Cov(port, bench) / Var(bench)
+                beta = float(np.cov(pr, br)[0][1] / np.var(br)) if np.var(br) > 0 else 0
+                # Alpha Jensen annualisé
+                alpha = float((pr.mean() - beta * br.mean()) * TRADING_DAYS * 100)
+                # Tracking error annualisé
+                te = float(np.std(pr - br) * np.sqrt(TRADING_DAYS) * 100)
+                # Sharpe benchmark
+                b_sharpe = float(br.mean() / br.std() * np.sqrt(TRADING_DAYS)) if br.std() > 0 else 0
+                # Ann return benchmark
+                b_ann_ret = float((1 + br.mean()) ** TRADING_DAYS - 1) * 100
+                # Max drawdown benchmark
+                b_cum = (1 + bench_rets[common]).cumprod()
+                b_dd = float(((b_cum - b_cum.cummax()) / b_cum.cummax()).min() * 100)
+
+                benchmark = {
+                    "composition": {t: round(bench_weights[t] * 100, 1) for t in bench_tickers},
+                    "beta":          round(beta, 2),
+                    "alpha":         round(alpha, 2),
+                    "tracking_error": round(te, 2),
+                    "sharpe":        round(b_sharpe, 2),
+                    "ann_return":    round(b_ann_ret, 2),
+                    "max_drawdown":  round(b_dd, 2),
+                    "interpretation": {
+                        "beta": (
+                            f"Beta {beta:.2f} — portefeuille {'plus' if beta > 1 else 'moins'} volatil "
+                            f"que le benchmark ({abs((beta-1)*100):.0f}% {'de plus' if beta > 1 else 'de moins'})"
+                        ),
+                        "alpha": (
+                            f"Alpha {alpha:+.1f}%/an — "
+                            f"{'surperformance' if alpha > 0 else 'sous-performance'} après ajustement du risque"
+                        ),
+                        "tracking_error": (
+                            f"Tracking error {te:.1f}% — "
+                            f"{'très proche' if te < 5 else 'proche' if te < 10 else 'diverge' if te < 20 else 'très différent'} "
+                            f"du benchmark"
+                        ),
+                    }
+                }
+
     # ── Résultat ───────────────────────────────────────────────────────────
     return {
         "metrics": {
@@ -133,4 +216,5 @@ def compute_portfolio_analytics(
         },
         "nav_history": nav_history,
         "tickers": tickers_available,
+        "benchmark": benchmark,
     }

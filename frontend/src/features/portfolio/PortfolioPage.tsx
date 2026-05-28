@@ -227,7 +227,7 @@ export default function TickerManager({ tickers, setTickers }: Props) {
         <div>
           <div style={{ fontSize: '0.65rem', letterSpacing: '3px', color: GOLD, marginBottom: 4 }}>SURVEILLANCE</div>
           <h2 style={{ margin: 0, fontSize: '1.8rem', fontFamily: '"Playfair Display", serif', color: '#e8e8e8', fontWeight: 400 }}>
-            Univers d'investissement
+            Dashboard
           </h2>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
