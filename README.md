@@ -116,6 +116,29 @@ graph TB
 - Efficient Frontier — portefeuille optimal selon les positions actuelles
 - Panel Analytics dans Portfolio GUI — NAV historique + métriques + heatmap corrélations
 
+#### Moteur Backtest — niveau QuantConnect+ (sessions 6-10)
+
+**Backtest engine :**
+- [ ] Intraday backtesting — moteur 1h sur données ohlcv_intraday existantes
+- [ ] Rebalancement configurable — daily/weekly/monthly/quarterly/custom
+- [ ] Slippage model avancé — Almgren-Chriss market impact réaliste
+- [ ] Short selling — vente à découvert avec coût d'emprunt par broker
+- [ ] Pipeline de facteurs — CustomFactor style Zipline (momentum, value, quality...)
+- [ ] Universe selection dynamique — filtre tickers dans on_bar selon critères live
+
+**Portfolio construction :**
+- [ ] Black-Litterman — views subjectifs + prior marché → poids optimaux
+- [ ] HRP (Hierarchical Risk Parity) — clustering corrélations Lopez de Prado
+- [ ] Risk model PCA/Barra — facteurs de risque communs
+
+**Execution model :**
+- [ ] VWAP/TWAP — exécution lissée sur la journée
+- [ ] Market vs Limit orders — modèle d'exécution réaliste
+- [ ] Live trading — connexion Degiro API ou TradingView webhooks
+
+**IDE intégré :**
+- [ ] Notebook/IDE dans la GUI — éditeur stratégie + backtest + résultats en une page
+
 #### Refonte architecturale (sessions 6-8)
 - Stratégies plug-and-play — décorateur `@register` → auto GUI + API sans toucher au code
 - Frontend modulaire — `features/portfolio/`, `features/screener/`, `features/backtest/`
