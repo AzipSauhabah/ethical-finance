@@ -20,10 +20,10 @@ interface SignalRow {
 
 // ─── Mock data (remplacer par appels API) ────────────────────────────────────
 const STATS: StatCard[] = [
-  { label: "Tickers suivis",  value: "573",   sub: "5 univers"           },
-  { label: "OHLCV en base",   value: "2.75M", sub: "lignes journalières" },
-  { label: "Fundamentals",    value: "615",   sub: "fiches SEC EDGAR"    },
-  { label: "Signaux archivés",value: "6 strat", sub: "persistés 20h30 UTC"},
+  { label: "Tickers tracked",  value: "573",   sub: "5 universes"           },
+  { label: "OHLCV in DB",   value: "2.75M", sub: "daily rows" },
+  { label: "Fundamentals",    value: "615",   sub: "SEC EDGAR records"    },
+  { label: "Signals archived",value: "6 strat", sub: "stored 20h30 UTC"},
 ];
 
 const SIGNALS: SignalRow[] = [
@@ -147,10 +147,10 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [showArch, setShowArch] = useState(false);
-  const [activeUniverse, setActiveUniverse] = useState("Tous");
+  const [activeUniverse, setActiveUniverse] = useState("All");
 
-  const universes = ["Tous", "SP500", "CAC40", "ETF Precious", "ETF Broad", "MSCI World"];
-  const filtered = activeUniverse === "Tous" ? SIGNALS : SIGNALS.filter(s => s.universe === activeUniverse);
+  const universes = ["All", "SP500", "CAC40", "ETF Precious", "ETF Broad", "MSCI World"];
+  const filtered = activeUniverse === "All" ? SIGNALS : SIGNALS.filter(s => s.universe === activeUniverse);
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", padding: "24px 32px", maxWidth: 1100, margin: "0 auto", color: "#e8e8e8" }}>
@@ -193,10 +193,10 @@ export default function DashboardPage() {
 
       {/* Pipeline status */}
       <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "12px 20px", marginBottom: 28, background: "rgba(0,255,100,0.03)", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, fontFamily: "monospace", color: "#9FE1CB", fontWeight: 600 }}>Pipeline auto</span>
+        <span style={{ fontSize: 12, fontFamily: "monospace", color: "#9FE1CB", fontWeight: 600 }}>Auto Pipeline</span>
         {[
           { label: "OHLCV 20h",    ok: true },
-          { label: "Signaux 20h30",ok: true },
+          { label: "Signals 20h30",ok: true },
           { label: "SEC 22h",      ok: true },
           { label: "FMP 22h30",    ok: true },
           { label: "Backup 23h",   ok: true },
@@ -215,7 +215,7 @@ export default function DashboardPage() {
       {/* Signals table */}
       <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, overflow: "hidden" }}>
         <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>Signaux du jour</span>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Today's Signals</span>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {universes.map(u => (
               <button key={u} onClick={() => setActiveUniverse(u)} style={{
