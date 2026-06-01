@@ -17,23 +17,26 @@ type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals' | 'sentimen
 
 const METHOD_LABELS: Record<string, { label: string; strategy: string }> = {
   magic_formula: { label: 'Magic Formula (Greenblatt)', strategy: 'epr5' },
-  momentum:      { label: 'Momentum 12-6-1 mois',       strategy: 'momentum' },
+  momentum:      { label: 'Momentum 12-6-1',            strategy: 'momentum' },
   low_vol:       { label: 'Low Volatility',              strategy: 'risk_parity' },
-  ml:            { label: 'IA / ML Score',               strategy: 'ml_ensemble' },
-  combined:      { label: 'Combiné Value+Momentum+ML',   strategy: 'epr5' },
+  ml:            { label: 'AI / ML Score',               strategy: 'ml_ensemble' },
+  combined:      { label: 'Combined Value+Momentum+ML',  strategy: 'epr5' },
 };
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'about',      label: 'Accueil',    icon: '◈' },
-  { key: 'tickers',    label: 'Portfolio',  icon: '◎' },
-  { key: 'screener',   label: 'Screener',   icon: '▣' },
-  { key: 'backtest',   label: 'Backtest',   icon: '◉' },
-  { key: 'signals',    label: 'Signaux',    icon: '◆' },
-  { key: 'sentiment',  label: 'Sentiment',  icon: '◉' },
-  { key: 'technical',  label: 'Technical',  icon: '◇' },
-  { key: 'indicators', label: 'Indicateurs',icon: '◈' },
-  { key: 'live',       label: 'Live',       icon: '⬤' },
-  { key: 'builder',    label: 'Stratégies',  icon: '⚙' },
+const TABS: { key: Tab; label: string; icon: string; group: string; tooltip: string }[] = [
+  // Dashboard
+  { key: 'about',      label: 'Home',       icon: '◈', group: 'dashboard', tooltip: 'Overview — signals, pipeline status, market summary' },
+  { key: 'tickers',    label: 'Portfolio',  icon: '◎', group: 'dashboard', tooltip: 'Track positions, P&L, Sharpe, correlations, risk contribution' },
+  { key: 'live',       label: 'Live',       icon: '⬤', group: 'dashboard', tooltip: 'Real-time quotes and intraday price streams' },
+  // Research
+  { key: 'screener',   label: 'Screener',   icon: '▣', group: 'research',  tooltip: 'Filter SP500/CAC40 by ESG, Sharia, Buffett Score, fundamentals' },
+  { key: 'sentiment',  label: 'Sentiment',  icon: '◉', group: 'research',  tooltip: 'VADER sentiment analysis from news & social media' },
+  { key: 'technical',  label: 'Technical',  icon: '◇', group: 'research',  tooltip: 'RSI, MACD, Bollinger, Fibonacci, Elliott Wave' },
+  { key: 'indicators', label: 'Indicators', icon: '◈', group: 'research',  tooltip: 'Configurable technical indicators dashboard' },
+  // Strategy
+  { key: 'backtest',   label: 'Backtest',   icon: '◉', group: 'strategy',  tooltip: 'Event-driven backtester — strict no-lookahead, real costs' },
+  { key: 'signals',    label: 'Signals',    icon: '◆', group: 'strategy',  tooltip: 'Daily buy/sell signals — 560 tickers × 6 strategies' },
+  { key: 'builder',    label: 'Strategies', icon: '⚙', group: 'strategy',  tooltip: 'Build and deploy custom strategies — plug-and-play' },
 ];
 
 export default function App() {
@@ -77,8 +80,12 @@ export default function App() {
         </div>
 
         <nav style={{ display: 'flex', gap: 0 }}>
-          {TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
+          {/* Navbar avec groupes */}
+          {['dashboard','research','strategy'].map(group => (
+            <div key={group} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+              {group !== 'dashboard' && <span style={{ width: 1, height: 20, background: '#1e2d4a', margin: '0 4px' }} />}
+              {TABS.filter(t => t.group === group).map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} title={t.tooltip} style={{
               padding: '0 1.25rem',
               height: 56,
               background: 'none',
@@ -95,6 +102,8 @@ export default function App() {
               <span style={{ fontSize: '0.7rem' }}>{t.icon}</span>
               {t.label}
             </button>
+          ))}
+            </div>
           ))}
         </nav>
 
