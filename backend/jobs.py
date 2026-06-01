@@ -300,57 +300,49 @@ async def _persist_signals_batch(app_state, batch: list[str], strategy: str, wei
 async def job_ohlcv_update() -> None:
     """Download and persist OHLCV data Mon-Fri at 20h00 UTC via Twelve Data."""
     try:
-        import asyncio
         import sqlalchemy as sa
         from datetime import date, timedelta
+        from backend.core.twelve_data import fetch_ohlcv
+        from backend.core.db import engine
 
-        database_url = os.environ.get("DATABASE_URL", "")
-        sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
-        engine_ohlcv = sa.create_engine(sync_url, pool_pre_ping=True)
-
-        with engine_ohlcv.connect() as conn:
+        with engine.connect() as conn:
             rows = conn.execute(sa.text(
                 "SELECT DISTINCT ticker FROM ticker_fundamentals ORDER BY ticker"
             )).fetchall()
         all_tickers = [r[0] for r in rows]
+
         end = date.today()
-        start = end - timedelta(days=7)
+        start = end - timedelta(days=10)
         inserted = 0
 
-        engine = sa.create_engine(sync_url, pool_pre_ping=True)
-        loop = asyncio.get_event_loop()
+        for ticker in all_tickers:
+            try:
+                df = fetch_ohlcv(ticker, start=start, end=end)
+                if df is None or df.empty:
+                    continue
+                with engine.begin() as conn:
+                    for _, row in df.iterrows():
+                        conn.execute(sa.text("""
+                            INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
+                            VALUES (:ticker, :dt, :open, :high, :low, :close, :adj, :volume)
+                            ON CONFLICT (ticker, date) DO UPDATE SET
+                                open=EXCLUDED.open, high=EXCLUDED.high,
+                                low=EXCLUDED.low, close=EXCLUDED.close,
+                                adj_close=EXCLUDED.adj_close, volume=EXCLUDED.volume
+                        """), {
+                            "ticker": ticker,
+                            "dt": str(row.get("datetime", row.name))[:10],
+                            "open":   float(row.get("open", 0)),
+                            "high":   float(row.get("high", 0)),
+                            "low":    float(row.get("low", 0)),
+                            "close":  float(row.get("close", 0)),
+                            "adj":    float(row.get("close", 0)),
+                            "volume": int(row.get("volume", 0)),
+                        })
+                        inserted += 1
+            except Exception as e:
+                log.debug("OHLCV error %s: %s", ticker, e)
 
-        def _download_and_insert() -> None:
-            nonlocal inserted
-            for ticker in all_tickers:
-                try:
-                    df = yf.download(ticker, start=start, end=end, progress=False, auto_adjust=True)
-                    if df.empty:
-                        continue
-                    with engine.begin() as conn:
-                        for dt, row in df.iterrows():
-                            conn.execute(sa.text("""
-                                INSERT INTO ohlcv (ticker, date, open, high, low, close, volume)
-                                VALUES (:ticker, :dt, :open, :high, :low, :close, :volume)
-                                ON CONFLICT (ticker, date) DO UPDATE SET
-                                    open=EXCLUDED.open, high=EXCLUDED.high,
-                                    low=EXCLUDED.low, close=EXCLUDED.close,
-                                    volume=EXCLUDED.volume
-                            """), {
-                                "ticker": ticker,
-                                "dt": dt.date(),
-                                "open": float(row["Open"]),
-                                "high": float(row["High"]),
-                                "low": float(row["Low"]),
-                                "close": float(row["Close"]),
-                                "volume": int(row["Volume"] or 0),
-                            })
-                            inserted += 1
-                except Exception as e:
-                    log.debug("OHLCV error %s: %s", ticker, e)
-                time.sleep(0.05)
-
-        await loop.run_in_executor(None, _download_and_insert)
         log.info("OHLCV job complete — %d rows inserted", inserted)
     except Exception as e:
         log.warning("OHLCV job error: %s", e)
