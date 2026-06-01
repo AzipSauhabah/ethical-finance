@@ -12,8 +12,9 @@ import TechnicalPanel from './features/technical/TechnicalPage';
 import IndicatorsPanel from './features/indicators/IndicatorsPage';
 import LivePanel from './features/live/LivePage';
 import StrategyBuilderPanel from './features/strategy-builder/StrategyBuilderPage';
+import TrackerPage from './features/tracker/TrackerPage';
 
-type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals' | 'sentiment' | 'technical' | 'indicators' | 'live' | 'builder';
+type Tab = 'about' | 'tickers' | 'screener' | 'backtest' | 'signals' | 'sentiment' | 'technical' | 'indicators' | 'live' | 'builder' | 'tracker';
 
 const METHOD_LABELS: Record<string, { label: string; strategy: string }> = {
   magic_formula: { label: 'Magic Formula (Greenblatt)', strategy: 'epr5' },
@@ -27,6 +28,7 @@ const TABS: { key: Tab; label: string; icon: string; group: string; tooltip: str
   // Dashboard
   { key: 'about',      label: 'Home',       icon: '◈', group: 'dashboard', tooltip: 'Overview — signals, pipeline status, market summary' },
   { key: 'tickers',    label: 'Portfolio',  icon: '◎', group: 'dashboard', tooltip: 'Track positions, P&L, Sharpe, correlations, risk contribution' },
+  { key: 'tracker',    label: 'Tracker',    icon: '◎', group: 'dashboard', tooltip: 'Personal portfolio tracker — transactions, TWR, MWR, P&L per position' },
   { key: 'live',       label: 'Live',       icon: '⬤', group: 'dashboard', tooltip: 'Real-time quotes and intraday price streams' },
   // Research
   { key: 'screener',   label: 'Screener',   icon: '▣', group: 'research',  tooltip: 'Filter SP500/CAC40 by ESG, Sharia, Buffett Score, fundamentals' },
@@ -145,6 +147,7 @@ export default function App() {
         {tab === 'indicators' && <IndicatorsPanel tickers={tickers} />}
         {tab === 'live'       && <LivePanel tickers={tickers} />}
         {tab === 'builder'    && <StrategyBuilderPanel />}
+        {tab === 'tracker'    && <TrackerPage />}
       </main>
 
       <footer style={{
