@@ -83,7 +83,14 @@ export default function App() {
           {/* Navbar avec groupes */}
           {['dashboard','research','strategy'].map(group => (
             <div key={group} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-              {group !== 'dashboard' && <span style={{ width: 1, height: 20, background: '#1e2d4a', margin: '0 4px' }} />}
+              {group !== 'dashboard' && (
+                <div style={{ display: 'flex', alignItems: 'center', padding: '0 6px' }}>
+                  <span style={{ width: 1, height: 28, background: '#2a3a5a' }} />
+                  <span style={{ fontSize: '0.45rem', letterSpacing: '2px', color: '#2a3a5a', writingMode: 'vertical-rl', marginLeft: 4, textTransform: 'uppercase', fontWeight: 700 }}>
+                    {group === 'research' ? 'RESEARCH' : 'STRATEGY'}
+                  </span>
+                </div>
+              )}
               {TABS.filter(t => t.group === group).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} title={t.tooltip} style={{
               padding: '0 1.25rem',
