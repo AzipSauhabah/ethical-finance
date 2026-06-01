@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+const API = import.meta.env.VITE_API_URL ?? "";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface StatCard {
@@ -26,13 +27,7 @@ const STATS: StatCard[] = [
   { label: "Signals archived",value: "6 strat", sub: "stored 20h30 UTC"},
 ];
 
-const SIGNALS: SignalRow[] = [
-  { ticker: "AAPL",    universe: "SP500",        composite: 0.70, sentiment: 0.74, fundamental: 0.88, epr5: 0.79, signal: "BUY",  date: "2026-05-18" },
-  { ticker: "MSFT",    universe: "SP500",        composite: 0.65, sentiment: 0.65, fundamental: 0.80, epr5: 0.69, signal: "BUY",  date: "2026-05-18" },
-  { ticker: "TTE.PA",  universe: "CAC40",        composite: 0.46, sentiment: 0.42, fundamental: 0.51, epr5: 0.34, signal: "HOLD", date: "2026-05-18" },
-  { ticker: "GLD",     universe: "ETF Precious", composite: 0.67, sentiment: 0.61, fundamental: 0.55, epr5: 0.72, signal: "BUY",  date: "2026-05-18" },
-  { ticker: "MC.PA",   universe: "CAC40",        composite: 0.27, sentiment: 0.18, fundamental: 0.30, epr5: 0.25, signal: "SELL", date: "2026-05-18" },
-];
+const SIGNALS_STATIC: SignalRow[] = [];
 
 // ─── Architecture SVG ─────────────────────────────────────────────────────────
 function ArchitectureSVG() {
@@ -148,9 +143,33 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 export default function DashboardPage() {
   const [showArch, setShowArch] = useState(false);
   const [activeUniverse, setActiveUniverse] = useState("All");
+  const [signals, setSignals] = useState<SignalRow[]>([]);
+  const [signalsLoading, setSignalsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/api/signals/latest?limit=20&strategy=epr5`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.signals?.length > 0) {
+          setSignals(d.signals.map((s: any) => ({
+            ticker: s.ticker,
+            universe: s.universe?.toUpperCase() || "SP500",
+            composite: s.composite,
+            sentiment: s.sentiment,
+            fundamental: s.fundamental,
+            epr5: s.epr5,
+            signal: s.signal,
+            date: s.date,
+          })));
+        }
+        setSignalsLoading(false);
+      })
+      .catch(() => setSignalsLoading(false));
+  }, []);
 
   const universes = ["All", "SP500", "CAC40", "ETF Precious", "ETF Broad", "MSCI World"];
-  const filtered = activeUniverse === "All" ? SIGNALS : SIGNALS.filter(s => s.universe === activeUniverse);
+  const allSignals = signals.length > 0 ? signals : SIGNALS_STATIC;
+  const filtered = activeUniverse === "All" ? allSignals : allSignals.filter(s => s.universe === activeUniverse);
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", padding: "24px 32px", maxWidth: 1100, margin: "0 auto", color: "#e8e8e8" }}>

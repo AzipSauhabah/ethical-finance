@@ -766,6 +766,45 @@ async def monte_carlo(payload: MonteCarloIn):
 # ─── Signals & rebalance ─────────────────────────────────────────────────────
 
 
+@app.get("/api/signals/latest")
+async def signals_latest(limit: int = 20, universe: str = "all", strategy: str = "epr5"):
+    """Derniers signaux depuis signals_history — pour la Home page."""
+    import sqlalchemy as sa
+    from backend.core.db import engine
+    try:
+        with engine.connect() as conn:
+            universe_filter = ""
+            if universe != "all":
+                universe_filter = "AND tf.universe = :universe"
+            rows = conn.execute(sa.text(f"""
+                SELECT sh.ticker, sh.date, sh.strategy_id,
+                       sh.signal_buy, sh.signal_sell, sh.composite_score,
+                       sh.sentiment_score, sh.fundamental_score, sh.rf_score,
+                       tf.universe
+                FROM signals_history sh
+                LEFT JOIN ticker_fundamentals tf ON sh.ticker = tf.ticker
+                WHERE sh.strategy_id = :strategy
+                {universe_filter}
+                ORDER BY sh.date DESC, sh.composite_score DESC
+                LIMIT :limit
+            """), {"strategy": strategy, "universe": universe, "limit": limit}).fetchall()
+        return {"signals": [
+            {
+                "ticker": r[0], "date": str(r[1]), "strategy": r[2],
+                "signal": "BUY" if r[3] else "SELL" if r[4] else "HOLD",
+                "composite": round(float(r[5] or 0), 2),
+                "sentiment": round(float(r[6] or 0), 2),
+                "fundamental": round(float(r[7] or 0), 2),
+                "epr5": round(float(r[8] or 0), 2),
+                "universe": r[9] or "sp500",
+            }
+            for r in rows
+        ]}
+    except Exception as e:
+        log.warning("signals_latest error: %s", e)
+        return {"signals": []}
+
+
 @app.post("/api/signals/daily")
 async def daily_signals(payload: TickerListIn, strategy: str = "epr5"):
     """Signaux journaliers pondérés selon la stratégie choisie.
