@@ -302,7 +302,6 @@ async def job_ohlcv_update() -> None:
     try:
         import sqlalchemy as sa
         from datetime import date, timedelta
-        from backend.core.twelve_data import fetch_ohlcv
         from backend.core.db import engine
 
         with engine.connect() as conn:
@@ -315,33 +314,41 @@ async def job_ohlcv_update() -> None:
         start = end - timedelta(days=10)
         inserted = 0
 
-        for ticker in all_tickers:
+        # Batch par 8 tickers — 1 crédit API pour 8 tickers
+        from backend.core.twelve_data import fetch_ohlcv_batch
+        BATCH = 8
+        for i in range(0, len(all_tickers), BATCH):
+            batch = all_tickers[i:i+BATCH]
             try:
-                df = fetch_ohlcv(ticker, start=start, end=end)
-                if df is None or df.empty:
-                    continue
-                with engine.begin() as conn:
-                    for _, row in df.iterrows():
-                        conn.execute(sa.text("""
-                            INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
-                            VALUES (:ticker, :dt, :open, :high, :low, :close, :adj, :volume)
-                            ON CONFLICT (ticker, date) DO UPDATE SET
-                                open=EXCLUDED.open, high=EXCLUDED.high,
-                                low=EXCLUDED.low, close=EXCLUDED.close,
-                                adj_close=EXCLUDED.adj_close, volume=EXCLUDED.volume
-                        """), {
-                            "ticker": ticker,
-                            "dt": str(row.get("datetime", row.name))[:10],
-                            "open":   float(row.get("open", 0)),
-                            "high":   float(row.get("high", 0)),
-                            "low":    float(row.get("low", 0)),
-                            "close":  float(row.get("close", 0)),
-                            "adj":    float(row.get("close", 0)),
-                            "volume": int(row.get("volume", 0)),
-                        })
-                        inserted += 1
+                results = fetch_ohlcv_batch(batch, start=start, end=end)
+                for ticker, df in results.items():
+                    if df is None or df.empty:
+                        continue
+                    with engine.begin() as conn:
+                        for dt_idx, row in df.iterrows():
+                            try:
+                                conn.execute(sa.text("""
+                                    INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
+                                    VALUES (:ticker, :dt, :open, :high, :low, :close, :adj, :volume)
+                                    ON CONFLICT (ticker, date) DO UPDATE SET
+                                        open=EXCLUDED.open, high=EXCLUDED.high,
+                                        low=EXCLUDED.low, close=EXCLUDED.close,
+                                        adj_close=EXCLUDED.adj_close, volume=EXCLUDED.volume
+                                """), {
+                                    "ticker": ticker,
+                                    "dt": str(dt_idx)[:10],
+                                    "open":   float(row.get("open") or 0),
+                                    "high":   float(row.get("high") or 0),
+                                    "low":    float(row.get("low") or 0),
+                                    "close":  float(row.get("close") or 0),
+                                    "adj":    float(row.get("close") or 0),
+                                    "volume": int(row.get("volume") or 0),
+                                })
+                                inserted += 1
+                            except Exception as e:
+                                log.debug("OHLCV insert error %s: %s", ticker, e)
             except Exception as e:
-                log.debug("OHLCV error %s: %s", ticker, e)
+                log.debug("OHLCV batch error %s: %s", batch, e)
 
         log.info("OHLCV job complete — %d rows inserted", inserted)
     except Exception as e:

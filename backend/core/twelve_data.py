@@ -187,6 +187,80 @@ def fetch_ohlcv(
 # ─── Fetch fundamentals ───────────────────────────────────────────────────────
 
 
+
+def fetch_ohlcv_batch(
+    tickers: list[str],
+    start: "date",
+    end: "date",
+    interval: str = "1day",
+) -> dict[str, "pd.DataFrame"]:
+    """
+    Télécharge OHLCV pour plusieurs tickers en un seul appel Twelve Data (batch).
+    Max 8 tickers par appel sur plan basic.
+    Retourne {ticker: DataFrame}.
+    """
+    import pandas as pd
+    api_key = _get_api_key()
+    results = {}
+
+    # Normalise les tickers
+    normalized = []
+    for t in tickers:
+        sym, exch = _normalize_ticker(t)
+        normalized.append((t, sym, exch))
+
+    # Groupe par exchange (les batch doivent avoir le même exchange)
+    from collections import defaultdict
+    by_exchange: dict = defaultdict(list)
+    for orig, sym, exch in normalized:
+        by_exchange[exch or ""].append((orig, sym))
+
+    for exchange, items in by_exchange.items():
+        # Chunks de 8
+        for i in range(0, len(items), 8):
+            chunk = items[i:i+8]
+            symbols = ",".join(sym for _, sym in chunk)
+            orig_tickers = [orig for orig, _ in chunk]
+
+            params = {
+                "symbol": symbols,
+                "interval": interval,
+                "start_date": start.isoformat(),
+                "end_date": end.isoformat(),
+                "apikey": api_key,
+                "format": "JSON",
+                "order": "ASC",
+            }
+            if exchange:
+                params["exchange"] = exchange
+
+            try:
+                r = requests.get(f"{BASE_URL}/time_series", params=params, timeout=20)
+                r.raise_for_status()
+                data = r.json()
+
+                # Réponse batch : {ticker: {values: [...]}} ou réponse simple si 1 ticker
+                if len(chunk) == 1:
+                    data = {orig_tickers[0]: data}
+
+                for orig_t in orig_tickers:
+                    sym = dict(chunk)[orig_t]
+                    td = data.get(sym) or data.get(orig_t) or {}
+                    values = td.get("values", [])
+                    if not values:
+                        continue
+                    df = pd.DataFrame(values)
+                    df["datetime"] = pd.to_datetime(df["datetime"])
+                    for col in ["open","high","low","close","volume"]:
+                        if col in df.columns:
+                            df[col] = pd.to_numeric(df[col], errors="coerce")
+                    df = df.set_index("datetime").sort_index()
+                    results[orig_t] = df
+            except Exception as e:
+                log.warning("Twelve Data batch error %s: %s", symbols, e)
+
+    return results
+
 def fetch_fundamentals_twelve(ticker: str) -> dict | None:
     """
     Récupère les statistiques de base depuis Twelve Data.
