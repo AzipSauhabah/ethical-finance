@@ -198,7 +198,12 @@ function TxForm({ token, portfolioId, onAdded }: { token:string; portfolioId:num
 // ── Holdings table ────────────────────────────────────────────────────────────
 function HoldingsTable({ analytics }: { analytics: Analytics | null }) {
   if (!analytics) return null;
-  const { holdings, total_invested, current_value, unrealized_pnl, realized_pnl, mwr } = analytics;
+  const holdings = analytics.holdings || {};
+  const total_invested = analytics.total_invested || 0;
+  const current_value = analytics.current_value || 0;
+  const unrealized_pnl = analytics.unrealized_pnl || 0;
+  const realized_pnl = analytics.realized_pnl || 0;
+  const mwr = analytics.mwr || 0;
   const total_pnl = unrealized_pnl + realized_pnl;
   const total_pct = total_invested > 0 ? (total_pnl / total_invested) * 100 : 0;
 
