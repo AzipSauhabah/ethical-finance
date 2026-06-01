@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS portfolios (
     id          SERIAL PRIMARY KEY,
-    user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
     name        TEXT NOT NULL,
     type        TEXT DEFAULT 'CTO' CHECK (type IN ('CTO','PEA','PEA-PME','AV','CRYPTO','OTHER')),
     currency    TEXT DEFAULT 'EUR',
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS portfolios (
 CREATE TABLE IF NOT EXISTS transactions (
     id              SERIAL PRIMARY KEY,
     portfolio_id    INTEGER REFERENCES portfolios(id) ON DELETE CASCADE,
-    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    user_id         UUID REFERENCES users(id) ON DELETE CASCADE,
     ticker          TEXT NOT NULL,
     date            DATE NOT NULL,
     type            TEXT NOT NULL CHECK (type IN ('BUY','SELL','DIVIDEND','SPLIT','FEE','DEPOSIT','WITHDRAWAL')),
