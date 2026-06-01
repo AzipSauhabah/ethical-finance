@@ -261,7 +261,6 @@ class Strategy(PositionManager, abc.ABC):
 
     # ── New event-driven API ─────────────────────────────────────────────
 
-    @abc.abstractmethod
     # ── Factor pipeline (optionnel) ──────────────────────────────────────
     factors: list = []
     _pipeline: object = None
@@ -276,6 +275,7 @@ class Strategy(PositionManager, abc.ABC):
             self._pipeline = FactorPipeline(self.factors)
         return self._pipeline.compute(dt, past_prices, fundamentals)
 
+    @abc.abstractmethod
     def on_bar(
         self,
         dt: date,
