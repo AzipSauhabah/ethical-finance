@@ -82,6 +82,7 @@ function PortfolioSelector({ token, selected, onSelect }: { token:string; select
   useEffect(() => { load(); }, [load]);
 
   async function create() {
+    if (!form.name.trim()) return;
     await fetch(`${API}/api/tracker/portfolios`, {
       method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
       body: JSON.stringify(form)
@@ -111,8 +112,13 @@ function PortfolioSelector({ token, selected, onSelect }: { token:string; select
             style={{ background:"#0d1628", border:`1px solid ${BORDER}`, borderRadius:4, padding:"0.3rem", color:"#e2e8f0", fontSize:"0.75rem", outline:"none" }}>
             {PORT_TYPES.map(t=><option key={t}>{t}</option>)}
           </select>
-          <input placeholder="Broker" value={form.broker} onChange={e=>setForm({...form,broker:e.target.value})}
+          <>
+          <input placeholder="Broker" value={form.broker} onChange={e=>setForm({...form,broker:e.target.value})} list="broker-suggestions"
             style={{ background:"#0d1628", border:`1px solid ${BORDER}`, borderRadius:4, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.75rem", width:100, outline:"none" }} />
+          <datalist id="broker-suggestions">
+            {["Fortuneo","Degiro","Boursorama","Saxo","Interactive Brokers","BNP Paribas","Revolut"].map(b=><option key={b} value={b}/>)}
+          </datalist>
+          </>
           <button onClick={create} style={{ background: GREEN, color:"#fff", border:"none", borderRadius:4, padding:"0.3rem 0.6rem", fontSize:"0.72rem", cursor:"pointer", fontWeight:700 }}>✓</button>
           <button onClick={()=>setCreating(false)} style={{ background:"transparent", border:`1px solid ${BORDER}`, color:"#94a3b8", borderRadius:4, padding:"0.3rem 0.5rem", fontSize:"0.72rem", cursor:"pointer" }}>✕</button>
         </div>
