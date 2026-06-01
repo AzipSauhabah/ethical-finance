@@ -172,7 +172,7 @@ def register_tracker_routes(app, get_current_user, engine):
             rows = conn.execute(sa.text(
                 "SELECT id, name, type, currency, broker, notes, created_at "
                 "FROM portfolios WHERE user_id = :uid ORDER BY created_at"
-            ), {"uid": str(user.id)}).fetchall()
+            ), {"uid": str(user.user_id)}).fetchall()
         return {"portfolios": [dict(zip(["id","name","type","currency","broker","notes","created_at"], r)) for r in rows]}
 
     @app.post("/api/tracker/portfolios")
@@ -183,7 +183,7 @@ def register_tracker_routes(app, get_current_user, engine):
                 VALUES (:uid, :name, :type, :currency, :broker, :notes)
                 RETURNING id, name, type, currency
             """), {
-                "uid": str(user.id),
+                "uid": str(user.user_id),
                 "name": payload.get("name", "My Portfolio"),
                 "type": payload.get("type", "CTO"),
                 "currency": payload.get("currency", "EUR"),
@@ -197,7 +197,7 @@ def register_tracker_routes(app, get_current_user, engine):
         with engine.begin() as conn:
             conn.execute(sa.text(
                 "DELETE FROM portfolios WHERE id = :pid AND user_id = :uid"
-            ), {"pid": portfolio_id, "uid": str(user.id)})
+            ), {"pid": portfolio_id, "uid": str(user.user_id)})
         return {"ok": True}
 
     @app.get("/api/tracker/portfolios/{portfolio_id}/transactions")
@@ -208,7 +208,7 @@ def register_tracker_routes(app, get_current_user, engine):
                 FROM transactions
                 WHERE portfolio_id = :pid AND user_id = :uid
                 ORDER BY date DESC
-            """), {"pid": portfolio_id, "uid": str(user.id)}).fetchall()
+            """), {"pid": portfolio_id, "uid": str(user.user_id)}).fetchall()
         cols = ["id","ticker","date","type","qty","price","fees","currency","notes"]
         return {"transactions": [dict(zip(cols, r)) for r in rows]}
 
@@ -222,7 +222,7 @@ def register_tracker_routes(app, get_current_user, engine):
                 RETURNING id
             """), {
                 "pid": portfolio_id,
-                "uid": str(user.id),
+                "uid": str(user.user_id),
                 "ticker": payload["ticker"].upper(),
                 "date": payload["date"],
                 "type": payload["type"],
@@ -239,7 +239,7 @@ def register_tracker_routes(app, get_current_user, engine):
         with engine.begin() as conn:
             conn.execute(sa.text(
                 "DELETE FROM transactions WHERE id = :tid AND portfolio_id = :pid AND user_id = :uid"
-            ), {"tid": tx_id, "pid": portfolio_id, "uid": str(user.id)})
+            ), {"tid": tx_id, "pid": portfolio_id, "uid": str(user.user_id)})
         return {"ok": True}
 
     @app.get("/api/tracker/portfolios/{portfolio_id}/analytics")
@@ -251,7 +251,7 @@ def register_tracker_routes(app, get_current_user, engine):
                 SELECT ticker, date, type, qty, price, fees, currency
                 FROM transactions WHERE portfolio_id = :pid AND user_id = :uid
                 ORDER BY date ASC
-            """), {"pid": portfolio_id, "uid": str(user.id)}).fetchall()
+            """), {"pid": portfolio_id, "uid": str(user.user_id)}).fetchall()
 
         if not tx_rows:
             return {"holdings": {}, "twr": 0, "mwr": 0, "total_invested": 0, "current_value": 0, "unrealized_pnl": 0}
