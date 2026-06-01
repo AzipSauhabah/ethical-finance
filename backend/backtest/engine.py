@@ -101,6 +101,10 @@ def _rebalance_dates(idx: pd.DatetimeIndex, freq: str) -> set:
         return set(idx[idx.is_month_end])
     if freq == "quarterly":
         return set(idx[idx.month.isin([3, 6, 9, 12]) & idx.is_month_end])
+    if freq in ("annual", "annually"):
+        return set(idx[idx.is_year_end])
+    if freq == "biweekly":
+        return set(idx[idx.day_of_week == 4][::2])  # vendredi une semaine sur deux
     return set(idx[idx.is_month_end])
 
 

@@ -252,7 +252,7 @@ export default function BacktestPanel({ tickers, onStrategyChange, defaultStrate
         </div>
         <div><Label>Rebalancement</Label>
           <select value={params.rebalance_frequency} onChange={e => setParams({ ...params, rebalance_frequency: e.target.value as BacktestParams['rebalance_frequency'] })} style={select}>
-            {[['daily','Quotidien'],['weekly','Hebdo'],['monthly','Mensuel'],['quarterly','Trimestriel'],['annually','Annuel']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
+            {[['daily','Daily'],['biweekly','Bi-weekly'],['weekly','Weekly'],['monthly','Monthly'],['quarterly','Quarterly'],['annually','Annual']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
         <div><Label>Benchmark</Label>

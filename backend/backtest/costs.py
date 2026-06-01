@@ -200,28 +200,48 @@ def market_impact_cost(
     notional_eur: float,
     cap_size: str = "mid_cap",
     _participation_rate: float = 0.05,
+    daily_volatility: float | None = None,
 ) -> float:
     """
-    Coût d'impact marché — modèle linéaire.
+    Coût d'impact marché — modèle Almgren-Chriss simplifié.
 
-    Impact = impact_bps × sqrt(notional / ADV)
-    Plus l'ordre est grand par rapport au volume journalier,
-    plus le prix se dégrade.
+    Impact = σ × √(Q/ADV) où :
+        σ   = volatilité journalière du titre (défaut par cap_size)
+        Q   = taille de l'ordre
+        ADV = volume journalier moyen
+
+    Inspiré de : Almgren & Chriss (2001) "Optimal execution of portfolio transactions"
 
     Args:
-        notional_eur: taille de l'ordre en EUR
-        cap_size: catégorie de capitalisation
-        _participation_rate: fraction du volume journalier (défaut 5%)
+        notional_eur:    taille de l'ordre en EUR
+        cap_size:        catégorie de capitalisation (large/mid/small/micro)
+        _participation_rate: fraction du volume journalier
+        daily_volatility: vol journalière du titre (0.0 à 1.0), None = défaut par cap_size
 
     Returns:
         coût en EUR
     """
-    impact_bps = MARKET_IMPACT_BPS.get(cap_size, MARKET_IMPACT_BPS["mid_cap"])
+    import math
+
     adv = TYPICAL_ADV_EUR.get(cap_size, TYPICAL_ADV_EUR["mid_cap"])
 
-    # Impact proportionnel à la racine carrée de la participation
+    # Volatilité journalière par défaut selon cap_size
+    DEFAULT_VOL = {
+        "large_cap": 0.012,   # ~1.2%/j — AAPL, LVMH
+        "mid_cap":   0.018,   # ~1.8%/j
+        "small_cap": 0.025,   # ~2.5%/j
+        "micro_cap": 0.040,   # ~4.0%/j
+    }
+    sigma = daily_volatility if daily_volatility is not None else DEFAULT_VOL.get(cap_size, 0.018)
+
+    # Participation rate = Q / ADV
     participation = min(notional_eur / max(adv, 1), 1.0)
-    impact = notional_eur * impact_bps / 10_000.0 * (participation**0.5)
+
+    # Almgren-Chriss : impact = σ × √(participation) × notional
+    # Facteur η = 0.1 (calibré sur données empiriques)
+    eta = 0.1
+    impact = notional_eur * sigma * eta * math.sqrt(participation)
+
     return impact
 
 
