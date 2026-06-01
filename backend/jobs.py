@@ -317,6 +317,7 @@ async def job_ohlcv_update() -> None:
         # Batch par 8 tickers — 1 crédit API pour 8 tickers
         from backend.core.twelve_data import fetch_ohlcv_batch
         BATCH = 8
+        import time as _time
         for i in range(0, len(all_tickers), BATCH):
             batch = all_tickers[i:i+BATCH]
             try:
@@ -349,6 +350,7 @@ async def job_ohlcv_update() -> None:
                                 log.debug("OHLCV insert error %s: %s", ticker, e)
             except Exception as e:
                 log.debug("OHLCV batch error %s: %s", batch, e)
+            _time.sleep(8)  # Twelve Data: max 8 req/min
 
         log.info("OHLCV job complete — %d rows inserted", inserted)
     except Exception as e:
