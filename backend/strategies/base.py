@@ -262,6 +262,20 @@ class Strategy(PositionManager, abc.ABC):
     # ── New event-driven API ─────────────────────────────────────────────
 
     @abc.abstractmethod
+    # ── Factor pipeline (optionnel) ──────────────────────────────────────
+    factors: list = []
+    _pipeline: object = None
+
+    def compute_factors(self, dt, past_prices, fundamentals=None):
+        """Calcule le score composite du pipeline de facteurs défini dans self.factors."""
+        if not self.factors:
+            import pandas as pd
+            return pd.Series(dtype=float)
+        if self._pipeline is None:
+            from backend.quant.factors import FactorPipeline
+            self._pipeline = FactorPipeline(self.factors)
+        return self._pipeline.compute(dt, past_prices, fundamentals)
+
     def on_bar(
         self,
         dt: date,
