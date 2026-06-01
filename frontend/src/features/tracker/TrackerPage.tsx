@@ -27,7 +27,7 @@ function AuthPanel({ onLogin }: { onLogin: (token: string, email: string) => voi
 
   async function submit() {
     setLoading(true); setError("");
-    const url = mode === "login" ? `${API}/api/auth/login` : `${API}/api/auth/register`;
+    const url = mode === "login" ? `${API}/auth/login` : `${API}/auth/register`;
     try {
       const r = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({email, password}) });
       const d = await r.json();
