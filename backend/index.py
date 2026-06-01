@@ -735,6 +735,17 @@ async def backtest_pdf(payload: BacktestIn):
     )
 
 
+# ─── Portfolio Tracker ───────────────────────────────────────────────────────
+from backend.auth.tracker_routes import register_tracker_routes
+from backend.core.db import engine as _db_engine
+try:
+    from backend.auth.jwt import get_current_user as _get_current_user
+    register_tracker_routes(app, _get_current_user, _db_engine)
+    log.info("Tracker routes registered")
+except Exception as _e:
+    log.warning("Tracker routes error: %s", _e)
+
+
 # ─── Monte Carlo ─────────────────────────────────────────────────────────────
 
 
