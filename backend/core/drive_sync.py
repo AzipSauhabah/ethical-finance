@@ -482,14 +482,15 @@ async def import_intraday_from_drive(db_engine) -> int:
             for _, row in df.iterrows():
                 try:
                     conn.execute(sa.text("""
-                        INSERT INTO ohlcv_intraday (ticker, datetime, open, high, low, close, adj_close, volume)
-                        VALUES (:t, :dt, :o, :h, :l, :c, :a, :v)
+                        INSERT INTO ohlcv_intraday (ticker, datetime, open, high, low, close, volume)
+                        VALUES (:t, :dt, :o, :h, :l, :c, :v)
                         ON CONFLICT (ticker, datetime) DO UPDATE SET close=EXCLUDED.close
                     """), {
-                        "t": str(row["ticker"]), "dt": str(row["datetime"]),
+                        "t": str(row["ticker"]),
+                        "dt": pd.to_datetime(str(row["datetime"])).isoformat(),
                         "o": float(row.get("open") or 0), "h": float(row.get("high") or 0),
                         "l": float(row.get("low") or 0), "c": float(row.get("close") or 0),
-                        "a": float(row.get("adj_close") or 0), "v": int(row.get("volume") or 0),
+                        "v": int(row.get("volume") or 0),
                     })
                     inserted += 1
                 except: pass
@@ -520,13 +521,16 @@ async def import_implied_vol_from_drive(db_engine) -> int:
             for _, row in df.iterrows():
                 try:
                     conn.execute(sa.text("""
-                        INSERT INTO implied_vol (ticker, date, iv_30d)
-                        VALUES (:t, :d, :iv)
-                        ON CONFLICT (ticker, date) DO UPDATE SET iv_30d=EXCLUDED.iv_30d
+                        INSERT INTO implied_vol (ticker, date, expiry, strike, iv, vix_proxy)
+                        VALUES (:t, :d, :exp, :strike, :iv, :vix)
+                        ON CONFLICT (ticker, date, expiry, strike) DO UPDATE SET iv=EXCLUDED.iv
                     """), {
                         "t": str(row["ticker"]),
                         "d": str(row["date"]),
+                        "exp": str(row.get("expiration", row["date"])),
+                        "strike": 0.0,
                         "iv": float(row["iv_30d"]),
+                        "vix": float(row["iv_30d"]),
                     })
                     inserted += 1
                 except: pass
