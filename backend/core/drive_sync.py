@@ -539,3 +539,90 @@ async def import_implied_vol_from_drive(db_engine) -> int:
     except Exception as e:
         log.warning("IV import error: %s", e)
         return 0
+
+async def import_sp500_composition_from_drive(db_engine) -> int:
+    """Importe sp500_current + sp500_changes depuis Drive."""
+    import sqlalchemy as sa, pandas as pd, io
+    service = _get_drive_service()
+    if not service: return 0
+    try:
+        folder_id = "13IrATf_ft0ppLRrTE5uxl_PRfcIdmb73"
+        inserted = 0
+
+        # Table sp500_composition
+        with db_engine.begin() as conn:
+            conn.execute(sa.text("""
+                CREATE TABLE IF NOT EXISTS sp500_composition (
+                    date DATE NOT NULL,
+                    tickers TEXT NOT NULL,
+                    PRIMARY KEY (date)
+                )
+            """))
+            conn.execute(sa.text("""
+                CREATE TABLE IF NOT EXISTS sp500_current (
+                    ticker TEXT PRIMARY KEY,
+                    name TEXT,
+                    sector TEXT,
+                    sub_industry TEXT,
+                    headquarters TEXT,
+                    date_added DATE,
+                    cik TEXT,
+                    founded TEXT
+                )
+            """))
+
+        # Import composition historique (sp500_changes)
+        files = service.files().list(
+            q=f"'{folder_id}' in parents and name contains 'sp500_changes' and name contains '.csv'",
+            fields="files(id,name)", orderBy="createdTime desc"
+        ).execute().get("files", [])
+
+        if files:
+            content = service.files().get_media(fileId=files[0]["id"]).execute()
+            df = pd.read_csv(io.StringIO(content.decode("utf-8")))
+            df["date"] = pd.to_datetime(df["date"]).dt.date
+            with db_engine.begin() as conn:
+                for _, row in df.iterrows():
+                    try:
+                        conn.execute(sa.text("""
+                            INSERT INTO sp500_composition (date, tickers)
+                            VALUES (:d, :t)
+                            ON CONFLICT (date) DO UPDATE SET tickers=EXCLUDED.tickers
+                        """), {"d": str(row["date"]), "t": str(row["tickers"])})
+                        inserted += 1
+                    except: pass
+            log.info("SP500 changes: %d rows", inserted)
+
+        # Import composition actuelle (sp500_current)
+        files2 = service.files().list(
+            q=f"'{folder_id}' in parents and name contains 'sp500_current' and name contains '.csv'",
+            fields="files(id,name)", orderBy="createdTime desc"
+        ).execute().get("files", [])
+
+        if files2:
+            content2 = service.files().get_media(fileId=files2[0]["id"]).execute()
+            df2 = pd.read_csv(io.StringIO(content2.decode("utf-8")))
+            with db_engine.begin() as conn:
+                for _, row in df2.iterrows():
+                    try:
+                        conn.execute(sa.text("""
+                            INSERT INTO sp500_current (ticker, name, sector, sub_industry, headquarters, date_added, cik, founded)
+                            VALUES (:t, :n, :s, :si, :hq, :da, :cik, :f)
+                            ON CONFLICT (ticker) DO UPDATE SET name=EXCLUDED.name, sector=EXCLUDED.sector
+                        """), {
+                            "t": str(row.get("Symbol","")),
+                            "n": str(row.get("Security","")),
+                            "s": str(row.get("GICS Sector","")),
+                            "si": str(row.get("GICS Sub-Industry","")),
+                            "hq": str(row.get("Headquarters Location","")),
+                            "da": str(row.get("Date added","")) or None,
+                            "cik": str(row.get("CIK","")),
+                            "f": str(row.get("Founded","")),
+                        })
+                    except: pass
+            log.info("SP500 current: %d tickers", len(df2))
+
+        return inserted
+    except Exception as e:
+        log.warning("SP500 import error: %s", e)
+        return 0
