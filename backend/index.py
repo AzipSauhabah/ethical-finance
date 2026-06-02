@@ -777,6 +777,23 @@ async def monte_carlo(payload: MonteCarloIn):
 # ─── Signals & rebalance ─────────────────────────────────────────────────────
 
 
+@app.get("/api/tickers")
+async def list_tickers(universe: str = "all", limit: int = 600):
+    """Liste les tickers par univers depuis ticker_fundamentals."""
+    import sqlalchemy as sa
+    from backend.core.db import engine
+    with engine.connect() as conn:
+        if universe == "all":
+            rows = conn.execute(sa.text(
+                "SELECT ticker, name, universe FROM ticker_fundamentals ORDER BY ticker LIMIT :limit"
+            ), {"limit": limit}).fetchall()
+        else:
+            rows = conn.execute(sa.text(
+                "SELECT ticker, name, universe FROM ticker_fundamentals WHERE universe = :u ORDER BY ticker LIMIT :limit"
+            ), {"u": universe, "limit": limit}).fetchall()
+    return {"tickers": [{"ticker": r[0], "name": r[1], "universe": r[2]} for r in rows]}
+
+
 @app.get("/api/signals/latest")
 async def signals_latest(limit: int = 20, universe: str = "all", strategy: str = "epr5"):
     """Derniers signaux depuis signals_history — pour la Home page."""
