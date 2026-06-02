@@ -139,10 +139,14 @@ async def job_fmp_fundamentals() -> None:
     """Update non-US fundamentals from FMP at 22h30 UTC."""
     try:
         from backend.core.fmp import upsert_fmp_fundamentals
-        from backend.core.loader import CAC40_TICKERS
-        from backend.core.twelve_data import ALL_EXTENDED_TICKERS
-
-        all_non_us = list(set(CAC40_TICKERS + ALL_EXTENDED_TICKERS[:50]))
+        import sqlalchemy as sa
+        from backend.core.db import engine as _engine
+        with _engine.connect() as _conn:
+            _rows = _conn.execute(sa.text(
+                "SELECT DISTINCT ticker FROM ticker_fundamentals "
+                "WHERE universe != 'sp500' ORDER BY ticker"
+            )).fetchall()
+        all_non_us = [r[0] for r in _rows]
         log.info("FMP job started — %d tickers", len(all_non_us))
         n = await upsert_fmp_fundamentals(all_non_us)
         log.info("FMP job complete — %d tickers updated", n)
@@ -159,15 +163,21 @@ async def job_esef_fundamentals() -> None:
     try:
         import asyncpg, os
         from backend.core.esef_fundamentals import fetch_fundamentals_esef
-        from backend.core.loader import CAC40_TICKERS
         import sqlalchemy as sa
 
         db = await asyncpg.connect(os.environ["DATABASE_URL"])
         engine = sa.create_engine(
             os.environ["DATABASE_URL"].replace("postgresql://", "postgresql+psycopg2://")
         )
+        # Tickers EU depuis DB
+        with engine.connect() as _conn:
+            _rows = _conn.execute(sa.text(
+                "SELECT DISTINCT ticker FROM ticker_fundamentals "
+                "WHERE universe IN ('cac40','msci_world') ORDER BY ticker"
+            )).fetchall()
+        eu_tickers = [r[0] for r in _rows]
         updated = 0
-        for ticker in CAC40_TICKERS:
+        for ticker in eu_tickers:
             try:
                 d = await fetch_fundamentals_esef(ticker, db_conn=db)
                 if not d or not d.get("interest_bearing_debt"):
