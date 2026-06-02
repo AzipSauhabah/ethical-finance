@@ -221,3 +221,82 @@ async def trigger_drive_sync() -> dict:
     except Exception as e:
         log.error("Drive sync trigger error: %s", e)
         return {"status": "error", "error": str(e)}
+
+async def import_ohlcv_backfill_from_drive(db_engine) -> int:
+    """
+    Importe les CSVs ohlcv_backfill_*.csv depuis Google Drive/ethical-finance/ohlcv_backfill/
+    et les insère dans la table ohlcv.
+    """
+    import sqlalchemy as sa
+    import pandas as pd
+    import io
+
+    service = _get_drive_service()
+    if not service:
+        log.warning("Drive service non disponible")
+        return 0
+
+    try:
+        # Cherche le dossier ohlcv_backfill
+        folder_result = service.files().list(
+            q="name='ohlcv_backfill' and mimeType='application/vnd.google-apps.folder'",
+            fields="files(id, name)"
+        ).execute()
+        folders = folder_result.get("files", [])
+        if not folders:
+            log.warning("Dossier ohlcv_backfill non trouvé sur Drive")
+            return 0
+
+        folder_id = folders[0]["id"]
+
+        # Liste les CSVs dans le dossier
+        files_result = service.files().list(
+            q=f"'{folder_id}' in parents and name contains 'ohlcv_backfill' and name contains '.csv'",
+            fields="files(id, name)",
+            orderBy="createdTime desc"
+        ).execute()
+        files = files_result.get("files", [])
+        if not files:
+            log.warning("Aucun CSV backfill trouvé")
+            return 0
+
+        # Prend le plus récent
+        file = files[0]
+        log.info("Import backfill: %s", file["name"])
+
+        # Download
+        content = service.files().get_media(fileId=file["id"]).execute()
+        df = pd.read_csv(io.StringIO(content.decode("utf-8")))
+        df["date"] = pd.to_datetime(df["date"]).dt.date
+
+        inserted = 0
+        with db_engine.begin() as conn:
+            for _, row in df.iterrows():
+                try:
+                    conn.execute(sa.text("""
+                        INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
+                        VALUES (:ticker, :dt, :open, :high, :low, :close, :adj, :volume)
+                        ON CONFLICT (ticker, date) DO UPDATE SET
+                            open=EXCLUDED.open, high=EXCLUDED.high,
+                            low=EXCLUDED.low, close=EXCLUDED.close,
+                            adj_close=EXCLUDED.adj_close, volume=EXCLUDED.volume
+                    """), {
+                        "ticker": str(row["ticker"]),
+                        "dt": str(row["date"]),
+                        "open": float(row.get("open") or 0),
+                        "high": float(row.get("high") or 0),
+                        "low": float(row.get("low") or 0),
+                        "close": float(row.get("close") or 0),
+                        "adj": float(row.get("adj_close") or 0),
+                        "volume": int(row.get("volume") or 0),
+                    })
+                    inserted += 1
+                except Exception as e:
+                    log.debug("Insert error %s: %s", row.get("ticker"), e)
+
+        log.info("Backfill import complete — %d rows", inserted)
+        return inserted
+
+    except Exception as e:
+        log.warning("Drive backfill error: %s", e)
+        return 0
