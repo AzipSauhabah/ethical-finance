@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 SERVICE_ACCOUNT_FILE = os.environ.get(
     "GOOGLE_SERVICE_ACCOUNT",
-    "/app/ethical-finance-nas-14c8ed110211.json",
+    "/app/ethical-finance-nas-885bda7b656d.json",
 )
 DRIVE_FOLDER_NAME = "ethical-finance-data"
 OHLCV_FILENAME = "ohlcv_latest.csv.gz"
