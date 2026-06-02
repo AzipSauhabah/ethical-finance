@@ -313,7 +313,7 @@ async def job_ohlcv_update() -> None:
         all_tickers = [r[0] for r in rows]
 
         end = date.today()
-        start = end - timedelta(days=10)
+        start = end - timedelta(days=20)  # rattrape jusqu'à 3 semaines de retard
         inserted = 0
 
         # Batch par 8 tickers — 1 crédit API pour 8 tickers
