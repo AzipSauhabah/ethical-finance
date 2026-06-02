@@ -301,3 +301,121 @@ async def import_ohlcv_backfill_from_drive(db_engine) -> int:
     except Exception as e:
         log.warning("Drive backfill error: %s", e)
         return 0
+
+async def import_msci_ohlcv_from_drive(db_engine) -> int:
+    """Importe ohlcv_msci_*.csv depuis Drive."""
+    import sqlalchemy as sa
+    import pandas as pd
+    import io
+
+    service = _get_drive_service()
+    if not service:
+        return 0
+
+    try:
+        folder_id = "13IrATf_ft0ppLRrTE5uxl_PRfcIdmb73"
+        files_result = service.files().list(
+            q=f"'{folder_id}' in parents and name contains 'ohlcv_msci' and name contains '.csv'",
+            fields="files(id, name)", orderBy="createdTime desc"
+        ).execute()
+        files = files_result.get("files", [])
+        if not files:
+            log.warning("Aucun CSV MSCI trouvé")
+            return 0
+
+        file = files[0]
+        log.info("Import MSCI: %s", file["name"])
+        content = service.files().get_media(fileId=file["id"]).execute()
+        df = pd.read_csv(io.StringIO(content.decode("utf-8")))
+        df["date"] = pd.to_datetime(df["date"]).dt.date
+        df = df.dropna(subset=["ticker","date","close"])
+        df = df[df["close"] > 0]
+
+        inserted = 0
+        with db_engine.begin() as conn:
+            for _, row in df.iterrows():
+                try:
+                    conn.execute(sa.text("""
+                        INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
+                        VALUES (:ticker, :dt, :open, :high, :low, :close, :adj, :volume)
+                        ON CONFLICT (ticker, date) DO UPDATE SET
+                            close=EXCLUDED.close, adj_close=EXCLUDED.adj_close
+                    """), {
+                        "ticker": str(row["ticker"]),
+                        "dt": str(row["date"]),
+                        "open": float(row.get("open") or 0),
+                        "high": float(row.get("high") or 0),
+                        "low": float(row.get("low") or 0),
+                        "close": float(row.get("close") or 0),
+                        "adj": float(row.get("adj_close") or 0),
+                        "volume": int(row.get("volume") or 0),
+                    })
+                    inserted += 1
+                except: pass
+
+        log.info("MSCI import complete — %d rows", inserted)
+        return inserted
+    except Exception as e:
+        log.warning("MSCI import error: %s", e)
+        return 0
+
+
+async def import_dividends_from_drive(db_engine) -> int:
+    """Importe dividends_*.csv depuis Drive dans la table ohlcv_dividends."""
+    import sqlalchemy as sa
+    import pandas as pd
+    import io
+
+    service = _get_drive_service()
+    if not service:
+        return 0
+
+    try:
+        folder_id = "13IrATf_ft0ppLRrTE5uxl_PRfcIdmb73"
+        files_result = service.files().list(
+            q=f"'{folder_id}' in parents and name contains 'dividends' and name contains '.csv'",
+            fields="files(id, name)", orderBy="createdTime desc"
+        ).execute()
+        files = files_result.get("files", [])
+        if not files:
+            log.warning("Aucun CSV dividendes trouvé")
+            return 0
+
+        file = files[0]
+        log.info("Import dividendes: %s", file["name"])
+        content = service.files().get_media(fileId=file["id"]).execute()
+        df = pd.read_csv(io.StringIO(content.decode("utf-8")))
+        df["date"] = pd.to_datetime(df["date"]).dt.date
+        df = df.dropna(subset=["ticker","date","dividend"])
+
+        # Insère dans transactions comme DIVIDEND
+        inserted = 0
+        with db_engine.begin() as conn:
+            # Crée la table si elle n'existe pas
+            conn.execute(sa.text("""
+                CREATE TABLE IF NOT EXISTS ohlcv_dividends (
+                    ticker TEXT NOT NULL,
+                    date DATE NOT NULL,
+                    dividend DOUBLE PRECISION NOT NULL,
+                    PRIMARY KEY (ticker, date)
+                )
+            """))
+            for _, row in df.iterrows():
+                try:
+                    conn.execute(sa.text("""
+                        INSERT INTO ohlcv_dividends (ticker, date, dividend)
+                        VALUES (:ticker, :dt, :div)
+                        ON CONFLICT (ticker, date) DO UPDATE SET dividend=EXCLUDED.dividend
+                    """), {
+                        "ticker": str(row["ticker"]),
+                        "dt": str(row["date"]),
+                        "div": float(row["dividend"]),
+                    })
+                    inserted += 1
+                except: pass
+
+        log.info("Dividendes import complete — %d rows", inserted)
+        return inserted
+    except Exception as e:
+        log.warning("Dividendes import error: %s", e)
+        return 0
