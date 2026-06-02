@@ -135,62 +135,105 @@ function PortfolioSelector({ token, selected, onSelect }: { token:string; select
 function TxForm({ token, portfolioId, onAdded }: { token:string; portfolioId:number; onAdded:()=>void }) {
   const [form, setForm] = useState({ ticker:"", date: new Date().toISOString().split("T")[0], type:"BUY", qty:"", price:"", fees:"0", currency:"USD", notes:"" });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   async function submit() {
-    if (!form.ticker || !form.qty || !form.price) return;
+    setError("");
+    if (!form.ticker.trim()) { setError("Ticker required"); return; }
+    if (!form.qty || +form.qty <= 0) { setError("Quantity must be > 0"); return; }
+    if (!form.price || +form.price <= 0) { setError("Price must be > 0"); return; }
     setLoading(true);
-    await fetch(`${API}/api/tracker/portfolios/${portfolioId}/transactions`, {
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
-      body: JSON.stringify({...form, qty:+form.qty, price:+form.price, fees:+form.fees})
-    });
-    setForm({ticker:"",date:new Date().toISOString().split("T")[0],type:"BUY",qty:"",price:"",fees:"0",currency:"USD",notes:""});
+    try {
+      const r = await fetch(`${API}/api/tracker/portfolios/${portfolioId}/transactions`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
+        body: JSON.stringify({...form, qty:+form.qty, price:+form.price, fees:+form.fees})
+      });
+      if (!r.ok) throw new Error("Server error");
+      setSuccess(`✓ ${form.type} ${form.qty} ${form.ticker} @ ${form.price} added`);
+      setForm({ticker:"",date:new Date().toISOString().split("T")[0],type:"BUY",qty:"",price:"",fees:"0",currency:"USD",notes:""});
+      setTimeout(()=>setSuccess(""), 3000);
+      onAdded();
+    } catch(e: any) { setError(e.message); }
     setLoading(false);
-    onAdded();
   }
 
-  const inp = { background:"#0d1628", border:`1px solid ${BORDER}`, borderRadius:4, padding:"0.4rem 0.6rem", color:"#e2e8f0", fontSize:"0.78rem", outline:"none" } as const;
+  const inp = { background:"#0d1628", border:`1px solid ${BORDER}`, borderRadius:4, padding:"0.5rem 0.6rem", color:"#e2e8f0", fontSize:"0.82rem", outline:"none", width:"100%" } as const;
+  const lbl = { fontSize:"0.58rem", letterSpacing:"1.5px", color:"#94a3b8", fontWeight:700, marginBottom:"0.25rem", display:"block" } as const;
 
   return (
-    <div style={{ background: NAVY2, border:`1px solid ${BORDER}`, borderRadius:6, padding:"0.75rem 1rem" }}>
-      <div style={{ fontSize:"0.6rem", letterSpacing:"2px", color:"#94a3b8", fontWeight:700, marginBottom:"0.6rem" }}>ADD TRANSACTION</div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr 1fr auto", gap:"0.4rem", alignItems:"end" }}>
+    <div style={{ background: NAVY2, border:`1px solid ${BORDER}`, borderRadius:8, padding:"1rem 1.25rem" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"0.75rem" }}>
+        <span style={{ fontSize:"0.6rem", letterSpacing:"2px", color: GOLD, fontWeight:700 }}>ADD TRANSACTION</span>
+        {success && <span style={{ fontSize:"0.72rem", color:"#4ade80" }}>{success}</span>}
+        {error && <span style={{ fontSize:"0.72rem", color:"#f87171" }}>{error}</span>}
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.6fr 0.6fr 1.5fr auto", gap:"0.6rem", alignItems:"end" }}>
         <div>
-          <div style={{ fontSize:"0.55rem", color:"#94a3b8", marginBottom:"0.2rem" }}>TICKER</div>
-          <input value={form.ticker} onChange={e=>setForm({...form,ticker:e.target.value.toUpperCase()})} placeholder="AAPL" style={inp} />
+          <label style={lbl}>TICKER</label>
+          <input value={form.ticker} onChange={e=>setForm({...form,ticker:e.target.value.toUpperCase()})}
+            placeholder="AAPL, NVDA, MC.PA..." style={inp}
+            onKeyDown={e=>e.key==="Enter"&&submit()} />
         </div>
         <div>
-          <div style={{ fontSize:"0.55rem", color:"#94a3b8", marginBottom:"0.2rem" }}>DATE</div>
+          <label style={lbl}>DATE</label>
           <input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={inp} />
         </div>
         <div>
-          <div style={{ fontSize:"0.55rem", color:"#94a3b8", marginBottom:"0.2rem" }}>TYPE</div>
-          <select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} style={{...inp, width:"100%"}}>
-            {TX_TYPES.map(t=><option key={t}>{t}</option>)}
+          <label style={lbl}>TYPE</label>
+          <select value={form.type} onChange={e=>setForm({...form,type:e.target.value})} style={inp}>
+            {TX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div>
-          <div style={{ fontSize:"0.55rem", color:"#94a3b8", marginBottom:"0.2rem" }}>QTY</div>
-          <input type="number" value={form.qty} onChange={e=>setForm({...form,qty:e.target.value})} placeholder="10" style={inp} />
+          <label style={lbl}>QUANTITY</label>
+          <input type="number" min="0" step="any" value={form.qty}
+            onChange={e=>setForm({...form,qty:e.target.value})} placeholder="10" style={inp} />
         </div>
         <div>
-          <div style={{ fontSize:"0.55rem", color:"#94a3b8", marginBottom:"0.2rem" }}>PRICE</div>
-          <input type="number" value={form.price} onChange={e=>setForm({...form,price:e.target.value})} placeholder="150.00" style={inp} />
+          <label style={lbl}>UNIT PRICE</label>
+          <input type="number" min="0" step="any" value={form.price}
+            onChange={e=>setForm({...form,price:e.target.value})} placeholder="150.00" style={inp} />
         </div>
         <div>
-          <div style={{ fontSize:"0.55rem", color:"#94a3b8", marginBottom:"0.2rem" }}>FEES</div>
-          <input type="number" value={form.fees} onChange={e=>setForm({...form,fees:e.target.value})} placeholder="0" style={inp} />
+          <label style={lbl}>FEES</label>
+          <input type="number" min="0" step="any" value={form.fees}
+            onChange={e=>setForm({...form,fees:e.target.value})} placeholder="0" style={inp} />
         </div>
         <div>
-          <div style={{ fontSize:"0.55rem", color:"#94a3b8", marginBottom:"0.2rem" }}>CCY</div>
-          <select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})} style={{...inp, width:"100%"}}>
-            {["USD","EUR","GBP","CHF","JPY"].map(c=><option key={c}>{c}</option>)}
+          <label style={lbl}>CCY</label>
+          <select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})} style={inp}>
+            {["USD","EUR","GBP","CHF","JPY","CAD"].map(c=><option key={c}>{c}</option>)}
           </select>
         </div>
-        <button onClick={submit} disabled={loading} style={{ background: GOLD, color:"#000", border:"none", borderRadius:4, padding:"0.4rem 0.8rem", fontWeight:800, fontSize:"0.78rem", cursor:"pointer", height:32 }}>
-          {loading ? "..." : "ADD"}
-        </button>
+        <div>
+          <label style={lbl}>NOTES</label>
+          <input value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}
+            placeholder="Optional..." style={inp} />
+        </div>
+        <div style={{ paddingBottom:1 }}>
+          <label style={{...lbl, opacity:0}}>ADD</label>
+          <button onClick={submit} disabled={loading} style={{
+            background: loading ? "#333" : GOLD, color:"#000", border:"none", borderRadius:4,
+            padding:"0.5rem 1rem", fontWeight:800, fontSize:"0.82rem", cursor:"pointer", width:"100%",
+            whiteSpace:"nowrap"
+          }}>
+            {loading ? "..." : "ADD ▶"}
+          </button>
+        </div>
       </div>
+      {/* Résumé ordre */}
+      {form.ticker && form.qty && form.price && (
+        <div style={{ marginTop:"0.5rem", fontSize:"0.72rem", color:"#94a3b8", fontFamily:'"JetBrains Mono",monospace' }}>
+          Preview: {form.type} {form.qty}× {form.ticker} @ {form.price} {form.currency}
+          {" "} = <span style={{ color: form.type==="BUY"?"#4ade80":"#f87171", fontWeight:700 }}>
+            {form.type==="BUY"?"-":"+"}
+            {((+form.qty*(+form.price))+(+form.fees)).toFixed(2)} {form.currency}
+          </span>
+          {+form.fees > 0 && <span style={{ color:"#f87171" }}> (incl. {form.fees} fees)</span>}
+        </div>
+      )}
     </div>
   );
 }
