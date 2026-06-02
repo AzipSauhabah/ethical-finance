@@ -237,17 +237,8 @@ async def import_ohlcv_backfill_from_drive(db_engine) -> int:
         return 0
 
     try:
-        # Cherche le dossier ohlcv_backfill
-        folder_result = service.files().list(
-            q="name='ohlcv_backfill' and mimeType='application/vnd.google-apps.folder'",
-            fields="files(id, name)"
-        ).execute()
-        folders = folder_result.get("files", [])
-        if not folders:
-            log.warning("Dossier ohlcv_backfill non trouvé sur Drive")
-            return 0
-
-        folder_id = folders[0]["id"]
+        # ID direct du dossier ohlcv_backfill
+        folder_id = "13IrATf_ft0ppLRrTE5uxl_PRfcIdmb73"
 
         # Liste les CSVs dans le dossier
         files_result = service.files().list(
