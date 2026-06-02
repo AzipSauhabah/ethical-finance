@@ -306,7 +306,9 @@ async def job_ohlcv_update() -> None:
 
         with engine.connect() as conn:
             rows = conn.execute(sa.text(
-                "SELECT DISTINCT ticker FROM ticker_fundamentals ORDER BY ticker"
+                "SELECT DISTINCT ticker FROM ticker_fundamentals "
+                "WHERE universe IN ('sp500','cac40','etf_broad','etf_precious_metals') "
+                "ORDER BY ticker"
             )).fetchall()
         all_tickers = [r[0] for r in rows]
 

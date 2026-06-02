@@ -104,7 +104,7 @@ async def _startup() -> None:
 
         scheduler.add_job(job_ohlcv_update, "cron", hour=20, minute=0, day_of_week="mon-fri", timezone="UTC")
 
-        scheduler.add_job(job_intraday, "interval", hours=1, timezone="UTC")
+        # scheduler.add_job(job_intraday, "interval", hours=1, timezone="UTC")  # disabled — économie crédits Basic
         scheduler.start()
         log.info("Scheduler started — OHLCV 21h, SEC 22h, FMP 22h30, Backup 23h, Signals 20h30 UTC")
         asyncio.create_task(_init_and_load())
