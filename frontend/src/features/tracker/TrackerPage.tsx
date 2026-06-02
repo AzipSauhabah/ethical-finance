@@ -137,6 +137,16 @@ function TxForm({ token, portfolioId, onAdded }: { token:string; portfolioId:num
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [tickerSuggestions, setTickerSuggestions] = useState<string[]>([]);
+
+  async function searchTickers(q: string) {
+    if (q.length < 1) { setTickerSuggestions([]); return; }
+    try {
+      const r = await fetch(`${API}/api/tickers/search?q=${q}&limit=8`);
+      const d = await r.json();
+      setTickerSuggestions((d.results||[]).map((t: any) => t.ticker));
+    } catch { setTickerSuggestions([]); }
+  }
 
   async function submit() {
     setError("");
@@ -172,9 +182,14 @@ function TxForm({ token, portfolioId, onAdded }: { token:string; portfolioId:num
       <div style={{ display:"grid", gridTemplateColumns:"1.2fr 1fr 0.8fr 0.8fr 0.8fr 0.6fr 0.6fr 1.5fr auto", gap:"0.6rem", alignItems:"end" }}>
         <div>
           <label style={lbl}>TICKER</label>
-          <input value={form.ticker} onChange={e=>setForm({...form,ticker:e.target.value.toUpperCase()})}
+          <input value={form.ticker}
+            onChange={e=>{ setForm({...form,ticker:e.target.value.toUpperCase()}); searchTickers(e.target.value); }}
             placeholder="AAPL, NVDA, MC.PA..." style={inp}
+            list="ticker-suggestions"
             onKeyDown={e=>e.key==="Enter"&&submit()} />
+          <datalist id="ticker-suggestions">
+            {tickerSuggestions.map(t=><option key={t} value={t}/>)}
+          </datalist>
         </div>
         <div>
           <label style={lbl}>DATE</label>
