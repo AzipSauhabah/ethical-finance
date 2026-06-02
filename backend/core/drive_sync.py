@@ -268,6 +268,16 @@ async def import_ohlcv_backfill_from_drive(db_engine) -> int:
         content = service.files().get_media(fileId=file["id"]).execute()
         df = pd.read_csv(io.StringIO(content.decode("utf-8")))
         df["date"] = pd.to_datetime(df["date"]).dt.date
+        # Nettoyage
+        df = df.dropna(subset=["ticker","date","close"])
+        df["open"]   = pd.to_numeric(df["open"],   errors="coerce").fillna(0)
+        df["high"]   = pd.to_numeric(df["high"],   errors="coerce").fillna(0)
+        df["low"]    = pd.to_numeric(df["low"],    errors="coerce").fillna(0)
+        df["close"]  = pd.to_numeric(df["close"],  errors="coerce").fillna(0)
+        df["adj_close"] = pd.to_numeric(df["adj_close"], errors="coerce").fillna(0)
+        df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0).astype(int)
+        df = df[df["close"] > 0]
+        log.info("Backfill CSV: %d rows, %d tickers", len(df), df["ticker"].nunique())
 
         inserted = 0
         with db_engine.begin() as conn:
