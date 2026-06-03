@@ -139,10 +139,40 @@ class BacktestEngine:
         self.fx_rates = fx_rates or {"USDEUR": 0.92, "EURUSD": 1.087}
         self.params = params or StrategyParams()
         self.benchmark_prices = benchmark_prices
+        self._sp500_history: dict = {}
 
     # ── Main loop ────────────────────────────────────────────────────────
 
-    def run(self) -> BacktestResult:
+    def _load_sp500_history(self, engine) -> None:
+        """Charge l'historique composition SP500 depuis la DB."""
+        try:
+            import sqlalchemy as sa
+            with engine.connect() as conn:
+                rows = conn.execute(sa.text(
+                    "SELECT date, tickers FROM sp500_composition ORDER BY date"
+                )).fetchall()
+            self._sp500_history = {str(r[0]): set(r[1].split(",")) for r in rows}
+            log.debug("SP500 history loaded: %d dates", len(self._sp500_history))
+        except Exception as e:
+            log.warning("SP500 history load error: %s", e)
+            self._sp500_history = {}
+
+    def _get_sp500_at_date(self, dt) -> set:
+        """Retourne les tickers SP500 à une date donnée."""
+        if not self._sp500_history:
+            return set()
+        dt_str = str(dt)[:10]
+        # Trouve la date la plus proche <= dt
+        dates = sorted(self._sp500_history.keys())
+        valid = [d for d in dates if d <= dt_str]
+        if not valid:
+            return set()
+        return self._sp500_history[valid[-1]]
+
+    def run(self, db_engine=None) -> BacktestResult:
+        # Charge historique SP500 pour anti-survivorship bias
+        if db_engine is not None:
+            self._load_sp500_history(db_engine)
         params = self.params
         prices = self.prices
 
@@ -206,6 +236,13 @@ class BacktestEngine:
         target_weights = {}
         if ts in rebalance_days and len(prices.loc[:ts]) >= self.strategy.requires_warmup_days:
             past_view = prices.loc[:ts]
+            # Anti-survivorship bias — filtre SP500 composition à la date du backtest
+            if getattr(params, "universe", None) == "sp500" and self._sp500_history:
+                sp500_at_dt = self._get_sp500_at_date(dt)
+                if sp500_at_dt:
+                    valid_cols = [c for c in past_view.columns if c in sp500_at_dt]
+                    if valid_cols:
+                        past_view = past_view[valid_cols]
             try:
                 target_weights = self.strategy.on_bar(dt, past_view, params, state)
             except Exception as exc:

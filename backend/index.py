@@ -688,7 +688,8 @@ async def run_backtest(payload: BacktestIn):
     )
 
     engine = BacktestEngine(strategy, strat_prices, currencies, fx_rates, params, bench_series)
-    result = engine.run()
+    from backend.core.db import engine as _db_engine
+    result = engine.run(db_engine=_db_engine)
 
     bench_returns = (
         bench_series.pct_change(fill_method=None).dropna() if bench_series is not None else None
