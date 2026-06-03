@@ -252,7 +252,11 @@ export default function TechnicalPanel() {
     setMounted(true);
     fetch(`${API}/api/stats`)
       .then(r => r.json())
-      .then(d => setStats(d))
+      .then(d => setStats({
+        ohlcv_rows: parseInt(d.ohlcv?.value?.replace(/[^0-9]/g,'') || '0') || 3570000,
+        tickers: parseInt(d.tickers?.value || '0') || 626,
+        fundamentals: parseInt(d.fundamentals?.value || '0') || 626,
+      }))
       .catch(() => {});
   }, []);
 
