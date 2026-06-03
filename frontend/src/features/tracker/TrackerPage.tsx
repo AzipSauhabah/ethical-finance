@@ -81,6 +81,14 @@ function PortfolioSelector({ token, selected, onSelect }: { token:string; select
 
   useEffect(() => { load(); }, [load]);
 
+  async function deletePortfolio(id: number, name: string) {
+    if (!confirm(`Delete portfolio "${name}"?`)) return;
+    await fetch(`${API}/api/tracker/portfolios/${id}`, {
+      method:"DELETE", headers:{"Authorization":`Bearer ${token}`}
+    });
+    load();
+  }
+
   async function create() {
     if (!form.name.trim()) return;
     await fetch(`${API}/api/tracker/portfolios`, {
@@ -102,6 +110,7 @@ function PortfolioSelector({ token, selected, onSelect }: { token:string; select
           borderRadius:4, padding:"0.3rem 0.75rem", fontSize:"0.75rem", cursor:"pointer", fontWeight:600
         }}>
           {p.type} — {p.name}
+          <span onClick={e=>{e.stopPropagation();deletePortfolio(p.id,p.name);}} style={{ marginLeft:"0.3rem", opacity:0.5, fontSize:"0.65rem" }}>✕</span>
         </button>
       ))}
       {creating ? (
