@@ -325,16 +325,31 @@ def register_tracker_routes(app, get_current_user, engine):
         tx_list = [dict(zip(["ticker","date","type","qty","price","fees","currency"], r)) for r in tx_rows]
         holdings = compute_holdings(tx_list)
 
-        # Prix actuels depuis ohlcv
+        # Prix actuels — daily en priorité, intraday comme fallback
         tickers = list(holdings.keys())
         current_prices = {}
         with engine.connect() as conn:
             for t in tickers:
+                # 1. Daily closing
                 row = conn.execute(sa.text(
-                    "SELECT close FROM ohlcv WHERE ticker = :t ORDER BY date DESC LIMIT 1"
+                    "SELECT close, date FROM ohlcv WHERE ticker = :t ORDER BY date DESC LIMIT 1"
                 ), {"t": t}).fetchone()
-                if row:
-                    current_prices[t] = float(row[0])
+                daily_price = float(row[0]) if row else None
+                daily_date = row[1] if row else None
+
+                # 2. Intraday fallback si daily manque ou est ancien (> 2 jours)
+                from datetime import date as _date, timedelta
+                today = _date.today()
+                if daily_date and (today - daily_date).days <= 2:
+                    current_prices[t] = daily_price
+                else:
+                    intra = conn.execute(sa.text(
+                        "SELECT close FROM ohlcv_intraday WHERE ticker = :t ORDER BY datetime DESC LIMIT 1"
+                    ), {"t": t}).fetchone()
+                    if intra:
+                        current_prices[t] = float(intra[0])
+                    elif daily_price:
+                        current_prices[t] = daily_price
 
         # Calculs P&L
         total_invested = sum(h["total_invested"] for h in holdings.values())
