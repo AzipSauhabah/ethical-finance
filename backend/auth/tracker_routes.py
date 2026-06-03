@@ -340,7 +340,7 @@ def register_tracker_routes(app, get_current_user, engine):
                 # 2. Intraday fallback si daily manque ou est ancien (> 2 jours)
                 from datetime import date as _date, timedelta
                 today = _date.today()
-                if daily_date and (today - daily_date).days <= 2:
+                if daily_date and (today - daily_date).days < 2:
                     current_prices[t] = daily_price
                 else:
                     intra = conn.execute(sa.text(
