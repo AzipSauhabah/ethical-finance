@@ -777,6 +777,30 @@ async def monte_carlo(payload: MonteCarloIn):
 # ─── Signals & rebalance ─────────────────────────────────────────────────────
 
 
+@app.get("/api/stats")
+async def platform_stats():
+    """Stats temps réel de la plateforme pour la Home page."""
+    import sqlalchemy as sa
+    from backend.core.db import engine
+    with engine.connect() as conn:
+        ohlcv = conn.execute(sa.text("SELECT COUNT(*) FROM ohlcv")).scalar()
+        tickers = conn.execute(sa.text("SELECT COUNT(DISTINCT ticker) FROM ticker_fundamentals")).scalar()
+        fundamentals = conn.execute(sa.text("SELECT COUNT(*) FROM ticker_fundamentals")).scalar()
+        signals = conn.execute(sa.text("SELECT COUNT(DISTINCT strategy_id) FROM signals_history")).scalar()
+        universes = conn.execute(sa.text("SELECT COUNT(DISTINCT universe) FROM ticker_fundamentals")).scalar()
+        last_ohlcv = conn.execute(sa.text("SELECT MAX(date) FROM ohlcv")).scalar()
+    def fmt(n):
+        if n >= 1_000_000: return f"{n/1_000_000:.2f}M"
+        if n >= 1_000: return f"{n/1_000:.1f}k"
+        return str(n)
+    return {
+        "tickers": {"value": str(tickers), "sub": f"{universes} universes"},
+        "ohlcv": {"value": fmt(ohlcv), "sub": f"up to {last_ohlcv}"},
+        "fundamentals": {"value": str(fundamentals), "sub": "SEC EDGAR records"},
+        "signals": {"value": f"{signals} strat", "sub": "stored 20h30 UTC"},
+    }
+
+
 @app.get("/api/tickers")
 async def list_tickers(universe: str = "all", limit: int = 600):
     """Liste les tickers par univers depuis ticker_fundamentals."""

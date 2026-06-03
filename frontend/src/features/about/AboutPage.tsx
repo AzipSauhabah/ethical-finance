@@ -19,12 +19,12 @@ interface SignalRow {
   date: string;
 }
 
-// ─── Mock data (remplacer par appels API) ────────────────────────────────────
-const STATS: StatCard[] = [
-  { label: "Tickers tracked",  value: "573",   sub: "5 universes"           },
-  { label: "OHLCV in DB",   value: "2.75M", sub: "daily rows" },
-  { label: "Fundamentals",    value: "615",   sub: "SEC EDGAR records"    },
-  { label: "Signals archived",value: "6 strat", sub: "stored 20h30 UTC"},
+// ─── Stats dynamiques depuis /api/stats ─────────────────────────────────────
+const STATS_DEFAULT: StatCard[] = [
+  { label: "Tickers tracked",  value: "...", sub: "loading" },
+  { label: "OHLCV in DB",      value: "...", sub: "loading" },
+  { label: "Fundamentals",     value: "...", sub: "loading" },
+  { label: "Signals archived", value: "...", sub: "loading" },
 ];
 
 const SIGNALS_STATIC: SignalRow[] = [];
@@ -143,6 +143,19 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
 export default function DashboardPage() {
   const [showArch, setShowArch] = useState(false);
   const [activeUniverse, setActiveUniverse] = useState("All");
+  const [stats, setStats] = useState<StatCard[]>(STATS_DEFAULT);
+
+  useEffect(() => {
+    fetch(`${API}/api/stats`)
+      .then(r => r.json())
+      .then(d => setStats([
+        { label: "Tickers tracked",  value: d.tickers?.value  || "?", sub: d.tickers?.sub  || "" },
+        { label: "OHLCV in DB",      value: d.ohlcv?.value    || "?", sub: d.ohlcv?.sub    || "" },
+        { label: "Fundamentals",     value: d.fundamentals?.value || "?", sub: d.fundamentals?.sub || "" },
+        { label: "Signals archived", value: d.signals?.value  || "?", sub: d.signals?.sub  || "" },
+      ]))
+      .catch(() => {});
+  }, []);
   const [signals, setSignals] = useState<SignalRow[]>([]);
   const [signalsLoading, setSignalsLoading] = useState(true);
 
@@ -201,7 +214,7 @@ export default function DashboardPage() {
 
       {/* KPI cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>
-        {STATS.map(stat => (
+        {stats.map(stat => (
           <div key={stat.label} style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "16px 20px", background: "rgba(255,255,255,0.03)" }}>
             <p style={{ fontSize: 11, color: "#9ca3af", margin: "0 0 6px", fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em" }}>{stat.label}</p>
             <p style={{ fontSize: 22, fontWeight: 600, margin: "0 0 2px", letterSpacing: "-0.02em" }}>{stat.value}</p>
