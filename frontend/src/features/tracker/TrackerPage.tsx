@@ -11,8 +11,8 @@ const API = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VIT
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Portfolio { id: number; name: string; type: string; currency: string; broker: string; }
 interface Transaction { id: number; ticker: string; date: string; type: string; qty: number; price: number; fees: number; currency: string; notes: string; }
-interface Holding { qty: number; avg_price: number; last_price: number; unrealized_pnl: number; unrealized_pct: number; market_value: number; total_invested: number; realized_pnl: number; }
-interface Analytics { holdings: Record<string, Holding>; total_invested: number; current_value: number; unrealized_pnl: number; realized_pnl: number; mwr: number; n_positions: number; }
+interface Holding { qty: number; avg_price: number; last_price: number; unrealized_pnl: number; unrealized_pct: number; market_value: number; total_invested: number; realized_pnl: number; dividends_received: number; }
+interface Analytics { holdings: Record<string, Holding>; total_invested: number; current_value: number; unrealized_pnl: number; realized_pnl: number; mwr: number; n_positions: number; dividends_total: number; }
 
 const TX_TYPES = ["BUY","SELL","DIVIDEND","SPLIT","FEE","DEPOSIT","WITHDRAWAL"];
 const PORT_TYPES = ["CTO","PEA","PEA-PME","AV","CRYPTO","OTHER"];
@@ -275,6 +275,7 @@ function HoldingsTable({ analytics }: { analytics: Analytics | null }) {
           { label:"UNREALIZED P&L", value:`${unrealized_pnl>=0?"+":""}€${unrealized_pnl.toLocaleString("fr-FR",{maximumFractionDigits:0})}`, color: unrealized_pnl>=0?"#4ade80":"#f87171" },
           { label:"REALIZED P&L", value:`${realized_pnl>=0?"+":""}€${realized_pnl.toLocaleString("fr-FR",{maximumFractionDigits:0})}`, color: realized_pnl>=0?"#4ade80":"#f87171" },
           { label:"MWR", value:`${mwr>=0?"+":""}${mwr}%`, color: mwr>=0?"#4ade80":"#f87171" },
+          { label:"DIVIDENDS", value:`+€${((analytics as any).dividends_total||0).toFixed(0)}`, color:"#4ade80" },
         ].map(c=>(
           <div key={c.label} style={{ background: NAVY2, border:`1px solid ${BORDER}`, borderRadius:6, padding:"0.6rem 0.8rem" }}>
             <div style={{ fontSize:"0.55rem", letterSpacing:"2px", color:"#94a3b8", marginBottom:"0.2rem" }}>{c.label}</div>
@@ -288,7 +289,7 @@ function HoldingsTable({ analytics }: { analytics: Analytics | null }) {
         <table style={{ width:"100%", borderCollapse:"collapse", fontSize:"0.78rem" }}>
           <thead>
             <tr style={{ background:"#0d1528", borderBottom:`1px solid ${BORDER}` }}>
-              {["TICKER","QTY","AVG PRICE","LAST PRICE","MARKET VALUE","UNREAL. P&L","UNREAL. %","WEIGHT"].map(h=>(
+              {["TICKER","QTY","AVG PRICE","LAST PRICE","MARKET VALUE","UNREAL. P&L","UNREAL. %","DIVID.","WEIGHT"].map(h=>(
                 <th key={h} style={{ padding:"0.6rem 0.8rem", textAlign:"left", fontSize:"0.6rem", letterSpacing:"1.5px", color:"#94a3b8", fontWeight:700 }}>{h}</th>
               ))}
             </tr>
@@ -308,6 +309,9 @@ function HoldingsTable({ analytics }: { analytics: Analytics | null }) {
                   </td>
                   <td style={{ padding:"0.6rem 0.8rem", fontFamily:'"JetBrains Mono",monospace', color: h.unrealized_pct>=0?"#4ade80":"#f87171" }}>
                     {h.unrealized_pct>=0?"+":""}{h.unrealized_pct.toFixed(2)}%
+                  </td>
+                  <td style={{ padding:"0.6rem 0.8rem", fontFamily:'"JetBrains Mono",monospace', color:"#4ade80", fontSize:"0.72rem" }}>
+                    {h.dividends_received > 0 ? `+${h.dividends_received.toFixed(0)}` : "—"}
                   </td>
                   <td style={{ padding:"0.6rem 0.8rem" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:"0.4rem" }}>
