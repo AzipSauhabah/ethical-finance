@@ -22,6 +22,7 @@ interface ScreenerResult {
   ret_12m: number;
   vol_20: number;
   beta: number;
+  iv_30d?: number;
   dividend_yield: number;
   score: number;
   is_sharia?: boolean | null;
@@ -292,7 +293,7 @@ export default function ScreeningPanel({
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #1e2d4a" }}>
-                    {["", "#", "Ticker", "Nom", "Secteur", "Cap.", "EY", "ROIC", "1M", "6M", "12M", "Vol", "Beta", "Div", "Score", "Sharia", "Buffett"].map((h) => (
+                    {["", "#", "Ticker", "Nom", "Secteur", "Cap.", "EY", "ROIC", "1M", "6M", "12M", "Vol", "Beta", "IV", "Div", "Score", "Sharia", "Buffett"].map((h) => (
                       <th key={h} style={{ padding: "0.75rem 0.6rem", textAlign: "left", color: "#555", fontWeight: 500, fontSize: "0.68rem", letterSpacing: "1px", whiteSpace: "nowrap" }}>
                         {h}
                       </th>
@@ -350,6 +351,9 @@ export default function ScreeningPanel({
                       </td>
                       <td style={{ padding: "0.6rem 0.6rem", color: "#888" }}>
                         {r.beta?.toFixed(2)}
+                      </td>
+                      <td style={{ padding:"0.4rem 0.6rem", fontSize:"0.78rem", fontFamily:"monospace", color: r.iv_30d ? (r.iv_30d > 0.5 ? "#f87171" : r.iv_30d > 0.3 ? GOLD : "#4ade80") : "#475569" }}>
+                        {r.iv_30d ? `${(r.iv_30d*100).toFixed(0)}%` : "—"}
                       </td>
                       <td style={{ padding: "0.6rem 0.6rem", color: "#888" }}>
                         {r.dividend_yield?.toFixed(1)}%

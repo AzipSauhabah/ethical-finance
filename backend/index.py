@@ -361,13 +361,19 @@ def _screener_load_fundamentals(engine, payload) -> "pd.DataFrame":
         qparams = {"min_cap": payload.min_market_cap, "universe": payload.universe}
     with engine.connect() as conn:
         rows = conn.execute(sa.text(f"""
-            SELECT ticker, name, sector, industry, market_cap,
-                   total_debt, total_revenue, beta, dividend_yield,
-                   earning_yield_sec, roic_sec, pe_ratio, ev_ebitda,
-                   net_margin, fcf_yield, debt_equity, current_ratio,
-                   haram_revenue_ratio, sharia_debt_ratio, sharia_income_ratio
-            FROM ticker_fundamentals WHERE market_cap >= :min_cap {universe_filter}
-            ORDER BY market_cap DESC
+            SELECT tf.ticker, tf.name, tf.sector, tf.industry, tf.market_cap,
+                   tf.total_debt, tf.total_revenue, tf.beta, tf.dividend_yield,
+                   tf.earning_yield_sec, tf.roic_sec, tf.pe_ratio, tf.ev_ebitda,
+                   tf.net_margin, tf.fcf_yield, tf.debt_equity, tf.current_ratio,
+                   tf.haram_revenue_ratio, tf.sharia_debt_ratio, tf.sharia_income_ratio,
+                   iv.iv_30d
+            FROM ticker_fundamentals tf
+            LEFT JOIN (
+                SELECT DISTINCT ON (ticker) ticker, iv
+                FROM implied_vol ORDER BY ticker, date DESC
+            ) iv ON tf.ticker = iv.ticker
+            WHERE tf.market_cap >= :min_cap {universe_filter}
+            ORDER BY tf.market_cap DESC
         """), qparams).fetchall()
     if not rows:
         return pd.DataFrame()
@@ -375,7 +381,7 @@ def _screener_load_fundamentals(engine, payload) -> "pd.DataFrame":
         "ticker","name","sector","industry","market_cap","total_debt","total_revenue",
         "beta","dividend_yield","earning_yield_sec","roic_sec","pe_ratio","ev_ebitda",
         "net_margin","fcf_yield","debt_equity","current_ratio",
-        "haram_revenue_ratio","sharia_debt_ratio","sharia_income_ratio"])
+        "haram_revenue_ratio","sharia_debt_ratio","sharia_income_ratio","iv_30d"])
 
 
 # ─── Sharia screening constants (AAOIFI / MSCI Islamic Index) ───────────────
