@@ -13,43 +13,109 @@ log = logging.getLogger(__name__)
 
 # ── Helpers calculs ───────────────────────────────────────────────────────────
 
-def compute_holdings(transactions: list[dict]) -> dict[str, dict]:
+def compute_holdings(
+    transactions: list[dict],
+    splits: dict[str, list[dict]] | None = None,
+    dividends: dict[str, list[dict]] | None = None,
+) -> dict[str, dict]:
     """
     Calcule les positions actuelles depuis les transactions.
-    Retourne {ticker: {qty, avg_price, total_invested, realized_pnl}}
-    """
-    holdings: dict[str, dict] = {}
-    for tx in sorted(transactions, key=lambda x: x["date"]):
-        t = tx["ticker"]
-        if t not in holdings:
-            holdings[t] = {"qty": 0.0, "avg_price": 0.0, "total_invested": 0.0, "realized_pnl": 0.0}
-        h = holdings[t]
-        qty = float(tx["qty"])
-        price = float(tx["price"])
-        fees = float(tx.get("fees") or 0)
-        tx_type = tx["type"]
+    Intègre automatiquement les splits et dividendes depuis la DB.
 
-        if tx_type == "BUY":
+    Args:
+        transactions: liste des transactions BUY/SELL/DIVIDEND/SPLIT
+        splits: {ticker: [{date, ratio}]} depuis stock_splits DB
+        dividends: {ticker: [{date, dividend}]} depuis ohlcv_dividends DB
+
+    Returns:
+        {ticker: {qty, avg_price, total_invested, realized_pnl, dividends_received}}
+    """
+    # Fusionne transactions + splits DB en une timeline unifiée
+    all_events: list[dict] = []
+
+    for tx in transactions:
+        all_events.append({**tx, "_source": "tx"})
+
+    # Ajoute les splits DB comme événements SPLIT synthétiques
+    if splits:
+        for ticker, ticker_splits in splits.items():
+            for sp in ticker_splits:
+                sp_date = sp["date"] if isinstance(sp["date"], date) else date.fromisoformat(str(sp["date"]))
+                all_events.append({
+                    "ticker": ticker,
+                    "date": sp_date,
+                    "type": "SPLIT",
+                    "qty": float(sp["ratio"]),
+                    "price": 0,
+                    "fees": 0,
+                    "_source": "db_split",
+                })
+
+    # Trie par date puis par source (tx avant splits le même jour)
+    all_events.sort(key=lambda x: (
+        x["date"] if isinstance(x["date"], date) else date.fromisoformat(str(x["date"])),
+        0 if x.get("_source") == "tx" else 1
+    ))
+
+    holdings: dict[str, dict] = {}
+
+    for ev in all_events:
+        t = ev["ticker"]
+        if t not in holdings:
+            holdings[t] = {
+                "qty": 0.0, "avg_price": 0.0,
+                "total_invested": 0.0, "realized_pnl": 0.0,
+                "dividends_received": 0.0,
+            }
+        h = holdings[t]
+        qty   = float(ev.get("qty") or 0)
+        price = float(ev.get("price") or 0)
+        fees  = float(ev.get("fees") or 0)
+        ev_type = ev["type"]
+        ev_date = ev["date"] if isinstance(ev["date"], date) else date.fromisoformat(str(ev["date"]))
+
+        if ev_type == "BUY":
             total_cost = h["qty"] * h["avg_price"] + qty * price + fees
             h["qty"] += qty
             h["avg_price"] = total_cost / h["qty"] if h["qty"] > 0 else 0
             h["total_invested"] += qty * price + fees
 
-        elif tx_type == "SELL":
+        elif ev_type == "SELL":
             realized = (price - h["avg_price"]) * qty - fees
             h["realized_pnl"] += realized
             h["qty"] = max(0, h["qty"] - qty)
             if h["qty"] == 0:
-                h["avg_price"] = 0
-                h["total_invested"] = 0
+                h["avg_price"] = 0.0
+                h["total_invested"] = 0.0
 
-        elif tx_type == "DIVIDEND":
+        elif ev_type == "SPLIT" and h["qty"] > 0 and qty > 0:
+            # Ajuste qty et PRU selon le ratio
+            h["avg_price"] = h["avg_price"] / qty
+            h["qty"] = round(h["qty"] * qty, 6)
+
+        elif ev_type == "DIVIDEND":
+            # Dividende manuel saisi dans les transactions
             h["realized_pnl"] += qty * price
+            h["dividends_received"] += qty * price
 
-        elif tx_type == "SPLIT":
-            if h["qty"] > 0 and qty > 0:
-                h["avg_price"] = h["avg_price"] / qty
-                h["qty"] *= qty
+    # Calcule les dividendes automatiques depuis la DB
+    if dividends:
+        for ticker, ticker_divs in dividends.items():
+            if ticker not in holdings: continue
+            h = holdings[ticker]
+            # Reconstitue la qty à chaque date de dividende
+            for div in ticker_divs:
+                div_date = div["date"] if isinstance(div["date"], date) else date.fromisoformat(str(div["date"]))
+                # Qty détenue à cette date
+                tx_before = [e for e in all_events
+                            if e["ticker"] == ticker and
+                            (e["date"] if isinstance(e["date"], date) else date.fromisoformat(str(e["date"]))) <= div_date]
+                if not tx_before: continue
+                qty_at_date = compute_holdings(tx_before).get(ticker, {}).get("qty", 0)
+                if qty_at_date > 0:
+                    div_received = qty_at_date * float(div["dividend"])
+                    h["dividends_received"] += div_received
+                    h["realized_pnl"] += div_received
 
     return {t: h for t, h in holdings.items() if h["qty"] > 0}
 
