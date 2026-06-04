@@ -626,3 +626,51 @@ async def import_sp500_composition_from_drive(db_engine) -> int:
     except Exception as e:
         log.warning("SP500 import error: %s", e)
         return 0
+
+async def import_ohlcv_patch_from_drive(db_engine) -> int:
+    """Importe ohlcv_patch_*.csv depuis Drive — fichier léger pour patches quotidiens."""
+    import sqlalchemy as sa, pandas as pd, io
+    service = _get_drive_service()
+    if not service: return 0
+    try:
+        folder_id = "13IrATf_ft0ppLRrTE5uxl_PRfcIdmb73"
+        files = service.files().list(
+            q=f"'{folder_id}' in parents and name contains 'ohlcv_patch' and name contains '.csv'",
+            fields="files(id,name,createdTime)", orderBy="createdTime desc"
+        ).execute().get("files", [])
+        if not files:
+            log.warning("Aucun CSV patch trouvé")
+            return 0
+        file = files[0]
+        log.info("Import patch: %s", file["name"])
+        content = service.files().get_media(fileId=file["id"]).execute()
+        df = pd.read_csv(io.StringIO(content.decode("utf-8")))
+        df["date"] = pd.to_datetime(df["date"]).dt.date
+        df = df.dropna(subset=["ticker","date","close"])
+        df = df[df["close"] > 0]
+        inserted = 0
+        with db_engine.begin() as conn:
+            for _, row in df.iterrows():
+                try:
+                    conn.execute(sa.text("""
+                        INSERT INTO ohlcv (ticker, date, open, high, low, close, adj_close, volume)
+                        VALUES (:ticker, :dt, :open, :high, :low, :close, :adj, :volume)
+                        ON CONFLICT (ticker, date) DO UPDATE SET
+                            close=EXCLUDED.close, adj_close=EXCLUDED.adj_close
+                    """), {
+                        "ticker": str(row["ticker"]),
+                        "dt": str(row["date"]),
+                        "open": float(row.get("open") or 0),
+                        "high": float(row.get("high") or 0),
+                        "low": float(row.get("low") or 0),
+                        "close": float(row.get("close") or 0),
+                        "adj": float(row.get("adj_close") or 0),
+                        "volume": int(row.get("volume") or 0),
+                    })
+                    inserted += 1
+                except: pass
+        log.info("Patch import complete — %d rows", inserted)
+        return inserted
+    except Exception as e:
+        log.warning("Patch import error: %s", e)
+        return 0
