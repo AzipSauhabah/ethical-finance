@@ -321,6 +321,8 @@ async def job_ohlcv_update() -> None:
                 "ORDER BY ticker"
             )).fetchall()
         all_tickers = [r[0] for r in rows]
+        import random as _random
+        _random.shuffle(all_tickers)  # randomise pour éviter biais alphabétique
 
         end = date.today()
         start = end - timedelta(days=20)  # rattrape jusqu'à 3 semaines de retard
