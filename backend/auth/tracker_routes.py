@@ -300,6 +300,19 @@ def register_tracker_routes(app, get_current_user, engine):
             }).fetchone()
         return {"id": row[0], "ok": True}
 
+    @app.patch("/api/tracker/portfolios/{portfolio_id}/transactions/{tx_id}")
+    async def update_transaction(portfolio_id: int, tx_id: int, payload: dict, user=Depends(get_current_user)):
+        fields = {k: v for k, v in payload.items() if k in ("qty","price","fees","date","notes","currency")}
+        if not fields:
+            return {"ok": False, "error": "No valid fields"}
+        set_clause = ", ".join(f"{k}=:{k}" for k in fields)
+        fields.update({"tid": tx_id, "pid": portfolio_id, "uid": str(user.user_id)})
+        with engine.begin() as conn:
+            conn.execute(sa.text(
+                f"UPDATE transactions SET {set_clause} WHERE id=:tid AND portfolio_id=:pid AND user_id=:uid"
+            ), fields)
+        return {"ok": True}
+
     @app.delete("/api/tracker/portfolios/{portfolio_id}/transactions/{tx_id}")
     async def delete_transaction(portfolio_id: int, tx_id: int, user=Depends(get_current_user)):
         with engine.begin() as conn:

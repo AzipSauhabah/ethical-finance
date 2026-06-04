@@ -335,6 +335,23 @@ function HoldingsTable({ analytics }: { analytics: Analytics | null }) {
             })}
           </tbody>
         </table>
+        {editId && (
+          <div style={{ padding:"0.75rem 1rem", background:"#0d1528", borderTop:`1px solid ${BORDER}`, display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+            <span style={{ fontSize:"0.65rem", color: GOLD, fontWeight:700 }}>EDIT #{editId}</span>
+            <input type="date" value={String(editForm.date||"")} onChange={e=>setEditForm({...editForm,date:e.target.value})}
+              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem" }} />
+            <input type="number" placeholder="Qty" value={editForm.qty||""} onChange={e=>setEditForm({...editForm,qty:+e.target.value})}
+              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:80 }} />
+            <input type="number" placeholder="Price" value={editForm.price||""} onChange={e=>setEditForm({...editForm,price:+e.target.value})}
+              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:90 }} />
+            <input type="number" placeholder="Fees" value={editForm.fees||""} onChange={e=>setEditForm({...editForm,fees:+e.target.value})}
+              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:70 }} />
+            <input placeholder="Notes" value={editForm.notes||""} onChange={e=>setEditForm({...editForm,notes:e.target.value})}
+              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", flex:1 }} />
+            <button onClick={()=>saveEdit(editId)} style={{ background: GOLD, color:"#000", border:"none", borderRadius:3, padding:"0.3rem 0.6rem", fontSize:"0.72rem", fontWeight:700, cursor:"pointer" }}>SAVE</button>
+            <button onClick={()=>setEditId(null)} style={{ background:"transparent", border:`1px solid ${BORDER}`, color:"#94a3b8", borderRadius:3, padding:"0.3rem 0.5rem", fontSize:"0.72rem", cursor:"pointer" }}>CANCEL</button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -343,6 +360,8 @@ function HoldingsTable({ analytics }: { analytics: Analytics | null }) {
 // ── Transactions log ──────────────────────────────────────────────────────────
 function TxLog({ token, portfolioId, refresh }: { token:string; portfolioId:number; refresh:number }) {
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [editId, setEditId] = useState<number|null>(null);
+  const [editForm, setEditForm] = useState<Partial<Transaction>>({});
 
   useEffect(() => {
     fetch(`${API}/api/tracker/portfolios/${portfolioId}/transactions`, {
@@ -351,10 +370,21 @@ function TxLog({ token, portfolioId, refresh }: { token:string; portfolioId:numb
   }, [portfolioId, token, refresh]);
 
   async function deleteTx(id: number) {
+    if (!confirm("Delete this transaction?")) return;
     await fetch(`${API}/api/tracker/portfolios/${portfolioId}/transactions/${id}`, {
       method:"DELETE", headers:{"Authorization":`Bearer ${token}`}
     });
     setTxs(prev=>prev.filter(t=>t.id!==id));
+  }
+
+  async function saveEdit(id: number) {
+    await fetch(`${API}/api/tracker/portfolios/${portfolioId}/transactions/${id}`, {
+      method:"PATCH",
+      headers:{"Content-Type":"application/json","Authorization":`Bearer ${token}`},
+      body: JSON.stringify(editForm)
+    });
+    setEditId(null);
+    setTxs(prev=>prev.map(t=>t.id===id?{...t,...editForm}:t));
   }
 
   return (
@@ -387,7 +417,9 @@ function TxLog({ token, portfolioId, refresh }: { token:string; portfolioId:numb
                 <td style={{ padding:"0.4rem 0.7rem", fontFamily:'"JetBrains Mono",monospace', color:"#94a3b8" }}>{tx.fees}</td>
                 <td style={{ padding:"0.4rem 0.7rem", color:"#94a3b8" }}>{tx.currency}</td>
                 <td style={{ padding:"0.4rem 0.7rem", color:"#94a3b8", fontSize:"0.7rem" }}>{tx.notes}</td>
-                <td style={{ padding:"0.4rem 0.7rem" }}>
+                <td style={{ padding:"0.4rem 0.7rem", display:"flex", gap:"0.3rem" }}>
+                  <button onClick={()=>{setEditId(tx.id);setEditForm({qty:tx.qty,price:tx.price,fees:tx.fees,date:tx.date,notes:tx.notes});}}
+                    style={{ background:"none", border:`1px solid ${BORDER}`, color: GOLD, borderRadius:3, padding:"0.1rem 0.4rem", fontSize:"0.65rem", cursor:"pointer" }}>✎</button>
                   <button onClick={()=>deleteTx(tx.id)} style={{ background:"none", border:`1px solid ${BORDER}`, color:"#94a3b8", borderRadius:3, padding:"0.1rem 0.4rem", fontSize:"0.65rem", cursor:"pointer" }}>✕</button>
                 </td>
               </tr>
