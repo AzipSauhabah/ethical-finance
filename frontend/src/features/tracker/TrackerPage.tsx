@@ -335,23 +335,7 @@ function HoldingsTable({ analytics }: { analytics: Analytics | null }) {
             })}
           </tbody>
         </table>
-        {editId && (
-          <div style={{ padding:"0.75rem 1rem", background:"#0d1528", borderTop:`1px solid ${BORDER}`, display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
-            <span style={{ fontSize:"0.65rem", color: GOLD, fontWeight:700 }}>EDIT #{editId}</span>
-            <input type="date" value={String(editForm.date||"")} onChange={e=>setEditForm({...editForm,date:e.target.value})}
-              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem" }} />
-            <input type="number" placeholder="Qty" value={editForm.qty||""} onChange={e=>setEditForm({...editForm,qty:+e.target.value})}
-              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:80 }} />
-            <input type="number" placeholder="Price" value={editForm.price||""} onChange={e=>setEditForm({...editForm,price:+e.target.value})}
-              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:90 }} />
-            <input type="number" placeholder="Fees" value={editForm.fees||""} onChange={e=>setEditForm({...editForm,fees:+e.target.value})}
-              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:70 }} />
-            <input placeholder="Notes" value={editForm.notes||""} onChange={e=>setEditForm({...editForm,notes:e.target.value})}
-              style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", flex:1 }} />
-            <button onClick={()=>saveEdit(editId)} style={{ background: GOLD, color:"#000", border:"none", borderRadius:3, padding:"0.3rem 0.6rem", fontSize:"0.72rem", fontWeight:700, cursor:"pointer" }}>SAVE</button>
-            <button onClick={()=>setEditId(null)} style={{ background:"transparent", border:`1px solid ${BORDER}`, color:"#94a3b8", borderRadius:3, padding:"0.3rem 0.5rem", fontSize:"0.72rem", cursor:"pointer" }}>CANCEL</button>
-          </div>
-        )}
+
       </div>
     </div>
   );
@@ -427,6 +411,23 @@ function TxLog({ token, portfolioId, refresh }: { token:string; portfolioId:numb
           </tbody>
         </table>
       </div>
+      {editId && (
+        <div style={{ padding:"0.75rem 1rem", background:"#0d1528", borderTop:`1px solid ${BORDER}`, display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+          <span style={{ fontSize:"0.65rem", color: GOLD, fontWeight:700 }}>EDIT #{editId}</span>
+          <input type="date" value={String(editForm.date||"")} onChange={e=>setEditForm({...editForm,date:e.target.value})}
+            style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem" }} />
+          <input type="number" placeholder="Qty" value={editForm.qty||""} onChange={e=>setEditForm({...editForm,qty:+e.target.value})}
+            style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:80 }} />
+          <input type="number" placeholder="Price" value={editForm.price||""} onChange={e=>setEditForm({...editForm,price:+e.target.value})}
+            style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:90 }} />
+          <input type="number" placeholder="Fees" value={editForm.fees||""} onChange={e=>setEditForm({...editForm,fees:+e.target.value})}
+            style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", width:70 }} />
+          <input placeholder="Notes" value={editForm.notes||""} onChange={e=>setEditForm({...editForm,notes:e.target.value})}
+            style={{ background:"#111e35", border:`1px solid ${BORDER}`, borderRadius:3, padding:"0.3rem 0.5rem", color:"#e2e8f0", fontSize:"0.72rem", flex:1 }} />
+          <button onClick={()=>saveEdit(editId)} style={{ background: GOLD, color:"#000", border:"none", borderRadius:3, padding:"0.3rem 0.6rem", fontSize:"0.72rem", fontWeight:700, cursor:"pointer" }}>SAVE</button>
+          <button onClick={()=>setEditId(null)} style={{ background:"transparent", border:`1px solid ${BORDER}`, color:"#94a3b8", borderRadius:3, padding:"0.3rem 0.5rem", fontSize:"0.72rem", cursor:"pointer" }}>CANCEL</button>
+        </div>
+      )}
     </div>
   );
 }
