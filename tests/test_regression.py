@@ -16,7 +16,7 @@ class TestMarketValueNoAllowFractional:
         from backend.backtest.portfolio import Portfolio
         pf = Portfolio(initial_capital=10_000, broker="degiro", account_type="CTO")
         with pytest.raises(TypeError):
-            pf.market_value({"AAPL": 100.0}, allow_fractional=True)
+            pf.market_value({"AAPL": 100.0}, allow_fractional=True)  # NOSONAR intentional invalid arg test
 
     def test_market_value_accepts_only_prices_eur(self):
         from backend.backtest.portfolio import Portfolio
