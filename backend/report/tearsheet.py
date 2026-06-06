@@ -199,7 +199,7 @@ def build_tearsheet(
     # Win/Loss distribution
     wins = [v * 100 for v in r_series.values if v > 0]
     losses = [v * 100 for v in r_series.values if v < 0]
-    {
+    win_loss_data = {
         "wins": [round(v, 4) for v in wins],
         "losses": [round(v, 4) for v in losses],
         "hit_rate": round(len(wins) / max(len(r_series), 1) * 100, 2),
@@ -278,5 +278,6 @@ def build_tearsheet(
             "cost_chart": cost_chart,
             "allocation_chart": allocation_chart,
             "positions": result.positions_final,
+            "win_loss_data": win_loss_data,
         }
     )
