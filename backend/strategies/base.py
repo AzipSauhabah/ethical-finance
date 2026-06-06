@@ -40,6 +40,10 @@ class StrategyParams:
     custom: dict[str, Any] = field(default_factory=dict)
     use_var_constraint: bool = False
 
+    def get(self, key: str, default=None):
+        """Compatibilité dict — délègue à custom pour les hyperparamètres stratégie."""
+        return self.custom.get(key, default)
+
 
 class PositionManager:
     """
