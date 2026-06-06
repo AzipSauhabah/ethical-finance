@@ -784,6 +784,42 @@ async def monte_carlo(payload: MonteCarloIn):
 # ─── Signals & rebalance ─────────────────────────────────────────────────────
 
 
+
+
+@app.get("/api/portfolio/positions")
+async def get_positions(request: Request):
+    device_id = request.headers.get("X-Device-ID", "anonymous")
+    import sqlalchemy as sa
+    from backend.core.db import engine
+    with engine.connect() as conn:
+        rows = conn.execute(sa.text(
+            "SELECT ticker, qty, avg_price, currency FROM device_positions WHERE device_id = :did"
+        ), {"did": device_id}).fetchall()
+    return [{"ticker": r[0], "qty": r[1], "avg_price": r[2], "currency": r[3]} for r in rows]
+
+
+@app.post("/api/portfolio/positions")
+async def save_position(request: Request):
+    device_id = request.headers.get("X-Device-ID", "anonymous")
+    body = await request.json()
+    ticker = body.get("ticker", "").upper()
+    qty = float(body.get("qty", 0))
+    avg_price = float(body.get("avg_price", 0))
+    currency = body.get("currency", "EUR")
+    if not ticker:
+        return {"status": "error", "detail": "ticker required"}
+    import sqlalchemy as sa
+    from backend.core.db import engine
+    with engine.begin() as conn:
+        conn.execute(sa.text("""
+            INSERT INTO device_positions (device_id, ticker, qty, avg_price, currency, updated_at)
+            VALUES (:did, :ticker, :qty, :avg, :ccy, now())
+            ON CONFLICT (device_id, ticker) DO UPDATE SET
+                qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price,
+                currency=EXCLUDED.currency, updated_at=now()
+        """), {"did": device_id, "ticker": ticker, "qty": qty, "avg": avg_price, "ccy": currency})
+    return {"status": "ok", "ticker": ticker}
+
 @app.get("/api/stats")
 async def platform_stats():
     """Stats temps réel de la plateforme pour la Home page."""
@@ -967,38 +1003,50 @@ async def admin_drive_sync():
     return await trigger_drive_sync()
 
 
-@app.get("/api/stats")
-async def platform_stats():
-    """Statistiques temps réel de la plateforme."""
-    import asyncio
-    import os
+@app.post("/api/admin/drive-patch")
+async def admin_drive_patch():
+    """Importe le patch OHLCV quotidien depuis Google Drive."""
+    from backend.core.drive_sync import import_ohlcv_patch_from_drive
+    from backend.core.db import engine
+    n = await import_ohlcv_patch_from_drive(engine)
+    return {"status": "ok", "rows_inserted": n}
 
+
+
+
+@app.get("/api/portfolio/positions")
+async def get_positions(request: Request):
+    device_id = request.headers.get("X-Device-ID", "anonymous")
     import sqlalchemy as sa
+    from backend.core.db import engine
+    with engine.connect() as conn:
+        rows = conn.execute(sa.text(
+            "SELECT ticker, qty, avg_price, currency FROM device_positions WHERE device_id = :did"
+        ), {"did": device_id}).fetchall()
+    return [{"ticker": r[0], "qty": r[1], "avg_price": r[2], "currency": r[3]} for r in rows]
 
-    loop = asyncio.get_event_loop()
 
-    def _get_stats():
-        database_url = os.environ.get("DATABASE_URL", "")
-        sync_url = database_url.replace(_PG_SCHEME, _PG_PSYCOPG2_SCHEME)
-        engine = sa.create_engine(sync_url, pool_pre_ping=True)
-        with engine.connect() as conn:
-            ohlcv = conn.execute(
-                sa.text("SELECT COUNT(*), COUNT(DISTINCT ticker) FROM ohlcv")
-            ).fetchone()
-            fundamentals = conn.execute(
-                sa.text("SELECT COUNT(*) FROM ticker_fundamentals")
-            ).fetchone()
-            last_date = conn.execute(sa.text("SELECT MAX(date) FROM ohlcv")).fetchone()
-        return {
-            "ohlcv_rows": ohlcv[0],
-            "tickers": ohlcv[1],
-            "fundamentals": fundamentals[0],
-            "last_update": str(last_date[0]) if last_date[0] else None,
-        }
-
-    stats = await loop.run_in_executor(None, _get_stats)
-    return stats
-
+@app.post("/api/portfolio/positions")
+async def save_position(request: Request):
+    device_id = request.headers.get("X-Device-ID", "anonymous")
+    body = await request.json()
+    ticker = body.get("ticker", "").upper()
+    qty = float(body.get("qty", 0))
+    avg_price = float(body.get("avg_price", 0))
+    currency = body.get("currency", "EUR")
+    if not ticker:
+        return {"status": "error", "detail": "ticker required"}
+    import sqlalchemy as sa
+    from backend.core.db import engine
+    with engine.begin() as conn:
+        conn.execute(sa.text("""
+            INSERT INTO device_positions (device_id, ticker, qty, avg_price, currency, updated_at)
+            VALUES (:did, :ticker, :qty, :avg, :ccy, now())
+            ON CONFLICT (device_id, ticker) DO UPDATE SET
+                qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price,
+                currency=EXCLUDED.currency, updated_at=now()
+        """), {"did": device_id, "ticker": ticker, "qty": qty, "avg": avg_price, "ccy": currency})
+    return {"status": "ok", "ticker": ticker}
 
 @app.get("/api/sentiment/market")
 async def market_sentiment():
