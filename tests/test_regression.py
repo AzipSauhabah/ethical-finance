@@ -30,7 +30,7 @@ class TestPDFUnboundLocalError:
         pytest.importorskip("reportlab", reason="reportlab not installed")
         from backend.report.pdf import generate_pdf
         tearsheet = {
-            "meta": {"strategy": "buy_hold", "period": "1y", "tickers": ["AAPL"],
+            "meta": {"generated_at": "2024-01-01 00:00:00", "strategy": "buy_hold", "period": "1y", "tickers": ["AAPL"],
                      "start": "2023-01-01", "end": "2024-01-01",
                      "broker": "degiro", "account_type": "CTO", "benchmark": "^GSPC"},
             "metrics": {"total_return": 0.1, "cagr": 0.1, "annualised_vol": 0.15,
@@ -44,7 +44,7 @@ class TestPDFUnboundLocalError:
             "cost_breakdown": {},
             "nav_chart": [{"date": "2023-01-01", "nav": 10000}, {"date": "2024-01-01", "nav": 11000}],
             "benchmark_chart": [{"date": "2023-01-01", "nav": 10000}, {"date": "2024-01-01", "nav": 10500}],
-            "drawdown_chart": [{"date": "2023-01-01", "dd": 0.0}],
+            "drawdown_chart": [{"date": "2023-01-01", "drawdown": 0.0}],
             "cost_chart": [],
             "allocation_chart": [{"ticker": "AAPL", "weight": 1.0}],
             "positions": {},
