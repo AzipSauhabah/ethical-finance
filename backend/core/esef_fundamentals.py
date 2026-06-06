@@ -205,34 +205,19 @@ def _parse_facts(facts: dict) -> dict[str, float]:
         if not simple_entries:
             simple_entries = entries  # fallback : prend tout
 
-        # Pour les flux : prend l'année la plus récente
-        if concept in _FLOW_CONCEPTS:
-            best = None
-            best_year = 0
-            for e in simple_entries:
-                year = _extract_period_year(e["period"]) or 0
-                if year > best_year:
-                    best_year = year
-                    best = e
-            if best and best["value"] is not None:
-                try:
-                    result[key] = float(best["value"])
-                except (ValueError, TypeError):
-                    pass
-        else:
-            # Pour les stocks (bilan) : prend la valeur la plus récente
-            best = None
-            best_year = 0
-            for e in simple_entries:
-                year = _extract_period_year(e["period"]) or 0
-                if year > best_year:
-                    best_year = year
-                    best = e
-            if best and best["value"] is not None:
-                try:
-                    result[key] = float(best["value"])
-                except (ValueError, TypeError):
-                    pass
+        # Prend la valeur de l'année la plus récente (flux et stocks)
+        best = None
+        best_year = 0
+        for e in simple_entries:
+            year = _extract_period_year(e["period"]) or 0
+            if year > best_year:
+                best_year = year
+                best = e
+        if best and best["value"] is not None:
+            try:
+                result[key] = float(best["value"])
+            except (ValueError, TypeError):
+                pass
 
     return result
 
