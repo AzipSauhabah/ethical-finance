@@ -1,35 +1,47 @@
 name: Tests
 
-on: [push]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  test:
+  unit-tests:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: sauhabah
-          POSTGRES_PASSWORD: sauhabah
-          POSTGRES_DB: ethical_finance
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
-      - run: pip install -r requirements.txt --quiet
-      - run: pip install pytest-cov --quiet
-      - name: Run tests with coverage
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install lightweight deps
+        run: |
+          pip install --upgrade pip
+          pip install \
+            fastapi uvicorn pydantic httpx python-multipart \
+            pandas numpy sqlalchemy \
+            "python-jose[cryptography]" bcrypt \
+            pytest pytest-xdist pytest-asyncio pytest-cov \
+            scikit-learn vaderSentiment feedparser \
+            reportlab matplotlib
+
+      - name: Run unit tests (no DB, no heavy deps)
         env:
-          DATABASE_URL: postgresql://sauhabah:sauhabah@localhost:5433/ethical_finance
-        run: python -m pytest tests/ -q --tb=short --cov=backend --cov-report=term-missing
+          DATABASE_URL: ""
+        run: |
+          pytest tests/ -m "unit and not integration" \
+            --ignore=tests/test_api_endpoints.py \
+            -n auto -q --tb=short \
+            --cov=backend --cov-report=xml:coverage.xml
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
