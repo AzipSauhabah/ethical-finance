@@ -364,8 +364,7 @@ def run_sharia_screen(info: dict) -> ShariaScreen:
         ))
 
     passed     = all(c.passed for c in checks)
-    soft_fails = sum(1 for c in checks if not c.passed)
-    score      = max(0.0, 1.0 - soft_fails * 0.25) if passed else 0.0
+    score      = sum(1 for c in checks if c.passed) / len(checks) if checks else 0.0
 
     return ShariaScreen(passed=passed, score=score, checks=checks)
 
