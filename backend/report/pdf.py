@@ -1676,10 +1676,7 @@ def _pages_methodology(tearsheet: dict, styles: dict, narratives: dict, interpre
     ]
     for para in METHODOLOGY_TEXT.split("\n\n"):
         if para.strip():
-            if para.strip().startswith(("1.", "2.", "3.", "4.", "5.")):
-                S.append(Paragraph(para.strip(), body_s))
-            else:
-                S.append(Paragraph(para.strip(), body_s))
+            S.append(Paragraph(para.strip(), body_s))
         S.append(Spacer(1, 0.15 * cm))
     S += [PageBreak()]
 
