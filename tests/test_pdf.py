@@ -17,6 +17,7 @@ def _minimal_tearsheet() -> dict:
     """Minimal tearsheet that satisfies generate_pdf."""
     return {
         "meta": {
+            "generated_at": "2024-01-01 00:00:00",
             "strategy": "buy_hold",
             "period": "1y",
             "tickers": ["AAPL"],
@@ -62,7 +63,7 @@ def _minimal_tearsheet() -> dict:
         "cost_breakdown": {},
         "nav_chart": [{"date": "2023-01-01", "nav": 10000}, {"date": "2024-01-01", "nav": 11200}],
         "benchmark_chart": [{"date": "2023-01-01", "nav": 10000}, {"date": "2024-01-01", "nav": 10800}],
-        "drawdown_chart": [{"date": "2023-01-01", "dd": 0.0}, {"date": "2024-01-01", "dd": -0.05}],
+        "drawdown_chart": [{"date": "2023-01-01", "drawdown": 0.0}, {"date": "2024-01-01", "drawdown": -0.05}],
         "cost_chart": [],
         "allocation_chart": [{"ticker": "AAPL", "weight": 1.0}],
         "positions": {"AAPL": {"shares": 10, "avg_cost": 150.0, "current_price": 170.0}},
