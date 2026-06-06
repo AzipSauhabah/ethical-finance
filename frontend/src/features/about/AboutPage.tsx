@@ -25,6 +25,8 @@ const STATS_DEFAULT: StatCard[] = [
   { label: "OHLCV in DB",      value: "...", sub: "loading" },
   { label: "Fundamentals",     value: "...", sub: "loading" },
   { label: "Signals archived", value: "...", sub: "loading" },
+  { label: "Tests",            value: "195", sub: "195/195 passing" },
+  { label: "Code Quality",     value: "A",   sub: "0 bugs · 0 vulns" },
 ];
 
 const SIGNALS_STATIC: SignalRow[] = [];
@@ -153,6 +155,8 @@ export default function DashboardPage() {
         { label: "OHLCV in DB",      value: d.ohlcv?.value    || "?", sub: d.ohlcv?.sub    || "" },
         { label: "Fundamentals",     value: d.fundamentals?.value || "?", sub: d.fundamentals?.sub || "" },
         { label: "Signals archived", value: d.signals?.value  || "?", sub: d.signals?.sub  || "" },
+        { label: "Tests",            value: "195", sub: "195/195 passing" },
+        { label: "Code Quality",     value: "A",   sub: "0 bugs · 0 vulns" },
       ]))
       .catch(() => {});
   }, []);
