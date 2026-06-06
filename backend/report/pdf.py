@@ -224,9 +224,11 @@ def _chart_costs(cost_data):
 
 
 def _chart_allocation(alloc_data):
+    if not alloc_data or "invested" not in alloc_data[0]:
+        return None
     series = [
-        ("Investi", NAVY, [p["invested"] for p in alloc_data]),
-        ("Cash", GOLD, [p["cash"] for p in alloc_data]),
+        ("Investi", NAVY, [p.get("invested", 0) for p in alloc_data]),
+        ("Cash", GOLD, [p.get("cash", 0) for p in alloc_data]),
     ]
     return _line_chart(series, y_fmt=lambda v: f"{v:.0f}€")
 
@@ -677,21 +679,21 @@ def _pages_performance_charts(tearsheet: dict, styles: dict, narratives: dict, i
     ]
     if st_:
         sd = [["Scénario", "Période", "Return", "Max DD", "Vol", "Sharpe"]]
-    for s in st_:
-        if s.get("n_days", 0) > 0:
-            sd.append(
-                [
-                    s.get("label", ""),
-                    f"{s.get('start','')} → {s.get('end','')}",
-                    p(s.get("total_return")),
-                    p(s.get("max_drawdown")),
-                    p(s.get("volatility")),
-                    f(s.get("sharpe")),
-                ]
-            )
-    t = Table(sd, colWidths=[5.5 * cm, 4.5 * cm, 2.0 * cm, 2.0 * cm, 2.0 * cm, 1.5 * cm])
-    t.setStyle(tbl_style())
-    S += [t]
+        for s in st_:
+            if s.get("n_days", 0) > 0:
+                sd.append(
+                    [
+                        s.get("label", ""),
+                        f"{s.get('start','')} → {s.get('end','')}",
+                        p(s.get("total_return")),
+                        p(s.get("max_drawdown")),
+                        p(s.get("volatility")),
+                        f(s.get("sharpe")),
+                    ]
+                )
+        t = Table(sd, colWidths=[5.5 * cm, 4.5 * cm, 2.0 * cm, 2.0 * cm, 2.0 * cm, 1.5 * cm])
+        t.setStyle(tbl_style())
+        S += [t]
     S += [PageBreak()]
 
     # PAGE 6b — ROLLING SHARPE + VOL
@@ -911,10 +913,10 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
             "✓" if at.get("significant") else "✗",
         ],
         ["Sharpe bootstrap 95%", f"[{f(sb[0])} ; {f(sb[1])}]", "—", "—"],
-    ]
-    t = Table(sd, colWidths=[7 * cm, 3 * cm, 3 * cm, 4 * cm])
-    t.setStyle(tbl_style())
-    S += [t, PageBreak()]
+        ]
+        t = Table(sd, colWidths=[7 * cm, 3 * cm, 3 * cm, 4 * cm])
+        t.setStyle(tbl_style())
+        S += [t, PageBreak()]
 
     # PAGE 11 — POSITIONS
     if pos and pos.get("positions"):
@@ -930,22 +932,22 @@ def _pages_analysis(tearsheet: dict, styles: dict, narratives: dict, interpretat
                 body_s,
             ),
             Spacer(1, 0.3 * cm),
-    ]
-    pd_ = [["Ticker", "Parts", "Prix €", "Valeur €", "Coût moy.", "P&L"]]
-    for tk, pp in pos["positions"].items():
-        pd_.append(
-            [
-                tk,
-                str(pp.get("shares", 0)),
-                f(pp.get("price_eur")),
-                e(pp.get("value_eur")),
-                e(pp.get("avg_cost")),
-                e(pp.get("unrealised")),
-            ]
-        )
-    t = Table(pd_, colWidths=[2.5 * cm, 2 * cm, 2.5 * cm, 3.5 * cm, 3 * cm, 3 * cm])
-    t.setStyle(tbl_style())
-    S += [t, PageBreak()]
+        ]
+        pd_ = [["Ticker", "Parts", "Prix €", "Valeur €", "Coût moy.", "P&L"]]
+        for tk, pp in pos["positions"].items():
+            pd_.append(
+                [
+                    tk,
+                    str(pp.get("shares", 0)),
+                    f(pp.get("price_eur")),
+                    e(pp.get("value_eur")),
+                    e(pp.get("avg_cost")),
+                    e(pp.get("unrealised")),
+                ]
+            )
+        t = Table(pd_, colWidths=[2.5 * cm, 2 * cm, 2.5 * cm, 3.5 * cm, 3 * cm, 3 * cm])
+        t.setStyle(tbl_style())
+        S += [t, PageBreak()]
 
     # PAGE 12 — TRADES DÉTAILLÉS
     trades = tearsheet.get("trades", {})
