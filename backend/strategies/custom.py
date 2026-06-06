@@ -166,6 +166,17 @@ def build_custom_strategy(definition: dict[str, Any]) -> Strategy:
     def _generate_signals(prices: pd.DataFrame, params: StrategyParams) -> pd.DataFrame:
         return _apply_combination_rules(prices, compiled_rules, combination)
 
+    def _on_bar(self, dt, past_prices, params, state):
+        signals = _generate_signals(past_prices, params)
+        if signals.empty:
+            return {}
+        last = signals.iloc[-1]
+        tickers = [t for t in last.index if last[t]]
+        if not tickers:
+            return {}
+        w = 1.0 / len(tickers)
+        return {t: w for t in tickers}
+
     # Build class dynamically
     strat_cls = type(
         f"Custom_{strat_name}",
@@ -175,6 +186,7 @@ def build_custom_strategy(definition: dict[str, Any]) -> Strategy:
             "description": property(lambda self, d=strat_desc: d),
             "benchmark": property(lambda self, b=bench: b),
             "generate_signals": _generate_signals,
+            "on_bar": _on_bar,
         },
     )
 

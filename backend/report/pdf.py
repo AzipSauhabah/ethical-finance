@@ -371,6 +371,7 @@ def _chart_return_distribution(return_distribution: list) -> object:
     """Distribution des rendements journaliers + courbe gaussienne."""
     if not return_distribution:
         return None
+    import numpy as np
     _mpl_style()
     fig, ax = plt.subplots(figsize=(10, 3.5), facecolor="white")
     ax.set_facecolor("#f8f9fa")

@@ -28,14 +28,15 @@ BROKER_FEES: Final[dict] = {
         "max_fee": None,
     },
     "fortuneo": {
-        # Fortuneo: 50 USD flat for US stocks up to ~7 500 USD notional
-        # above that threshold: 0.20 % + 9 USD
+        # Fortuneo tarifs 2026 (validés empiriquement)
+        # Actions EUR : 6.95€ fixe
+        # Actions US : 50€ flat <= 7500€ notional, puis 0.20% + 9€
         "stock_eu_fixed": 6.95,
         "stock_eu_pct": 0.0000,
-        "stock_us_flat_threshold": 7_500.0,  # USD notional
-        "stock_us_flat_fee": 50.0,  # USD
-        "stock_us_pct_above": 0.002,  # 0.20 %
-        "stock_us_fixed_above": 9.0,  # USD
+        "stock_us_flat_threshold": 7_500.0,
+        "stock_us_flat_fee": 50.0,
+        "stock_us_pct_above": 0.002,
+        "stock_us_fixed_above": 9.0,
         "min_fee": 6.95,
         "max_fee": None,
     },

@@ -72,8 +72,6 @@ def compute_holdings(
         price = float(ev.get("price") or 0)
         fees  = float(ev.get("fees") or 0)
         ev_type = ev["type"]
-        ev_date = ev["date"] if isinstance(ev["date"], date) else date.fromisoformat(str(ev["date"]))
-
         if ev_type == "BUY":
             total_cost = h["qty"] * h["avg_price"] + qty * price + fees
             h["qty"] += qty

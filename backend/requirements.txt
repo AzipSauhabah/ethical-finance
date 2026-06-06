@@ -6,7 +6,6 @@ python-multipart==0.0.18
 pandas==2.2.3
 numpy==1.26.4
 lightgbm==4.3.0
-yfinance==0.2.50
 pandas-datareader==0.10.0
 reportlab==4.2.5
 weasyprint==62.3
@@ -27,3 +26,4 @@ python-jose[cryptography]
 bcrypt
 asyncpg
 praw
+scikit-learn>=1.4.0

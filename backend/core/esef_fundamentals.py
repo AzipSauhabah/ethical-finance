@@ -246,7 +246,6 @@ def _compute_ratios(m: dict, market_cap: float) -> dict[str, float]:
     cur_assets  = m.get("current_assets", 0)
     cur_liab    = m.get("current_liabilities", 0)
     inventories = m.get("inventories", 0)
-    ppe         = m.get("ppe", 0)
     goodwill    = m.get("goodwill", 0)
     intangibles = m.get("intangible_assets", 0)
     mc          = float(market_cap or 0)

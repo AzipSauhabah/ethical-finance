@@ -368,7 +368,7 @@ def total_transaction_cost(
     slippage = slippage_cost(notional_eur, cap_size)
     impact = market_impact_cost(notional_eur, cap_size)
     fx = fx_spread_cost(notional_eur, "USD" if country != "FR" else "EUR")
-    ttf = french_ttf(notional_eur, market_cap_eur) if is_french else 0.0
+    ttf = ttf_tax(notional_eur, market_cap_eur) if is_french else 0.0
     stamp = stamp_duty_cost(notional_eur, country, market_cap_eur)
 
     total = commission + slippage + impact + fx + ttf + stamp

@@ -253,11 +253,8 @@ async def fetch_insider_sec(ticker: str, db_engine, days: int = 30) -> int:
             # Tente de lire le XML Form 4 pour BUY/SELL
             tx_type = "UNKNOWN"
             shares = None
-            price = None
             try:
                 if accession:
-                    cik = src.get("file_num", "").replace("-", "")
-                    xml_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession}/{accession[:18]}-index.htm"
                     # Fallback — utilise le champ disponible
                     tx_type = "BUY" if src.get("transaction_shares", 0) and float(src.get("transaction_shares", 0) or 0) > 0 else "SELL"
             except Exception:
@@ -433,7 +430,7 @@ async def fetch_gdelt_sentiment(db_engine, query: str = "CAC40 OR SP500 OR stock
                 VALUES (:sid, 'GDELT', :name, 'daily', :date, :value, 'tone')
                 ON CONFLICT (series_id, date) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
             """), {
-                "sid": f"GDELT:MARKET_TONE",
+                "sid": "GDELT:MARKET_TONE",
                 "name": "GDELT Market Sentiment Tone",
                 "date": str(today),
                 "value": round(avg_tone, 3),

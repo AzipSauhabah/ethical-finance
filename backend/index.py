@@ -532,6 +532,7 @@ def _rank_low_vol(df):
 
 def _rank_ml(df):
     try:
+        import numpy as np
         from sklearn.preprocessing import StandardScaler
         features = ["earning_yield","roic","ret_1m","ret_6m","ret_12m","vol_20","beta"]
         x_scaled = StandardScaler().fit_transform(df[features].fillna(0).values)
@@ -785,40 +786,6 @@ async def monte_carlo(payload: MonteCarloIn):
 
 
 
-
-@app.get("/api/portfolio/positions")
-async def get_positions(request: Request):
-    device_id = request.headers.get("X-Device-ID", "anonymous")
-    import sqlalchemy as sa
-    from backend.core.db import engine
-    with engine.connect() as conn:
-        rows = conn.execute(sa.text(
-            "SELECT ticker, qty, avg_price, currency FROM device_positions WHERE device_id = :did"
-        ), {"did": device_id}).fetchall()
-    return [{"ticker": r[0], "qty": r[1], "avg_price": r[2], "currency": r[3]} for r in rows]
-
-
-@app.post("/api/portfolio/positions")
-async def save_position(request: Request):
-    device_id = request.headers.get("X-Device-ID", "anonymous")
-    body = await request.json()
-    ticker = body.get("ticker", "").upper()
-    qty = float(body.get("qty", 0))
-    avg_price = float(body.get("avg_price", 0))
-    currency = body.get("currency", "EUR")
-    if not ticker:
-        return {"status": "error", "detail": "ticker required"}
-    import sqlalchemy as sa
-    from backend.core.db import engine
-    with engine.begin() as conn:
-        conn.execute(sa.text("""
-            INSERT INTO device_positions (device_id, ticker, qty, avg_price, currency, updated_at)
-            VALUES (:did, :ticker, :qty, :avg, :ccy, now())
-            ON CONFLICT (device_id, ticker) DO UPDATE SET
-                qty=EXCLUDED.qty, avg_price=EXCLUDED.avg_price,
-                currency=EXCLUDED.currency, updated_at=now()
-        """), {"did": device_id, "ticker": ticker, "qty": qty, "avg": avg_price, "ccy": currency})
-    return {"status": "ok", "ticker": ticker}
 
 @app.get("/api/stats")
 async def platform_stats():

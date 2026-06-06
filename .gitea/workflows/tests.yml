@@ -7,11 +7,44 @@ on:
     branches: [main]
 
 jobs:
-  python-tests:
+  unit-tests:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run tests in API container
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          docker exec ethical-finance-api python3 -m pytest tests/ -v -m "not integration" --tb=short || true
+          pip install --upgrade pip
+          pip install \
+            fastapi uvicorn pydantic httpx python-multipart \
+            pandas numpy reportlab plotly \
+            psycopg2-binary sqlalchemy apscheduler \
+            matplotlib vaderSentiment feedparser \
+            "python-jose[cryptography]" bcrypt asyncpg \
+            pytest pytest-cov pytest-xdist pytest-asyncio \
+            scikit-learn vaderSentiment
+
+      - name: Run unit tests (no DB required)
+        env:
+          DATABASE_URL: ""
+        run: |
+          pytest tests/ -m "unit and not integration" \
+            --ignore=tests/test_api_endpoints.py \
+            -n auto \
+            --cov=backend \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            -q --tb=short
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml
