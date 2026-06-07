@@ -95,7 +95,7 @@ async def upsert_fred_all(db_engine, api_key: str = "", start: str = "2020-01-01
 
 
 # ── INSEE BDM ─────────────────────────────────────────────────────────────────
-INSEE_BASE = "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM"
+INSEE_BDM_BASE = "https://www.bdm.insee.fr/series/sdmx/data/SERIES_BDM"
 
 # INSEE via FRED (Eurostat/OECD reformaté) — accès libre sans auth
 FRED_FRANCE_SERIES = {
@@ -111,56 +111,114 @@ FRED_FRANCE_SERIES = {
     "ECBDFR":          ("France Deficit/PIB", "annual", "%"),
 }
 
+# Séries INSEE BDM natives (idbanks validés) — utiles pour prédiction de prix
+# et optimisation de portefeuille
+INSEE_BDM_SERIES = {
+    # IPC base 2025 (nouvelles séries actives depuis fév 2026)
+    "011814056": ("France IPC Ensemble base 2025",          "monthly",    "index"),
+    "011814057": ("France IPC Variation mensuelle",          "monthly",    "%"),
+    "011814058": ("France IPC Glissement annuel",            "monthly",    "%"),
+    "011814059": ("France IPC Menages urbains base 2025",    "monthly",    "index"),
+    # Marché du travail
+    "001688527": ("France Taux Chomage BIT",                 "quarterly",  "%"),
+    # Conjoncture sectorielle
+    "001641608": ("France Conjoncture Promotion Immobiliere","quarterly",  "index"),
+    "010766494": ("France Prix Production Services B2B",     "quarterly",  "index"),
+    "010766495": ("France Prix Production Services Export",  "quarterly",  "index"),
+}
+
 # Alias pour compatibilité
 INSEE_SERIES = {}
 
-async def fetch_insee_series(series_id: str, token: str = "") -> list[dict]:
-    """Fetch une série INSEE BDM via CSV public (sans auth)."""
+
+async def fetch_insee_bdm_series(idbank: str, start: str = "2015-01") -> list[dict]:
+    """Fetch une série INSEE BDM via SDMX XML (API sans auth).
+
+    Returns:
+        list de {"date": "YYYY-MM-DD", "value": float}
+    """
+    import xml.etree.ElementTree as ET
     rows = []
     try:
-        # URL CSV publique BDM — ne nécessite pas d'auth
-        url = f"https://www.bdm.insee.fr/series/sdmx/data/SERIES_BDM/{series_id}?startPeriod=2020-01&format=csvnohead"
+        url = f"{INSEE_BDM_BASE}/{idbank}?startPeriod={start}"
         async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
-            r = await client.get(url, headers={"Accept": "text/csv"})
+            r = await client.get(url)
             if r.status_code != 200:
-                log.warning("INSEE %s HTTP %d", series_id, r.status_code)
+                log.warning("INSEE BDM %s HTTP %d", idbank, r.status_code)
                 return []
-            for line in r.text.strip().split("\n")[1:]:
-                parts = line.split(";")
-                if len(parts) >= 2:
-                    period = parts[0].strip().strip('"')
-                    val = parts[-1].strip().strip('"')
-                    if period and val and val not in ("", "NA", "."):
-                        d = period + "-01" if len(period) == 7 else period
-                        try:
-                            rows.append({"date": d, "value": float(val.replace(",", "."))})
-                        except ValueError:
-                            pass
+        root = ET.fromstring(r.text)
+        for obs in root.findall(".//{*}Obs"):
+            period = obs.get("TIME_PERIOD", "")
+            val = obs.get("OBS_VALUE", "")
+            if not period or not val:
+                continue
+            # Normaliser la période en date ISO
+            if "-Q" in period:            # YYYY-Qn → premier mois du trimestre
+                year, q = period.split("-Q")
+                month = str((int(q) - 1) * 3 + 1).zfill(2)
+                d = f"{year}-{month}-01"
+            elif len(period) == 7:        # YYYY-MM → YYYY-MM-01
+                d = period + "-01"
+            elif len(period) == 4:        # YYYY → YYYY-01-01
+                d = period + "-01-01"
+            else:
+                d = period
+            try:
+                rows.append({"date": d, "value": float(val)})
+            except ValueError:
+                pass
     except Exception as e:
-        log.warning("INSEE %s error: %s", series_id, e)
+        log.warning("INSEE BDM %s error: %s", idbank, e)
     return rows
 
 
+async def fetch_insee_series(series_id: str, token: str = "") -> list[dict]:
+    """Alias pour compatibilité — délègue à fetch_insee_bdm_series."""
+    return await fetch_insee_bdm_series(series_id)
+
+
 async def upsert_insee_all(db_engine, token: str = "") -> int:
-    """Fetch et upsert toutes les séries INSEE définies."""
+    """Fetch et upsert toutes les séries INSEE BDM natives + FRED_FR."""
     import sqlalchemy as sa
     total = 0
+
+    # 1. Séries INSEE BDM natives (SDMX)
+    for idbank, (name, freq, unit) in INSEE_BDM_SERIES.items():
+        rows = await fetch_insee_bdm_series(idbank, start="2015-01")
+        if not rows:
+            log.warning("INSEE BDM %s: no data", idbank)
+            continue
+        with db_engine.begin() as conn:
+            for row in rows:
+                conn.execute(sa.text("""
+                    INSERT INTO macro_series (series_id, source, name, frequency, date, value, unit)
+                    VALUES (:sid, 'INSEE_BDM', :name, :freq, :date, :value, :unit)
+                    ON CONFLICT (series_id, date) DO UPDATE
+                    SET value=EXCLUDED.value, updated_at=NOW()
+                """), {"sid": f"INSEE:{idbank}", "name": name, "freq": freq,
+                       "date": row["date"], "value": row["value"], "unit": unit})
+        total += len(rows)
+        log.info("INSEE BDM %s (%s): %d rows upserted", idbank, name, len(rows))
+        await asyncio.sleep(0.3)
+
+    # 2. Séries FRED_FR (proxy INSEE via FRED)
     for series_id, (name, freq, unit) in FRED_FRANCE_SERIES.items():
-        rows = await fetch_fred_series(series_id, start='2015-01-01')
+        rows = await fetch_fred_series(series_id, start="2015-01-01")
         if not rows:
             continue
-        with db_engine.connect() as conn:
+        with db_engine.begin() as conn:
             for row in rows:
                 conn.execute(sa.text("""
                     INSERT INTO macro_series (series_id, source, name, frequency, date, value, unit)
                     VALUES (:sid, 'FRED_FR', :name, :freq, :date, :value, :unit)
-                    ON CONFLICT (series_id, date) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
+                    ON CONFLICT (series_id, date) DO UPDATE
+                    SET value=EXCLUDED.value, updated_at=NOW()
                 """), {"sid": f"INSEE:{series_id}", "name": name, "freq": freq,
                        "date": row["date"], "value": row["value"], "unit": unit})
-            conn.commit()
         total += len(rows)
-        log.info("INSEE %s: %d rows upserted", series_id, len(rows))
+        log.info("FRED_FR %s: %d rows upserted", series_id, len(rows))
         await asyncio.sleep(0.3)
+
     return total
 
 
