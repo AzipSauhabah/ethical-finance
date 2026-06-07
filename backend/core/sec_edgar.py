@@ -481,18 +481,25 @@ async def upsert_sec_fundamentals(tickers: list[str]) -> int:
                 conn.execute(
                     sa.text("""
                         UPDATE ticker_fundamentals SET
-                            total_debt         = COALESCE(:total_debt, total_debt),
-                            total_revenue      = COALESCE(:total_revenue, total_revenue),
-                            earning_yield_sec  = :earning_yield_sec,
-                            roic_sec           = :roic_sec,
-                            pe_ratio           = :pe_ratio,
-                            ev_ebitda          = :ev_ebitda,
-                            net_margin         = :net_margin,
-                            fcf_yield          = :fcf_yield,
-                            debt_equity        = :debt_equity,
-                            current_ratio      = :current_ratio,
-                            sec_updated_at     = :sec_updated_at,
-                            updated_at         = :updated_at
+                            total_debt             = COALESCE(NULLIF(:total_debt, 0), total_debt),
+                            total_revenue          = COALESCE(NULLIF(:total_revenue, 0), total_revenue),
+                            interest_bearing_debt  = COALESCE(NULLIF(:interest_bearing_debt, 0), interest_bearing_debt),
+                            short_term_debt        = COALESCE(NULLIF(:short_term_debt, 0), short_term_debt),
+                            long_term_debt         = COALESCE(NULLIF(:long_term_debt, 0), long_term_debt),
+                            interest_expense       = COALESCE(NULLIF(:interest_expense, 0), interest_expense),
+                            interest_income        = COALESCE(NULLIF(:interest_income, 0), interest_income),
+                            total_assets           = COALESCE(NULLIF(:total_assets, 0), total_assets),
+                            total_equity           = COALESCE(NULLIF(:total_equity, 0), total_equity),
+                            earning_yield_sec      = :earning_yield_sec,
+                            roic_sec               = :roic_sec,
+                            pe_ratio               = :pe_ratio,
+                            ev_ebitda              = :ev_ebitda,
+                            net_margin             = :net_margin,
+                            fcf_yield              = :fcf_yield,
+                            debt_equity            = :debt_equity,
+                            current_ratio          = :current_ratio,
+                            sec_updated_at         = :sec_updated_at,
+                            updated_at             = :updated_at
                         WHERE ticker = :ticker
                     """),
                     {
