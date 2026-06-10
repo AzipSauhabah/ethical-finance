@@ -87,6 +87,7 @@ async def _startup() -> None:
     job_macro_series,
     job_implied_vol,
     job_insider_signals,
+    job_seed_macro_events,
 )
 
         scheduler.add_job(job_sec_fundamentals, "cron", hour=22, minute=0, timezone="UTC")
@@ -97,6 +98,7 @@ async def _startup() -> None:
         scheduler.add_job(job_fmp_fundamentals, "cron", hour=22, minute=30, timezone="UTC")
         scheduler.add_job(job_esef_fundamentals, "cron", day_of_week="mon", hour=4, minute=0, timezone="UTC")
         scheduler.add_job(job_macro_series, "cron", hour=6, minute=0, timezone="UTC")
+        scheduler.add_job(job_seed_macro_events, "cron", month=1, day=1, hour=0, minute=0, timezone="UTC")  # seed annuel
         scheduler.add_job(job_implied_vol, "cron", hour=21, minute=30, day_of_week="mon-fri", timezone="UTC")
         scheduler.add_job(job_insider_signals, "cron", hour=23, minute=45, timezone="UTC")
 

@@ -27,3 +27,4 @@ bcrypt
 asyncpg
 praw
 scikit-learn>=1.4.0
+yfinance>=0.2.50

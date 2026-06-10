@@ -436,3 +436,16 @@ async def job_intraday() -> None:
         log.info("Intraday job complete — %d rows inserted", inserted)
     except Exception as e:
         log.warning("Intraday job error: %s", e)
+
+
+# ─── Macro events seed ────────────────────────────────────────────────────────
+
+async def job_seed_macro_events() -> None:
+    """Seed/refresh macro events calendar (FOMC, NFP, CPI, PCE) — annually on Jan 1."""
+    try:
+        from backend.core.db import engine
+        from backend.core.macro_events import seed_macro_events
+        n = await seed_macro_events(engine)
+        log.info("macro_events seeded: %d events", n)
+    except Exception as e:
+        log.warning("macro_events seed error: %s", e)

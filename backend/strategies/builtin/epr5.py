@@ -29,6 +29,7 @@ from backend.strategies.base import Strategy, StrategyParams
 from backend.strategies.builtin.lstm_scorer import score_ticker as lstm_score_ticker
 from backend.strategies.builtin.lstm_scorer import train_lstm
 from backend.strategies.registry import strategy_registry
+from backend.core.macro_events import is_event_risk_window
 
 log = logging.getLogger(__name__)
 
@@ -365,6 +366,27 @@ class EPR5Strategy(Strategy):
         curr_vix = float(vix.iloc[-1])
         return prev_vix >= vix_ma_val and curr_vix < vix_ma_val
 
+    @staticmethod
+    def _event_risk_ok(days_ahead: int = 2) -> bool:
+        """Retourne False si un événement macro high-impact est dans les N jours.
+        Bloque les nouvelles entrées avant NFP/FOMC/CPI/PCE.
+        """
+        try:
+            import os
+            import sqlalchemy as sa
+            database_url = os.environ.get("DATABASE_URL", "")
+            if not database_url:
+                return True
+            sync_url = database_url.replace("postgresql://", "postgresql+psycopg2://")
+            engine = sa.create_engine(sync_url, pool_pre_ping=True)
+            risk = is_event_risk_window(engine, days_ahead=days_ahead)
+            if risk:
+                log.info("EPR5: event risk window active — no new entries")
+            return not risk
+        except Exception as e:
+            log.debug("EPR5 event risk check error: %s", e)
+            return True  # fail-open
+
     def _apply_stops(
         self,
         weights: dict,
@@ -501,6 +523,8 @@ class EPR5Strategy(Strategy):
             state["weights"] = {}
             return {}
         if not self._vix_ok(past_prices, "^VIX", vix_ma):
+            return state.get("weights", {})
+        if not self._event_risk_ok(days_ahead=2):
             return state.get("weights", {})
 
         # ── Rank candidates by Magic Formula + ML score ──────────────────

@@ -787,6 +787,35 @@ async def monte_carlo(payload: MonteCarloIn):
 
 
 
+@app.get("/api/macro/events")
+async def get_macro_events(days: int = 30):
+    """Retourne les événements macro high-impact à venir."""
+    from backend.core.db import engine
+    from backend.core.macro_events import get_upcoming_high_impact_events
+    events = get_upcoming_high_impact_events(engine, days_ahead=days)
+    return {"events": [
+        {**e, "event_date": str(e["event_date"])}
+        for e in events
+    ]}
+
+
+@app.get("/api/macro/risk-window")
+async def get_event_risk_window(days: int = 2):
+    """Retourne True si un événement high-impact est dans les N prochains jours."""
+    from backend.core.db import engine
+    from backend.core.macro_events import is_event_risk_window, get_upcoming_high_impact_events
+    risk = is_event_risk_window(engine, days_ahead=days)
+    upcoming = get_upcoming_high_impact_events(engine, days_ahead=days)
+    return {
+        "risk_window_active": risk,
+        "days_ahead": days,
+        "upcoming_events": [
+            {**e, "event_date": str(e["event_date"])}
+            for e in upcoming
+        ]
+    }
+
+
 @app.get("/api/stats")
 async def platform_stats():
     """Stats temps réel de la plateforme pour la Home page."""
