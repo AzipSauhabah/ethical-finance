@@ -40,7 +40,7 @@ app.include_router(portfolio_router)
 try:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-    scheduler = AsyncIOScheduler()
+    scheduler = AsyncIOScheduler(job_defaults={"misfire_grace_time": 3600, "coalesce": True})
     HAS_SCHEDULER = True
 except ImportError:
     scheduler = None
